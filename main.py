@@ -1059,7 +1059,7 @@ def research_topic_api():
 
 @app.route('/api/trending-topics-new', methods=['GET'])
 def trending_topics_api_new():
-    """Updated API endpoint to get trending topics"""
+    """Updated API endpoint to get trending topics with keyword opportunities"""
     if not web_scraper_service:
         return jsonify({
             "success": False,
@@ -1070,6 +1070,7 @@ def trending_topics_api_new():
     category = request.args.get('category')
     limit = request.args.get('limit', 10, type=int)
     blog_id = request.args.get('blog_id')
+    include_opportunities = request.args.get('opportunities', 'true').lower() == 'true'
     
     try:
         # If blog context is provided, get the blog info
@@ -1093,26 +1094,65 @@ def trending_topics_api_new():
                 logger.warning(f"Error getting blog context for ID {blog_id}: {str(e)}")
                 # Continue without context if blog info can't be loaded
         
-        # Get trending topics with optional blog context - use the context-aware method when a blog is selected
-        logger.info(f"Getting trending topics for category: {category} with limit: {limit}")
-        if blog_context:
-            logger.info(f"Using context-aware trending topics method for blog: {blog_context.get('name')}")
-            topics = web_scraper_service.get_trending_topics_with_context(
-                category=category, 
-                limit=limit,
-                blog_context=blog_context
-            )
-        else:
-            topics = web_scraper_service.get_trending_topics(
-                category=category, 
-                limit=limit
-            )
+        # Check if we should use competitor-based keyword opportunities
+        use_opportunities = include_opportunities and competitor_analysis_service is not None
+        
+        topics = []
+        
+        # Try to get topics from research service with keyword opportunities if available
+        if use_opportunities:
+            try:
+                if blog_context:
+                    logger.info(f"Getting keyword opportunities for blog: {blog_context.get('name')}")
+                    # Get trending topics with keyword opportunities for the blog
+                    topics = research_service.research_topics(
+                        theme=blog_context.get("theme", ""),
+                        target_audience=blog_context.get("audience", "general"),
+                        max_results=limit,
+                        blog_id=blog_id,
+                        include_keyword_opportunities=True,
+                        competitor_analysis_service=competitor_analysis_service
+                    )
+                elif category:
+                    logger.info(f"Getting keyword opportunities for category: {category}")
+                    # Get trending topics with keyword opportunities for the category
+                    topics = research_service.research_topics(
+                        theme=category,
+                        max_results=limit,
+                        include_keyword_opportunities=True,
+                        competitor_analysis_service=competitor_analysis_service
+                    )
+            except Exception as e:
+                logger.warning(f"Error getting keyword opportunities: {str(e)}")
+                # Continue with standard method if opportunities fail
+        
+        # Fall back to web scraper method if no topics were found
+        if not topics:
+            logger.info(f"Getting trending topics for category: {category} with limit: {limit}")
+            if blog_context:
+                logger.info(f"Using context-aware trending topics method for blog: {blog_context.get('name')}")
+                topics = web_scraper_service.get_trending_topics_with_context(
+                    category=category, 
+                    limit=limit,
+                    blog_context=blog_context
+                )
+            else:
+                topics = web_scraper_service.get_trending_topics(
+                    category=category, 
+                    limit=limit
+                )
+        
+        # Count keyword opportunities if any
+        opportunity_count = sum(1 for t in topics if t.get('source') == 'competitor_analysis')
         
         return jsonify({
             "success": True,
             "data": topics,
             "used_context_aware_method": blog_context is not None,
-            "blog_name": blog_context.get("name") if blog_context else None
+            "blog_name": blog_context.get("name") if blog_context else None,
+            "keyword_opportunities_included": use_opportunities,
+            "opportunity_count": opportunity_count,
+            "opportunity_percent": round((opportunity_count / len(topics)) * 100) if topics else 0
         })
         
     except Exception as e:
@@ -3020,6 +3060,69 @@ def api_content_recommendations(blog_id):
         return jsonify({
             "success": False,
             "message": f"Error getting content recommendations: {str(e)}"
+        }), 500
+
+@app.route('/api/keyword-opportunities')
+def api_keyword_opportunities():
+    """API endpoint to find keyword opportunities based on competitor analysis"""
+    if not competitor_analysis_service:
+        return jsonify({
+            "success": False,
+            "message": "Competitor Analysis service is not available"
+        }), 500
+    
+    try:
+        # Get query parameters
+        blog_id = request.args.get('blog_id')
+        niche = request.args.get('niche')
+        max_results = int(request.args.get('max_results', 20))
+        
+        # Find keyword opportunities
+        result = competitor_analysis_service.find_keyword_opportunities(blog_id, niche, max_results)
+        return jsonify(result)
+    except Exception as e:
+        logger.error(f"Error finding keyword opportunities: {str(e)}")
+        return jsonify({
+            "success": False,
+            "message": f"Error finding keyword opportunities: {str(e)}"
+        }), 500
+
+@app.route('/api/blogs/<blog_id>/seo-opportunities')
+def api_blog_seo_opportunities(blog_id):
+    """API endpoint to get SEO opportunities for a specific blog"""
+    if not competitor_analysis_service:
+        return jsonify({
+            "success": False,
+            "message": "Competitor Analysis service is not available"
+        }), 500
+    
+    try:
+        # Get gap analysis for topics
+        gap_analysis = competitor_analysis_service.get_competitive_gap_analysis(blog_id)
+        
+        # Get keyword opportunities specific to this blog
+        keyword_opportunities = competitor_analysis_service.find_keyword_opportunities(blog_id, max_results=30)
+        
+        # Combine results into a comprehensive SEO optimization package
+        result = {
+            "success": True,
+            "blog_id": blog_id,
+            "content_gaps": gap_analysis.get('gap_topics', [])[:10],
+            "keyword_opportunities": keyword_opportunities.get('opportunities', [])[:20],
+            "optimization_tips": [
+                "Focus on long-tail keywords with high opportunity scores",
+                "Create content around competitor topics you haven't covered",
+                "Optimize existing content with popular competitor keywords",
+                "Consider 'easy' difficulty keywords for quick SEO wins"
+            ]
+        }
+        
+        return jsonify(result)
+    except Exception as e:
+        logger.error(f"Error getting SEO opportunities: {str(e)}")
+        return jsonify({
+            "success": False,
+            "message": f"Error getting SEO opportunities: {str(e)}"
         }), 500
 
 @app.route('/api/blogs/<blog_id>/competitor-report')

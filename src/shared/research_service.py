@@ -59,7 +59,7 @@ class ResearchService:
         self.trend_cache = {}
         self.cache_expiry = 3600  # Cache data for 1 hour
     
-    def research_topics(self, theme, target_audience="general", region="US", max_results=10):
+    def research_topics(self, theme, target_audience="general", region="US", max_results=10, blog_id=None, include_keyword_opportunities=True, competitor_analysis_service=None):
         """
         Research trending topics related to a given theme.
         
@@ -68,12 +68,15 @@ class ResearchService:
             target_audience (str): Target audience for the content
             region (str): Region code for trend data (default: US)
             max_results (int): Maximum number of results to return
+            blog_id (str, optional): Blog ID to use for competitor-based keyword opportunities
+            include_keyword_opportunities (bool): Whether to include competitor-based keyword opportunities
+            competitor_analysis_service: Optional service for competitor analysis
             
         Returns:
             list: List of trending topics with scores and metadata
         """
         # Check if results are in cache and not expired
-        cache_key = f"{theme}:{target_audience}:{region}"
+        cache_key = f"{theme}:{target_audience}:{region}:{blog_id}"
         if cache_key in self.trend_cache:
             cache_time, cache_data = self.trend_cache[cache_key]
             if time.time() - cache_time < self.cache_expiry:
@@ -129,8 +132,37 @@ class ResearchService:
                 self.logger.error(f"Error getting trend data from PyTrends: {str(e)}")
                 self.pytrends_available = False
         
-        # If PyTrends is not available or didn't return enough results, use fallback
-        if not self.pytrends_available or len(results) < 5:
+        # Add competitor-based keyword opportunities if available
+        if include_keyword_opportunities and competitor_analysis_service and (blog_id or theme):
+            try:
+                self.logger.info(f"Adding competitor keyword opportunities for theme: {theme}, blog: {blog_id}")
+                
+                # Get keyword opportunities from competitor analysis service
+                if blog_id:
+                    opportunities = competitor_analysis_service.find_keyword_opportunities(blog_id=blog_id, max_results=10)
+                else:
+                    # Use theme as niche if no blog_id
+                    opportunities = competitor_analysis_service.find_keyword_opportunities(niche=theme, max_results=10)
+                
+                if opportunities.get('success') and opportunities.get('opportunities'):
+                    for opp in opportunities['opportunities']:
+                        # Only add high-value opportunities (score > 0.5)
+                        if opp.get('opportunity_score', 0) > 0.5:
+                            results.append({
+                                'keyword': opp['keyword'],
+                                'title': self._generate_title(opp['keyword'], theme),
+                                'trend_score': int(opp.get('frequency', 0)),
+                                'trend_type': 'opportunity',
+                                'source': 'competitor_analysis',
+                                'opportunity_score': opp.get('opportunity_score'),
+                                'difficulty': opp.get('difficulty', 'Medium'),
+                                'competitor_count': opp.get('competitor_count', 0)
+                            })
+            except Exception as e:
+                self.logger.error(f"Error getting keyword opportunities: {str(e)}")
+        
+        # If not enough results, use fallback
+        if len(results) < 5:
             self.logger.warning(f"Using fallback trend generation for {theme}")
             
             fallback_results = self._generate_fallback_topics(theme, target_audience, max(5, max_results - len(results)))
@@ -146,8 +178,20 @@ class ResearchService:
                 seen_keywords.add(keyword)
                 unique_results.append(result)
         
-        # Sort by trend score (descending)
-        sorted_results = sorted(unique_results, key=lambda x: x.get('trend_score', 0), reverse=True)
+        # Sort results: first by source (prioritize competitor analysis), then by score
+        def sort_key(result):
+            # Priority: competitor_analysis > google_trends > system_generated
+            source_priority = {
+                'competitor_analysis': 3,
+                'google_trends': 2,
+                'system_generated': 1
+            }
+            source = result.get('source', 'system_generated')
+            # Use opportunity score if available, otherwise trend score
+            score = result.get('opportunity_score', result.get('trend_score', 0) / 100)
+            return (source_priority.get(source, 0), score)
+        
+        sorted_results = sorted(unique_results, key=sort_key, reverse=True)
         
         # Limit to max_results
         final_results = sorted_results[:max_results]

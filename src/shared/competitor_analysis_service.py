@@ -913,6 +913,141 @@ class CompetitorAnalysisService:
             if conn:
                 conn.close()
     
+    def find_keyword_opportunities(self, blog_id=None, niche=None, max_results=20):
+        """
+        Find keyword opportunities based on competitor analysis.
+        
+        Args:
+            blog_id (str, optional): ID of the specific blog to find opportunities for
+            niche (str, optional): Niche category to filter keywords by
+            max_results (int): Maximum number of keyword opportunities to return
+            
+        Returns:
+            dict: Keyword opportunities with scores and metadata
+        """
+        try:
+            # Connect to database
+            conn = sqlite3.connect(self.db_path)
+            conn.row_factory = sqlite3.Row
+            cursor = conn.cursor()
+            
+            # Base query to get most popular keywords across competitors
+            base_query = '''
+                SELECT keyword, SUM(frequency) as total_frequency, 
+                       COUNT(DISTINCT competitor_id) as competitor_count
+                FROM competitor_keywords
+            '''
+            
+            params = []
+            where_clauses = []
+            
+            # Add blog ID filter if provided
+            if blog_id:
+                where_clauses.append('''
+                    competitor_id IN (
+                        SELECT id FROM competitors WHERE blog_id = ?
+                    )
+                ''')
+                params.append(blog_id)
+            
+            # Add niche filter if provided
+            if niche:
+                where_clauses.append('''
+                    competitor_id IN (
+                        SELECT id FROM competitors WHERE category = ?
+                    )
+                ''')
+                params.append(niche)
+            
+            # Build final query with WHERE clause if needed
+            query = base_query
+            if where_clauses:
+                query += " WHERE " + " AND ".join(where_clauses)
+            
+            # Group by keyword and order by relevance
+            query += '''
+                GROUP BY keyword
+                ORDER BY competitor_count DESC, total_frequency DESC
+                LIMIT ?
+            '''
+            params.append(max_results)
+            
+            # Execute query
+            cursor.execute(query, params)
+            rows = cursor.fetchall()
+            
+            # Transform rows into result objects with opportunity score
+            opportunities = []
+            if rows:
+                max_frequency = max(row['total_frequency'] for row in rows)
+                max_count = max(row['competitor_count'] for row in rows)
+                
+                for row in rows:
+                    # Calculate opportunity score (0-1) based on frequency and competitor count
+                    freq_score = row['total_frequency'] / max_frequency if max_frequency > 0 else 0
+                    count_score = row['competitor_count'] / max_count if max_count > 0 else 0
+                    
+                    # Combined score with more weight to competitor count
+                    score = (count_score * 0.7) + (freq_score * 0.3)
+                    
+                    opportunity = {
+                        'keyword': row['keyword'],
+                        'frequency': row['total_frequency'],
+                        'competitor_count': row['competitor_count'],
+                        'opportunity_score': round(score, 2),
+                        'difficulty': self._estimate_keyword_difficulty(row['keyword'], row['total_frequency'])
+                    }
+                    opportunities.append(opportunity)
+            
+            # Sort by opportunity score (descending)
+            opportunities.sort(key=lambda x: x['opportunity_score'], reverse=True)
+            
+            return {
+                'success': True,
+                'opportunities': opportunities,
+                'count': len(opportunities)
+            }
+            
+        except Exception as e:
+            self.logger.error(f"Error finding keyword opportunities: {str(e)}")
+            return {
+                'success': False,
+                'message': f"Error finding keyword opportunities: {str(e)}"
+            }
+        finally:
+            if conn:
+                conn.close()
+    
+    def _estimate_keyword_difficulty(self, keyword, frequency):
+        """
+        Estimate the difficulty of ranking for a keyword based on its properties.
+        
+        Args:
+            keyword (str): The keyword to estimate difficulty for
+            frequency (int): The frequency of this keyword among competitors
+            
+        Returns:
+            str: Difficulty rating (Easy, Medium, Hard)
+        """
+        # Simple heuristic based on keyword properties
+        # This could be expanded with more sophisticated analysis
+        
+        # Longer keywords (more words) are generally easier to rank for
+        word_count = len(keyword.split())
+        
+        if word_count >= 4:
+            return "Easy"
+        elif word_count >= 2:
+            if frequency < 5:
+                return "Easy"
+            else:
+                return "Medium"
+        else:
+            if frequency < 3:
+                return "Medium"
+            else:
+                return "Hard"
+    
     def get_competitive_gap_analysis(self, blog_id, topic_list=None):
         """
         Perform gap analysis to identify topics competitors are covering that your blog isn't.
