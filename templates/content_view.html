@@ -44,20 +44,51 @@
                 <div class="card-header d-flex justify-content-between align-items-center">
                     <h5 class="mb-0">Content</h5>
                     <div class="btn-group">
-                        <button class="btn btn-sm btn-outline-secondary" id="viewMode" onclick="toggleView('preview')">
+                        <button class="btn btn-sm btn-outline-secondary" id="previewBtn" onclick="toggleView('preview')">
                             <i class="bi bi-eye"></i> Preview
                         </button>
-                        <button class="btn btn-sm btn-outline-secondary" onclick="toggleView('markdown')">
+                        <button class="btn btn-sm btn-outline-secondary" id="markdownBtn" onclick="toggleView('markdown')">
                             <i class="bi bi-code-slash"></i> Markdown
+                        </button>
+                        <button class="btn btn-sm btn-outline-primary" id="editBtn" onclick="toggleEdit()">
+                            <i class="bi bi-pencil"></i> Edit
                         </button>
                     </div>
                 </div>
                 <div class="card-body">
+                    <!-- Preview Mode -->
                     <div id="preview-content" class="markdown-body">
                         {{ content_html|safe }}
                     </div>
+                    
+                    <!-- Markdown View Mode -->
                     <div id="markdown-content" style="display: none;">
                         <pre class="p-3 bg-light"><code>{{ content }}</code></pre>
+                    </div>
+                    
+                    <!-- Edit Mode -->
+                    <div id="edit-content" style="display: none;">
+                        <form id="editForm" action="{{ url_for('edit_content', blog_id=blog_id, run_id=run_id) }}" method="POST">
+                            <div class="mb-3">
+                                <textarea name="content" id="contentEditor" class="form-control font-monospace" style="min-height: 500px;">{{ content }}</textarea>
+                            </div>
+                            <div class="mb-3">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="republish" id="republishCheckbox">
+                                    <label class="form-check-label" for="republishCheckbox">
+                                        Republish content after saving
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="d-flex justify-content-between">
+                                <button type="button" class="btn btn-secondary" onclick="cancelEdit()">
+                                    <i class="bi bi-x-circle"></i> Cancel
+                                </button>
+                                <button type="submit" class="btn btn-success">
+                                    <i class="bi bi-save"></i> Save Changes
+                                </button>
+                            </div>
+                        </form>
                     </div>
                 </div>
                 <div class="card-footer text-muted">
@@ -294,16 +325,65 @@
 {% block scripts %}
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 <script>
+// Track the current mode
+let currentMode = 'preview';
+
 function toggleView(mode) {
+    currentMode = mode;
+    
+    // Hide all content views
+    document.getElementById('preview-content').style.display = 'none';
+    document.getElementById('markdown-content').style.display = 'none';
+    document.getElementById('edit-content').style.display = 'none';
+    
+    // Reset all buttons to outline style
+    document.getElementById('previewBtn').className = 'btn btn-sm btn-outline-secondary';
+    document.getElementById('markdownBtn').className = 'btn btn-sm btn-outline-secondary';
+    document.getElementById('editBtn').className = 'btn btn-sm btn-outline-primary';
+    
+    // Show the selected view and highlight the button
     if (mode === 'preview') {
         document.getElementById('preview-content').style.display = 'block';
-        document.getElementById('markdown-content').style.display = 'none';
-        document.getElementById('viewMode').innerHTML = '<i class="bi bi-eye"></i> Preview';
-    } else {
-        document.getElementById('preview-content').style.display = 'none';
+        document.getElementById('previewBtn').className = 'btn btn-sm btn-secondary';
+    } else if (mode === 'markdown') {
         document.getElementById('markdown-content').style.display = 'block';
-        document.getElementById('viewMode').innerHTML = '<i class="bi bi-code-slash"></i> Markdown';
+        document.getElementById('markdownBtn').className = 'btn btn-sm btn-secondary';
     }
+}
+
+function toggleEdit() {
+    // Save the current mode before switching to edit
+    const prevMode = currentMode;
+    
+    // Hide all content views
+    document.getElementById('preview-content').style.display = 'none';
+    document.getElementById('markdown-content').style.display = 'none';
+    
+    // Show edit form and highlight the edit button
+    document.getElementById('edit-content').style.display = 'block';
+    document.getElementById('editBtn').className = 'btn btn-sm btn-primary';
+    document.getElementById('previewBtn').className = 'btn btn-sm btn-outline-secondary';
+    document.getElementById('markdownBtn').className = 'btn btn-sm btn-outline-secondary';
+    
+    // Store the previous mode as a data attribute so we can return to it
+    document.getElementById('editBtn').setAttribute('data-prev-mode', prevMode);
+    
+    // Focus the editor
+    document.getElementById('contentEditor').focus();
+}
+
+function cancelEdit() {
+    // Get the previous mode before edit was clicked
+    const prevMode = document.getElementById('editBtn').getAttribute('data-prev-mode') || 'preview';
+    
+    // Reset the edit button style
+    document.getElementById('editBtn').className = 'btn btn-sm btn-outline-primary';
+    
+    // Hide the edit form
+    document.getElementById('edit-content').style.display = 'none';
+    
+    // Return to the previous view mode
+    toggleView(prevMode);
 }
 </script>
 {% endblock %}

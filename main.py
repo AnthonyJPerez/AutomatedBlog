@@ -2,6 +2,7 @@ import os
 import json
 import logging
 import datetime
+import shutil
 from flask import Flask, render_template, request, redirect, url_for, jsonify, flash
 from src.shared.storage_service import StorageService
 from src.shared.research_service import ResearchService
@@ -703,6 +704,85 @@ def view_content(blog_id, run_id):
         logger.error(f"Error loading content for {blog_id}/{run_id}: {str(e)}")
         flash(f"Error loading content: {str(e)}", "danger")
         return redirect(url_for('blog_detail', blog_id=blog_id))
+
+@app.route('/blog/<blog_id>/content/<run_id>/edit', methods=['POST'])
+def edit_content(blog_id, run_id):
+    """Edit content for a specific run"""
+    try:
+        # Get blog configuration
+        blog_path = os.path.join("data/blogs", blog_id)
+        config_path = os.path.join(blog_path, "config.json")
+        
+        if not os.path.exists(config_path):
+            flash(f"Blog configuration not found for ID: {blog_id}", "danger")
+            return redirect(url_for('index'))
+        
+        # Get run data path
+        run_path = os.path.join(blog_path, "runs", run_id)
+        content_path = os.path.join(run_path, "content.md")
+        
+        if not os.path.exists(content_path):
+            flash(f"Content not found for run ID: {run_id}", "danger")
+            return redirect(url_for('blog_detail', blog_id=blog_id))
+        
+        # Get edited content from form
+        new_content = request.form.get('content', '')
+        republish = request.form.get('republish') == 'on'
+        
+        # Create a backup of the original content
+        backup_path = os.path.join(run_path, "content.md.bak")
+        if not os.path.exists(backup_path):
+            shutil.copy2(content_path, backup_path)
+            logger.info(f"Created backup of original content at {backup_path}")
+        
+        # Save the edited content
+        with open(content_path, 'w') as f:
+            f.write(new_content)
+        
+        logger.info(f"Content updated for {blog_id}/{run_id}")
+        
+        # If republish is requested, update the publish.json file 
+        # and call the publishing function (if it exists)
+        if republish:
+            publish_path = os.path.join(run_path, "publish.json")
+            if os.path.exists(publish_path):
+                # Get the existing publish data
+                with open(publish_path, 'r') as f:
+                    publish_data = json.load(f)
+                
+                # Update the publish timestamp
+                publish_data['updated_at'] = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                publish_data['status'] = 'updated'
+                
+                # Save the updated publish data
+                with open(publish_path, 'w') as f:
+                    json.dump(publish_data, f, indent=2)
+                
+                # In a real scenario, here we would call the actual republish function,
+                # but for demo purposes, we'll just update the publish.json file
+                logger.info(f"Content marked for republishing: {blog_id}/{run_id}")
+                flash("Content has been updated and marked for republishing", "success")
+            else:
+                # Create a new publish.json file
+                publish_data = {
+                    "status": "pending",
+                    "created_at": datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                }
+                
+                with open(publish_path, 'w') as f:
+                    json.dump(publish_data, f, indent=2)
+                
+                logger.info(f"New publish request created: {blog_id}/{run_id}")
+                flash("Content has been updated and scheduled for publishing", "success")
+        else:
+            flash("Content has been updated successfully", "success")
+        
+        return redirect(url_for('view_content', blog_id=blog_id, run_id=run_id))
+    
+    except Exception as e:
+        logger.error(f"Error updating content for {blog_id}/{run_id}: {str(e)}")
+        flash(f"Error updating content: {str(e)}", "danger")
+        return redirect(url_for('view_content', blog_id=blog_id, run_id=run_id))
 
 @app.errorhandler(404)
 def page_not_found(e):
