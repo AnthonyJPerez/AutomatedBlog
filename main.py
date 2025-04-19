@@ -301,6 +301,10 @@ def blog_detail(blog_id):
             blog['wordpress_username'] = config['wordpress'].get('username')
             blog['wordpress_connected'] = config['wordpress'].get('connected', False)
         
+        # Add image generation settings if available
+        if 'image_generation' in config:
+            blog['image_generation'] = config['image_generation']
+        
         # Add domain suggestions if available
         if 'domain_suggestions' in config and config['domain_suggestions'].get('results'):
             blog['domain_suggestions'] = config['domain_suggestions'].get('results', [])
@@ -463,6 +467,14 @@ def generate_content(blog_id):
             content_length = content_settings.get('length', 1000)
             content_style = content_settings.get('style', 'informative')
             
+            # Get image generation settings
+            image_settings = config.get('image_generation', {})
+            image_enabled = image_settings.get('enabled', False)
+            image_count = image_settings.get('count', 0) if image_enabled else 0
+            use_gpt4o_descriptions = image_settings.get('use_gpt4o_descriptions', False)
+            image_style = image_settings.get('style', 'natural')
+            enable_section_images = image_settings.get('section_images', False)
+            
             prompt = f"""
             Create a comprehensive blog post about "{selected_topic}" in the context of "{theme}".
             
@@ -479,6 +491,63 @@ def generate_content(blog_id):
             
             # Generate content
             content = openai_service.generate_content(prompt)
+            
+            # Generate featured image if enabled
+            featured_image_path = None
+            if image_enabled and image_count > 0:
+                try:
+                    # Extract title from content
+                    title = None
+                    lines = content.strip().split('\n')
+                    if lines and lines[0].startswith('# '):
+                        title = lines[0][2:].strip()
+                    else:
+                        title = selected_topic
+                    
+                    logger.info(f"Generating {image_count} images for content with title: {title}")
+                    
+                    # Generate image prompt
+                    image_prompt = None
+                    if use_gpt4o_descriptions:
+                        # Use GPT-4o to create a detailed image prompt
+                        gpt4o_prompt = f"""
+                        Create a detailed, vivid description for a high-quality featured image for an article titled:
+                        "{title}"
+                        
+                        The article is about {selected_topic} in the context of {theme}.
+                        The image should be in {image_style} style.
+                        
+                        Provide only the image description, make it detailed but concise (max 100 words).
+                        Do not include any explanation or commentary, just the image description.
+                        """
+                        
+                        image_prompt = openai_service.generate_content(gpt4o_prompt).strip()
+                        logger.info(f"Generated GPT-4o image prompt: {image_prompt[:100]}...")
+                    else:
+                        # Use a simple prompt
+                        image_prompt = f"A high-quality {image_style} style image representing {title} in the context of {theme}, professional, detailed"
+                    
+                    # Generate featured image
+                    image_result = openai_service.generate_image(image_prompt)
+                    if image_result and "url" in image_result:
+                        # Add image URL to frontmatter
+                        featured_image_path = image_result["url"]
+                        
+                        # Create frontmatter and prepend to content
+                        frontmatter = f"""---
+title: "{title}"
+featured_image: "{featured_image_path}"
+date: "{datetime.datetime.now().strftime('%Y-%m-%d')}"
+topic: "{selected_topic}"
+theme: "{theme}"
+---
+
+"""
+                        content = frontmatter + content
+                        
+                        logger.info(f"Added featured image to content: {featured_image_path[:50]}...")
+                except Exception as e:
+                    logger.error(f"Error generating featured image: {str(e)}")
             
             # Save content.md
             with open(os.path.join(run_path, "content.md"), 'w') as f:
@@ -529,7 +598,15 @@ def generate_content(blog_id):
                 "theme": theme,
                 "content_length": len(content.split()),
                 "has_seo_recommendations": True,
-                "wordpress_publishing": "pending" if "wordpress" in config else "disabled"
+                "wordpress_publishing": "pending" if "wordpress" in config else "disabled",
+                "image_generation": {
+                    "enabled": image_enabled,
+                    "count": image_count,
+                    "style": image_style,
+                    "used_gpt4o_descriptions": use_gpt4o_descriptions,
+                    "featured_image": featured_image_path is not None,
+                    "section_images": enable_section_images
+                }
             }
             
             # Save results.json

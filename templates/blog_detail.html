@@ -63,6 +63,54 @@
                     </div>
                 </div>
                 
+                <div class="row mt-4">
+                    <div class="col-md-12">
+                        <h5>Image Generation Settings</h5>
+                        <table class="table">
+                            <tr>
+                                <th>Enabled:</th>
+                                <td>
+                                    {% if blog.image_generation and blog.image_generation.enabled %}
+                                    <span class="badge bg-success">Yes</span>
+                                    {% else %}
+                                    <span class="badge bg-secondary">No</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% if blog.image_generation and blog.image_generation.enabled %}
+                            <tr>
+                                <th>Number of Images:</th>
+                                <td>{{ blog.image_generation.count }}</td>
+                            </tr>
+                            <tr>
+                                <th>Style:</th>
+                                <td>{{ blog.image_generation.style }}</td>
+                            </tr>
+                            <tr>
+                                <th>Using GPT-4o for Descriptions:</th>
+                                <td>
+                                    {% if blog.image_generation.use_gpt4o_descriptions %}
+                                    <span class="badge bg-primary">Yes</span>
+                                    {% else %}
+                                    <span class="badge bg-secondary">No</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            <tr>
+                                <th>Section Images:</th>
+                                <td>
+                                    {% if blog.image_generation.section_images %}
+                                    <span class="badge bg-primary">Yes</span>
+                                    {% else %}
+                                    <span class="badge bg-secondary">No</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endif %}
+                        </table>
+                    </div>
+                </div>
+
                 {% if blog.wordpress_url %}
                 <div class="row mt-4">
                     <div class="col-md-12">
