@@ -442,14 +442,23 @@ featured_image: "{featured_image_path if featured_image_path else ""}"
 {image_section}{optimized_content}
 """
     
-    # Prepare recommendations JSON
+    # Prepare recommendations JSON with theme information for full traceability
     recommendations_data = {
         "runId": run_id,
+        "blog_id": blog_id,
+        "theme": theme,
         "topic": topic_title,
         "seo_score": seo_score,
         "recommendations": recommendations,
         "metadata": seo_metadata,
-        "suggested_topics": [item.get('title', '') for item in research_results[1:6] if 'title' in item]
+        "suggested_topics": [item.get('title', '') for item in research_results[1:6] if 'title' in item],
+        "generation_details": {
+            "timestamp": time.strftime('%Y-%m-%d %H:%M:%S'),
+            "theme_info_available": theme_info is not None,
+            "web_research_available": web_research_data is not None,
+            "sources_count": len(web_research_data.get('sources', [])) if web_research_data else 0,
+            "related_keywords_count": len(web_research_data.get('related_keywords', [])) if web_research_data else 0
+        }
     }
     
     # Write to output bindings
@@ -457,3 +466,9 @@ featured_image: "{featured_image_path if featured_image_path else ""}"
     outputRecommendations.set(json.dumps(recommendations_data, indent=2))
     
     logger.info(f'Content and recommendations for run ID: {run_id} successfully written')
+    
+    # Log a summary of the theme-aware generation process
+    theme_info_status = "with theme-specific styling" if theme_info else "with default styling"
+    research_status = "with web research data" if web_research_data else "without web research data"
+    sources_info = f"using {len(web_research_data.get('sources', []))} reference sources" if web_research_data else "without external sources"
+    logger.info(f"Completed theme-aware content generation for blog '{blog_id}' {theme_info_status}, {research_status}, {sources_info}")

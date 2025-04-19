@@ -157,6 +157,7 @@ def setup():
             # Get form data
             blog_name = request.form.get('blog_name', '').strip()
             theme = request.form.get('theme', '').strip()
+            blog_description = request.form.get('blog_description', '').strip()
             topic_keywords = request.form.get('topic_keywords', '').strip()
             frequency = request.form.get('frequency', 'weekly').strip()
             wordpress_url = request.form.get('wordpress_url', '').strip()
@@ -198,6 +199,7 @@ def setup():
             config = {
                 "name": blog_name,
                 "theme": theme,
+                "description": blog_description if blog_description else f"A blog about {theme}",
                 "created_at": datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
                 "is_active": True,
                 "frequency": frequency,
@@ -283,10 +285,10 @@ def setup():
             with open(os.path.join(config_path, "topics.json"), 'w') as f:
                 f.write(topics_json)
             
-            # Create theme.json
+            # Create theme.json with blog description
             theme_json = json.dumps({
                 "name": theme,
-                "description": f"A blog about {theme}",
+                "description": blog_description if blog_description else f"A blog about {theme}",
                 "target_audience": "General audience interested in " + theme
             }, indent=2)
             with open(os.path.join(config_path, "theme.json"), 'w') as f:
@@ -310,10 +312,11 @@ def setup():
             with open(os.path.join(config_path, "ready.json"), 'w') as f:
                 f.write("{}")
             
-            # Create bootstrap.json
+            # Create bootstrap.json with blog description
             bootstrap_data = {
                 "blog_name": blog_name,
                 "theme": theme,
+                "description": blog_description if blog_description else f"A blog about {theme}",
                 "wordpress_url": wordpress_url if wordpress_url else None
             }
             with open(os.path.join(config_path, "bootstrap.json"), 'w') as f:
@@ -348,6 +351,7 @@ def blog_detail(blog_id):
             'id': blog_id,
             'name': config.get('name', 'Unnamed Blog'),
             'theme': config.get('theme', 'No theme'),
+            'description': config.get('description', f"A blog about {config.get('theme', 'various topics')}"),
             'created_at': config.get('created_at', 'Unknown'),
             'is_active': config.get('is_active', True),
             'frequency': config.get('frequency', 'unknown'),
