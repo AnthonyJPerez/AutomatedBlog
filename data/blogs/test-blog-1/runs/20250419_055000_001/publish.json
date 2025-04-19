@@ -1,0 +1,13 @@
+{
+  "status": "published",
+  "wordpress_url": "https://example-tech-blog.com",
+  "scheduled_time": "2025-04-19 06:00:00",
+  "published_time": "2025-04-19 06:05:23",
+  "post_id": 12345,
+  "url": "https://example-tech-blog.com/future-of-ai-transforming-industries-2025/",
+  "featured_image": true,
+  "categories": ["Technology", "AI", "Industry Trends"],
+  "tags": ["AI", "Machine Learning", "Healthcare", "Manufacturing", "2025 Trends"],
+  "comments_enabled": true,
+  "author": "admin"
+}

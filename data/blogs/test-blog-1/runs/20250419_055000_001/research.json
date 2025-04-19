@@ -1,0 +1,43 @@
+{
+  "theme": "Technology Trends",
+  "timestamp": "2025-04-19 05:50:00",
+  "trending_topics": [
+    {
+      "title": "AI developments",
+      "query": "AI developments",
+      "search_volume": 12500,
+      "trending_score": 92
+    },
+    {
+      "title": "Machine Learning Applications",
+      "query": "Machine Learning Applications",
+      "search_volume": 9800,
+      "trending_score": 87
+    },
+    {
+      "title": "Quantum Computing Breakthroughs",
+      "query": "Quantum Computing Breakthroughs",
+      "search_volume": 8200,
+      "trending_score": 85
+    },
+    {
+      "title": "Cloud Computing Trends",
+      "query": "Cloud Computing Trends",
+      "search_volume": 7500,
+      "trending_score": 82
+    },
+    {
+      "title": "Mobile Technology Innovations",
+      "query": "Mobile Technology Innovations",
+      "search_volume": 6900,
+      "trending_score": 79
+    }
+  ],
+  "blog_topics": [
+    "AI developments",
+    "Cloud Computing",
+    "Machine Learning",
+    "Mobile Technology",
+    "Quantum Computing"
+  ]
+}

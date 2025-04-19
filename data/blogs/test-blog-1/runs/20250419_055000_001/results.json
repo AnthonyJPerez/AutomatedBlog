@@ -1,0 +1,29 @@
+{
+  "status": "completed",
+  "timestamp": "2025-04-19 06:10:00",
+  "topic": "AI developments",
+  "theme": "Technology Trends",
+  "content_length": 1247,
+  "has_seo_recommendations": true,
+  "wordpress_publishing": "published",
+  "metrics": {
+    "word_count": 1247,
+    "reading_time_minutes": 6.2,
+    "flesch_reading_ease": 52.8,
+    "keyword_density": {
+      "AI": 2.8,
+      "artificial intelligence": 1.2,
+      "machine learning": 0.9,
+      "healthcare": 1.1,
+      "manufacturing": 1.0
+    },
+    "image_count": 1
+  },
+  "analytics": {
+    "views": 128,
+    "unique_visitors": 103,
+    "average_time_on_page": "2:45",
+    "bounce_rate": 65.2,
+    "social_shares": 14
+  }
+}
