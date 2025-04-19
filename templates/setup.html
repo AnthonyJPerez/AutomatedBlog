@@ -100,6 +100,32 @@
                         <label class="form-check-label" for="includeFeaturedImage">Include AI-generated featured images</label>
                     </div>
                     
+                    <h5 class="mt-4 mb-3">Social Media Promotion</h5>
+                    
+                    <div class="mb-3 form-check">
+                        <input type="checkbox" class="form-check-input" id="enableSocialPromotion" name="enable_social_promotion" value="1" checked>
+                        <label class="form-check-label" for="enableSocialPromotion">Enable automatic social media promotion</label>
+                        <div class="form-text">If enabled, new blog posts will be automatically promoted on social media.</div>
+                    </div>
+                    
+                    <div class="mb-3" id="socialPlatformsContainer">
+                        <label class="form-label">Platforms to use</label>
+                        <div class="d-flex flex-wrap gap-3">
+                            <div class="form-check">
+                                <input type="checkbox" class="form-check-input social-platform" value="twitter" name="social_platforms" id="platformTwitter" checked>
+                                <label class="form-check-label" for="platformTwitter">Twitter</label>
+                            </div>
+                            <div class="form-check">
+                                <input type="checkbox" class="form-check-input social-platform" value="linkedin" name="social_platforms" id="platformLinkedIn" checked>
+                                <label class="form-check-label" for="platformLinkedIn">LinkedIn</label>
+                            </div>
+                            <div class="form-check">
+                                <input type="checkbox" class="form-check-input social-platform" value="facebook" name="social_platforms" id="platformFacebook" checked>
+                                <label class="form-check-label" for="platformFacebook">Facebook</label>
+                            </div>
+                        </div>
+                    </div>
+                    
                     <button type="submit" class="btn btn-primary">Create Blog</button>
                 </form>
             </div>
@@ -111,12 +137,12 @@
 {% block scripts %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    // WordPress field toggle
     const wordpressFields = document.querySelectorAll('#wordpressUsername, #wordpressAppPassword');
     const wordpressUrl = document.querySelector('#wordpressUrl');
     
     // Initial check
     toggleWordpressFields();
-    
     wordpressUrl.addEventListener('input', toggleWordpressFields);
     
     function toggleWordpressFields() {
@@ -129,6 +155,23 @@ document.addEventListener('DOMContentLoaded', function() {
                 field.required = false;
                 field.value = '';
             }
+        });
+    }
+    
+    // Social media platform toggle
+    const enableSocialPromotion = document.querySelector('#enableSocialPromotion');
+    const socialPlatformsContainer = document.querySelector('#socialPlatformsContainer');
+    const socialPlatforms = document.querySelectorAll('.social-platform');
+    
+    // Initial check
+    toggleSocialPlatforms();
+    enableSocialPromotion.addEventListener('change', toggleSocialPlatforms);
+    
+    function toggleSocialPlatforms() {
+        const isEnabled = enableSocialPromotion.checked;
+        socialPlatformsContainer.style.opacity = isEnabled ? '1' : '0.5';
+        socialPlatforms.forEach(platform => {
+            platform.disabled = !isEnabled;
         });
     }
 });

@@ -7,9 +7,9 @@ on:
   workflow_dispatch:
 
 env:
-  AZURE_FUNCTIONAPP_NAME: 'blogauto-${{ vars.ENVIRONMENT }}-function'
+  AZURE_FUNCTIONAPP_NAME: 'blogauto-${{ vars.ENVIRONMENT || 'dev' }}-function'
   PYTHON_VERSION: '3.11'
-  RESOURCE_GROUP: 'blogauto-${{ vars.ENVIRONMENT }}-rg'
+  RESOURCE_GROUP: 'blogauto-${{ vars.ENVIRONMENT || 'dev' }}-rg'
   LOCATION: 'eastus'
   ENVIRONMENT: ${{ vars.ENVIRONMENT || 'dev' }}
 
@@ -106,9 +106,22 @@ jobs:
       with:
         creds: ${{ secrets.AZURE_CREDENTIALS }}
         
+    - name: Debug Environment
+      run: |
+        echo "Function App Name: ${{ env.AZURE_FUNCTIONAPP_NAME }}"
+        echo "Python Version: ${{ env.PYTHON_VERSION }}"
+        echo "Environment: ${{ env.ENVIRONMENT }}"
+      
     - name: Deploy Function App
       uses: Azure/functions-action@v1
       with:
         app-name: ${{ env.AZURE_FUNCTIONAPP_NAME }}
-        package: ./src
-        respect-funcignore: true
+        package: src
+        scm-do-build-during-deployment: true
+        enable-oryx-build: true
+        respect-pom-xml: false
+        respect-funcignore: false
+        remote-build: false
+      env:
+        AZURE_FUNCTIONAPP_PACKAGE_PATH: src
+        PYTHON_VERSION: ${{ env.PYTHON_VERSION }}

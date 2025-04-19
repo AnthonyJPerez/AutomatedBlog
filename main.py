@@ -182,6 +182,15 @@ def setup():
                     "max_price": max_price
                 }
             
+            # Add social media promotion configuration if enabled
+            enable_social_promotion = request.form.get('enable_social_promotion') == '1'
+            social_platforms = request.form.getlist('social_platforms')
+            
+            config["social_media"] = {
+                "enabled": enable_social_promotion,
+                "platforms": social_platforms
+            }
+            
             # Write the main config file
             with open(os.path.join(blog_path, "config.json"), 'w') as f:
                 json.dump(config, f, indent=2)
