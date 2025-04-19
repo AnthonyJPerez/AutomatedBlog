@@ -629,11 +629,16 @@ theme: "{theme}"
             Ensure the meta title and description are compelling and include the main keyword.
             """
             
-            seo_recommendations = openai_service.generate_json(seo_prompt)
+            # Use optimized service for cost-effective SEO generation
+            seo_recommendations = optimized_openai_service.generate_seo_metadata(selected_topic, content)
             
             # Save recommendations.json
+            # Ensure we're writing JSON format to the file
             with open(os.path.join(run_path, "recommendations.json"), 'w') as f:
-                f.write(seo_recommendations)
+                if isinstance(seo_recommendations, dict):
+                    json.dump(seo_recommendations, f, indent=2)
+                else:
+                    f.write(seo_recommendations)
             
             # If WordPress integration is enabled, create a publish.json stub
             if "wordpress" in config and config["wordpress"].get("url"):
@@ -928,7 +933,8 @@ def generate_outline():
         return jsonify({"error": "Topic and theme are required"}), 400
     
     try:
-        outline = openai_service.generate_outline(topic, theme)
+        # Use optimized service for cost-effective outline generation
+        outline = optimized_openai_service.generate_outline(topic, theme)
         return jsonify(outline)
     except Exception as e:
         logger.error(f"Error generating outline: {str(e)}")
@@ -2094,6 +2100,95 @@ def ai_optimization_dashboard():
     Display AI optimization settings and statistics
     """
     return render_template('ai_optimization.html')
+
+@app.route('/api/ai-optimization/stats')
+def api_ai_optimization_stats():
+    """API endpoint to get AI optimization statistics"""
+    try:
+        stats = optimized_openai_service.get_usage_statistics()
+        return jsonify(stats)
+    except Exception as e:
+        logger.error(f"Error getting AI optimization stats: {str(e)}")
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/ai-optimization/settings', methods=['POST'])
+def api_ai_optimization_settings():
+    """API endpoint to update AI optimization settings"""
+    try:
+        data = request.json
+        
+        # Update settings based on what's provided
+        if 'daily_budget' in data:
+            # Update daily budget
+            optimized_openai_service.set_daily_budget(float(data['daily_budget']))
+            
+        if 'caching_enabled' in data:
+            # Update caching settings
+            optimized_openai_service.set_caching_enabled(bool(data['caching_enabled']))
+            
+        if 'cache_ttl_seconds' in data:
+            # Update cache TTL
+            optimized_openai_service.set_cache_ttl(int(data['cache_ttl_seconds']))
+            
+        if 'models' in data:
+            # Update model settings
+            models = data['models']
+            optimized_openai_service.set_model_preferences(
+                draft_model=models.get('draft'),
+                polish_model=models.get('polish')
+            )
+            
+        return jsonify({"success": True})
+    except Exception as e:
+        logger.error(f"Error updating AI optimization settings: {str(e)}")
+        return jsonify({"success": False, "message": str(e)}), 500
+
+@app.route('/api/ai-optimization/clear-cache', methods=['POST'])
+def api_ai_optimization_clear_cache():
+    """API endpoint to clear the AI response cache"""
+    try:
+        optimized_openai_service.clear_cache()
+        return jsonify({"success": True})
+    except Exception as e:
+        logger.error(f"Error clearing AI cache: {str(e)}")
+        return jsonify({"success": False, "message": str(e)}), 500
+
+@app.route('/api/ai-optimization/validate-prompt', methods=['POST'])
+def api_ai_optimization_validate_prompt():
+    """API endpoint to validate and analyze a prompt"""
+    try:
+        data = request.json
+        prompt = data.get('prompt', '')
+        
+        if not prompt:
+            return jsonify({"success": False, "message": "Prompt is required"}), 400
+            
+        # Analyze the prompt
+        analysis = optimized_openai_service.analyze_prompt(prompt)
+        return jsonify({"success": True, **analysis})
+    except Exception as e:
+        logger.error(f"Error validating prompt: {str(e)}")
+        return jsonify({"success": False, "message": str(e)}), 500
+
+@app.route('/api/ai-optimization/optimize-prompt', methods=['POST'])
+def api_ai_optimization_optimize_prompt():
+    """API endpoint to optimize a prompt for token efficiency"""
+    try:
+        data = request.json
+        prompt = data.get('prompt', '')
+        
+        if not prompt:
+            return jsonify({"success": False, "message": "Prompt is required"}), 400
+            
+        # Optimize the prompt
+        optimized_prompt = optimized_openai_service.optimize_prompt(prompt)
+        return jsonify({
+            "success": True,
+            "optimized_prompt": optimized_prompt
+        })
+    except Exception as e:
+        logger.error(f"Error optimizing prompt: {str(e)}")
+        return jsonify({"success": False, "message": str(e)}), 500
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)), debug=True)
