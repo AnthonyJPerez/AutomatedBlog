@@ -104,6 +104,58 @@ except Exception as e:
     logger.warning(f"Failed to initialize Backlink service: {str(e)}")
     backlink_service = None
     backlink_controller = None
+
+# Initialize affiliate marketing service
+try:
+    from src.shared.affiliate_service import AffiliateService
+    from src.shared.affiliate_controller import AffiliateController
+    
+    affiliate_service = AffiliateService(
+        storage_service=storage_service,
+        analytics_service=analytics_service
+    )
+    affiliate_controller = AffiliateController(
+        affiliate_service=affiliate_service,
+        storage_service=storage_service
+    )
+    
+    logger.info("Affiliate marketing service initialized")
+except Exception as e:
+    logger.warning(f"Failed to initialize Affiliate service: {str(e)}")
+    affiliate_service = None
+    affiliate_controller = None
+
+# Initialize notification service
+try:
+    from src.shared.notification_service import NotificationService
+    
+    notification_service = NotificationService(
+        storage_service=storage_service
+    )
+    
+    # Update affiliate controller with notification service if available
+    if affiliate_controller and notification_service:
+        affiliate_controller.notification_service = notification_service
+    
+    logger.info("Notification service initialized")
+except Exception as e:
+    logger.warning(f"Failed to initialize Notification service: {str(e)}")
+    notification_service = None
+
+# Initialize bootstrapping service
+try:
+    from src.shared.bootstrapping_service import BootstrappingService
+    
+    bootstrapping_service = BootstrappingService(
+        storage_service=storage_service,
+        research_service=research_service,
+        affiliate_service=affiliate_service
+    )
+    
+    logger.info("Bootstrapping service initialized")
+except Exception as e:
+    logger.warning(f"Failed to initialize Bootstrapping service: {str(e)}")
+    bootstrapping_service = None
     
 # Create API routes for translation
 @app.route('/api/translate', methods=['POST'])
@@ -3845,6 +3897,488 @@ def api_backlink_opportunities(blog_id):
     except Exception as e:
         logger.error(f"Error getting backlink opportunities: {str(e)}")
         return jsonify({"success": False, "error": f"Error getting backlink opportunities: {str(e)}"}), 500
+
+# ======================================================
+# Affiliate Marketing Routes and API Endpoints
+# ======================================================
+
+@app.route('/affiliate/<blog_id>')
+def affiliate_dashboard(blog_id):
+    """Affiliate marketing dashboard for a blog"""
+    # Get blog details
+    blog = get_blog_by_id(blog_id)
+    if not blog:
+        flash("Blog not found", "danger")
+        return redirect(url_for('index'))
+    
+    if not affiliate_service or not affiliate_controller:
+        flash("Affiliate marketing service is not available", "warning")
+        return render_template('affiliate_dashboard.html', blog=blog)
+    
+    # Get affiliate links
+    links_result = affiliate_controller.get_links(blog_id)
+    links = links_result.get('links', []) if links_result.get('success', False) else []
+    
+    # Get network status
+    networks_result = affiliate_controller.get_networks_status()
+    networks = networks_result.get('networks', {}) if networks_result.get('success', False) else {}
+    
+    # Get reports
+    try:
+        # Generate a report for the last 30 days
+        report_result = affiliate_controller.generate_report(blog_id)
+        report = report_result.get('report', None) if report_result.get('success', False) else None
+    except Exception as e:
+        logger.error(f"Error generating affiliate report: {str(e)}")
+        report = None
+    
+    return render_template('affiliate_dashboard.html', 
+                           blog=blog, 
+                           links=links, 
+                           networks=networks, 
+                           report=report)
+
+@app.route('/affiliate/networks')
+def affiliate_networks():
+    """Affiliate networks configuration page"""
+    if not affiliate_service or not affiliate_controller:
+        flash("Affiliate marketing service is not available", "warning")
+        return redirect(url_for('index'))
+    
+    # Get network status
+    networks_result = affiliate_controller.get_networks_status()
+    networks = networks_result.get('networks', {}) if networks_result.get('success', False) else {}
+    
+    return render_template('affiliate_networks.html', networks=networks)
+
+# API Routes for Affiliate Marketing
+
+@app.route('/api/affiliate/<blog_id>/links', methods=['GET', 'POST'])
+def api_affiliate_links(blog_id):
+    """API endpoint to get or create affiliate links for a blog"""
+    if not affiliate_controller:
+        return jsonify({"success": False, "error": "Affiliate service is not available"}), 503
+    
+    # Validate blog
+    blog = get_blog_by_id(blog_id)
+    if not blog:
+        return jsonify({"success": False, "error": "Blog not found"}), 404
+    
+    # GET: Return all links for the blog
+    if request.method == 'GET':
+        try:
+            result = affiliate_controller.get_links(blog_id)
+            return jsonify(result)
+        except Exception as e:
+            logger.error(f"Error getting affiliate links: {str(e)}")
+            return jsonify({"success": False, "error": f"Error getting affiliate links: {str(e)}"}), 500
+    
+    # POST: Create a new affiliate link
+    elif request.method == 'POST':
+        try:
+            data = request.get_json()
+            
+            # Validate required parameters
+            if not data or 'product_url' not in data or 'product_name' not in data or 'network' not in data:
+                return jsonify({
+                    "success": False,
+                    "error": "Missing required parameters: product_url, product_name, and network"
+                }), 400
+            
+            # Create the link
+            result = affiliate_controller.create_link(
+                blog_id=blog_id,
+                product_url=data['product_url'],
+                product_name=data['product_name'],
+                network=data['network'],
+                custom_id=data.get('custom_id')
+            )
+            
+            return jsonify(result)
+        except Exception as e:
+            logger.error(f"Error creating affiliate link: {str(e)}")
+            return jsonify({"success": False, "error": f"Error creating affiliate link: {str(e)}"}), 500
+
+@app.route('/api/affiliate/links/<link_id>', methods=['GET', 'PUT', 'DELETE'])
+def api_affiliate_link(link_id):
+    """API endpoint to get, update, or delete a specific affiliate link"""
+    if not affiliate_controller:
+        return jsonify({"success": False, "error": "Affiliate service is not available"}), 503
+    
+    # GET: Return link details
+    if request.method == 'GET':
+        try:
+            result = affiliate_controller.get_link(link_id)
+            return jsonify(result)
+        except Exception as e:
+            logger.error(f"Error getting affiliate link: {str(e)}")
+            return jsonify({"success": False, "error": f"Error getting affiliate link: {str(e)}"}), 500
+    
+    # PUT: Update link
+    elif request.method == 'PUT':
+        try:
+            data = request.get_json()
+            
+            # Update the link
+            result = affiliate_controller.update_link(link_id, data)
+            
+            return jsonify(result)
+        except Exception as e:
+            logger.error(f"Error updating affiliate link: {str(e)}")
+            return jsonify({"success": False, "error": f"Error updating affiliate link: {str(e)}"}), 500
+    
+    # DELETE: Delete link
+    elif request.method == 'DELETE':
+        try:
+            result = affiliate_controller.delete_link(link_id)
+            
+            return jsonify(result)
+        except Exception as e:
+            logger.error(f"Error deleting affiliate link: {str(e)}")
+            return jsonify({"success": False, "error": f"Error deleting affiliate link: {str(e)}"}), 500
+
+@app.route('/api/affiliate/links/<link_id>/click', methods=['POST'])
+def api_affiliate_link_click(link_id):
+    """API endpoint to record a click on an affiliate link"""
+    if not affiliate_controller:
+        return jsonify({"success": False, "error": "Affiliate service is not available"}), 503
+    
+    try:
+        result = affiliate_controller.record_click(link_id)
+        
+        return jsonify(result)
+    except Exception as e:
+        logger.error(f"Error recording affiliate link click: {str(e)}")
+        return jsonify({"success": False, "error": f"Error recording affiliate link click: {str(e)}"}), 500
+
+@app.route('/api/affiliate/links/<link_id>/conversion', methods=['POST'])
+def api_affiliate_link_conversion(link_id):
+    """API endpoint to record a conversion from an affiliate link"""
+    if not affiliate_controller:
+        return jsonify({"success": False, "error": "Affiliate service is not available"}), 503
+    
+    try:
+        data = request.get_json()
+        
+        # Validate required parameters
+        if not data or 'order_id' not in data or 'amount' not in data:
+            return jsonify({
+                "success": False,
+                "error": "Missing required parameters: order_id and amount"
+            }), 400
+        
+        # Record the conversion
+        result = affiliate_controller.record_conversion(
+            link_id=link_id,
+            order_id=data['order_id'],
+            amount=data['amount']
+        )
+        
+        return jsonify(result)
+    except Exception as e:
+        logger.error(f"Error recording affiliate conversion: {str(e)}")
+        return jsonify({"success": False, "error": f"Error recording affiliate conversion: {str(e)}"}), 500
+
+@app.route('/api/affiliate/networks', methods=['GET'])
+def api_affiliate_networks():
+    """API endpoint to get status of all affiliate networks"""
+    if not affiliate_controller:
+        return jsonify({"success": False, "error": "Affiliate service is not available"}), 503
+    
+    try:
+        result = affiliate_controller.get_networks_status()
+        
+        return jsonify(result)
+    except Exception as e:
+        logger.error(f"Error getting affiliate networks status: {str(e)}")
+        return jsonify({"success": False, "error": f"Error getting affiliate networks status: {str(e)}"}), 500
+
+@app.route('/api/affiliate/networks/<network>', methods=['PUT'])
+def api_update_affiliate_network(network):
+    """API endpoint to update configuration for an affiliate network"""
+    if not affiliate_controller:
+        return jsonify({"success": False, "error": "Affiliate service is not available"}), 503
+    
+    try:
+        data = request.get_json()
+        
+        # Update the network config
+        result = affiliate_controller.update_network_config(network, data)
+        
+        return jsonify(result)
+    except Exception as e:
+        logger.error(f"Error updating affiliate network configuration: {str(e)}")
+        return jsonify({"success": False, "error": f"Error updating affiliate network configuration: {str(e)}"}), 500
+
+@app.route('/api/affiliate/networks/<network>/test', methods=['POST'])
+def api_test_affiliate_network(network):
+    """API endpoint to test connection to an affiliate network"""
+    if not affiliate_controller:
+        return jsonify({"success": False, "error": "Affiliate service is not available"}), 503
+    
+    try:
+        result = affiliate_controller.test_network_connection(network)
+        
+        return jsonify(result)
+    except Exception as e:
+        logger.error(f"Error testing affiliate network connection: {str(e)}")
+        return jsonify({"success": False, "error": f"Error testing affiliate network connection: {str(e)}"}), 500
+
+@app.route('/api/affiliate/<blog_id>/report', methods=['GET'])
+def api_affiliate_report(blog_id):
+    """API endpoint to generate an affiliate performance report for a blog"""
+    if not affiliate_controller:
+        return jsonify({"success": False, "error": "Affiliate service is not available"}), 503
+    
+    # Validate blog
+    blog = get_blog_by_id(blog_id)
+    if not blog:
+        return jsonify({"success": False, "error": "Blog not found"}), 404
+    
+    try:
+        # Get optional date range parameters
+        start_date = request.args.get('start_date')
+        end_date = request.args.get('end_date')
+        
+        # Generate the report
+        result = affiliate_controller.generate_report(blog_id, start_date, end_date)
+        
+        return jsonify(result)
+    except Exception as e:
+        logger.error(f"Error generating affiliate report: {str(e)}")
+        return jsonify({"success": False, "error": f"Error generating affiliate report: {str(e)}"}), 500
+
+@app.route('/api/affiliate/<blog_id>/suggest-links', methods=['POST'])
+def api_suggest_affiliate_links(blog_id):
+    """API endpoint to suggest affiliate links for blog content"""
+    if not affiliate_controller:
+        return jsonify({"success": False, "error": "Affiliate service is not available"}), 503
+    
+    # Validate blog
+    blog = get_blog_by_id(blog_id)
+    if not blog:
+        return jsonify({"success": False, "error": "Blog not found"}), 404
+    
+    try:
+        data = request.get_json()
+        
+        # Validate required parameters
+        if not data or 'content' not in data:
+            return jsonify({
+                "success": False,
+                "error": "Missing required parameter: content"
+            }), 400
+        
+        # Get suggestions
+        result = affiliate_controller.suggest_links_for_content(blog_id, data['content'])
+        
+        return jsonify(result)
+    except Exception as e:
+        logger.error(f"Error suggesting affiliate links: {str(e)}")
+        return jsonify({"success": False, "error": f"Error suggesting affiliate links: {str(e)}"}), 500
+
+@app.route('/api/affiliate/<blog_id>/suggest-products', methods=['GET'])
+def api_suggest_products(blog_id):
+    """API endpoint to suggest products to promote on a blog based on content and audience"""
+    if not affiliate_controller:
+        return jsonify({"success": False, "error": "Affiliate service is not available"}), 503
+    
+    # Validate blog
+    blog = get_blog_by_id(blog_id)
+    if not blog:
+        return jsonify({"success": False, "error": "Blog not found"}), 404
+    
+    try:
+        # Get optional product type parameter
+        product_type = request.args.get('product_type')
+        
+        # Get suggestions
+        result = affiliate_controller.suggest_product_placement(blog_id, product_type)
+        
+        return jsonify(result)
+    except Exception as e:
+        logger.error(f"Error suggesting product placement: {str(e)}")
+        return jsonify({"success": False, "error": f"Error suggesting product placement: {str(e)}"}), 500
+
+# ======================================================
+# Bootstrapping Routes and API Endpoints
+# ======================================================
+
+@app.route('/api/bootstrap/blog', methods=['POST'])
+def api_create_blog():
+    """API endpoint to create a new blog with initial configuration"""
+    if not bootstrapping_service:
+        return jsonify({"success": False, "error": "Bootstrapping service is not available"}), 503
+    
+    try:
+        data = request.get_json()
+        
+        # Validate required parameters
+        if not data or 'name' not in data or 'theme' not in data:
+            return jsonify({
+                "success": False,
+                "error": "Missing required parameters: name and theme"
+            }), 400
+        
+        # Create the blog
+        result = bootstrapping_service.create_blog(
+            name=data['name'],
+            theme=data['theme'],
+            description=data.get('description'),
+            frequency=data.get('frequency', 'weekly'),
+            topics=data.get('topics'),
+            template=data.get('template')
+        )
+        
+        return jsonify(result)
+    except Exception as e:
+        logger.error(f"Error creating blog: {str(e)}")
+        return jsonify({"success": False, "error": f"Error creating blog: {str(e)}"}), 500
+
+@app.route('/api/bootstrap/<blog_id>/from-template/<template_name>', methods=['POST'])
+def api_bootstrap_from_template(blog_id, template_name):
+    """API endpoint to bootstrap a blog from a template"""
+    if not bootstrapping_service:
+        return jsonify({"success": False, "error": "Bootstrapping service is not available"}), 503
+    
+    try:
+        # Bootstrap from template
+        result = bootstrapping_service.bootstrap_from_template(blog_id, template_name)
+        
+        return jsonify(result)
+    except Exception as e:
+        logger.error(f"Error bootstrapping from template: {str(e)}")
+        return jsonify({"success": False, "error": f"Error bootstrapping from template: {str(e)}"}), 500
+
+@app.route('/api/bootstrap/templates', methods=['GET'])
+def api_get_templates():
+    """API endpoint to get list of available templates"""
+    if not bootstrapping_service:
+        return jsonify({"success": False, "error": "Bootstrapping service is not available"}), 503
+    
+    try:
+        result = bootstrapping_service.get_available_templates()
+        
+        return jsonify(result)
+    except Exception as e:
+        logger.error(f"Error getting available templates: {str(e)}")
+        return jsonify({"success": False, "error": f"Error getting available templates: {str(e)}"}), 500
+
+@app.route('/api/bootstrap/save-template', methods=['POST'])
+def api_save_as_template():
+    """API endpoint to save a blog configuration as a template"""
+    if not bootstrapping_service:
+        return jsonify({"success": False, "error": "Bootstrapping service is not available"}), 503
+    
+    try:
+        data = request.get_json()
+        
+        # Validate required parameters
+        if not data or 'blog_id' not in data or 'template_name' not in data:
+            return jsonify({
+                "success": False,
+                "error": "Missing required parameters: blog_id and template_name"
+            }), 400
+        
+        # Save as template
+        result = bootstrapping_service.save_as_template(
+            blog_id=data['blog_id'],
+            template_name=data['template_name'],
+            description=data.get('description'),
+            include_theme=data.get('include_theme', True),
+            include_affiliate=data.get('include_affiliate', True)
+        )
+        
+        return jsonify(result)
+    except Exception as e:
+        logger.error(f"Error saving as template: {str(e)}")
+        return jsonify({"success": False, "error": f"Error saving as template: {str(e)}"}), 500
+
+@app.route('/api/bootstrap/<blog_id>/wordpress', methods=['POST'])
+def api_setup_wordpress(blog_id):
+    """API endpoint to set up initial WordPress configuration for a blog"""
+    if not bootstrapping_service:
+        return jsonify({"success": False, "error": "Bootstrapping service is not available"}), 503
+    
+    try:
+        data = request.get_json()
+        
+        # Validate required parameters
+        if not data or 'wordpress_url' not in data or 'username' not in data or 'app_password' not in data:
+            return jsonify({
+                "success": False,
+                "error": "Missing required parameters: wordpress_url, username, and app_password"
+            }), 400
+        
+        # Set up WordPress
+        result = bootstrapping_service.setup_initial_wordpress_config(
+            blog_id=blog_id,
+            wordpress_url=data['wordpress_url'],
+            username=data['username'],
+            app_password=data['app_password']
+        )
+        
+        return jsonify(result)
+    except Exception as e:
+        logger.error(f"Error setting up WordPress: {str(e)}")
+        return jsonify({"success": False, "error": f"Error setting up WordPress: {str(e)}"}), 500
+
+@app.route('/api/bootstrap/<blog_id>/analytics/<analytics_type>', methods=['POST'])
+def api_setup_analytics(blog_id, analytics_type):
+    """API endpoint to set up initial analytics configuration for a blog"""
+    if not bootstrapping_service:
+        return jsonify({"success": False, "error": "Bootstrapping service is not available"}), 503
+    
+    try:
+        data = request.get_json()
+        
+        # Validate required parameters
+        if not data or 'tracking_id' not in data:
+            return jsonify({
+                "success": False,
+                "error": "Missing required parameter: tracking_id"
+            }), 400
+        
+        # Set up analytics
+        result = bootstrapping_service.setup_initial_analytics(
+            blog_id=blog_id,
+            analytics_type=analytics_type,
+            tracking_id=data['tracking_id']
+        )
+        
+        return jsonify(result)
+    except Exception as e:
+        logger.error(f"Error setting up analytics: {str(e)}")
+        return jsonify({"success": False, "error": f"Error setting up analytics: {str(e)}"}), 500
+
+@app.route('/api/bootstrap/<blog_id>/social/<platform>', methods=['POST'])
+def api_bootstrap_social_media(blog_id, platform):
+    """API endpoint to bootstrap social media configuration for a blog"""
+    if not bootstrapping_service:
+        return jsonify({"success": False, "error": "Bootstrapping service is not available"}), 503
+    
+    try:
+        data = request.get_json()
+        
+        # Validate required parameters
+        if not data or 'username' not in data:
+            return jsonify({
+                "success": False,
+                "error": "Missing required parameter: username"
+            }), 400
+        
+        # Bootstrap social media
+        result = bootstrapping_service.bootstrap_social_media(
+            blog_id=blog_id,
+            platform=platform,
+            username=data['username'],
+            token=data.get('token')
+        )
+        
+        return jsonify(result)
+    except Exception as e:
+        logger.error(f"Error bootstrapping social media: {str(e)}")
+        return jsonify({"success": False, "error": f"Error bootstrapping social media: {str(e)}"}), 500
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)), debug=True)

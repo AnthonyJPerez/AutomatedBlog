@@ -1,0 +1,410 @@
+{% extends "layout.html" %}
+
+{% block title %}Affiliate Networks Configuration{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row mb-4">
+        <div class="col-12">
+            <h1 class="display-4">Affiliate Networks</h1>
+            <p class="lead">Configure your affiliate network integrations</p>
+        </div>
+    </div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    {% for category, message in messages %}
+    <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+    {% endfor %}
+    {% endif %}
+    {% endwith %}
+
+    <div class="row">
+        <div class="col-lg-3">
+            <div class="list-group mb-4" id="network-tabs" role="tablist">
+                <a class="list-group-item list-group-item-action active" id="amazon-tab" data-bs-toggle="list" href="#amazon" role="tab" aria-controls="amazon">
+                    Amazon Associates
+                </a>
+                <a class="list-group-item list-group-item-action" id="cj-tab" data-bs-toggle="list" href="#commission_junction" role="tab" aria-controls="commission_junction">
+                    Commission Junction
+                </a>
+                <a class="list-group-item list-group-item-action" id="shareasale-tab" data-bs-toggle="list" href="#shareasale" role="tab" aria-controls="shareasale">
+                    ShareASale
+                </a>
+                <a class="list-group-item list-group-item-action" id="impact-tab" data-bs-toggle="list" href="#impact_radius" role="tab" aria-controls="impact_radius">
+                    Impact Radius
+                </a>
+                <a class="list-group-item list-group-item-action" id="awin-tab" data-bs-toggle="list" href="#awin" role="tab" aria-controls="awin">
+                    AWIN
+                </a>
+            </div>
+            <div class="d-grid">
+                <a href="{{ url_for('index') }}" class="btn btn-secondary">Back to Dashboard</a>
+            </div>
+        </div>
+
+        <div class="col-lg-9">
+            <div class="tab-content">
+                <!-- Amazon Associates -->
+                <div class="tab-pane fade show active" id="amazon" role="tabpanel" aria-labelledby="amazon-tab">
+                    <div class="card">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">Amazon Associates</h5>
+                            <span class="badge {% if networks.amazon.enabled %}bg-success{% else %}bg-secondary{% endif %}">
+                                {% if networks.amazon.enabled %}Active{% else %}Inactive{% endif %}
+                            </span>
+                        </div>
+                        <div class="card-body">
+                            <form id="amazonForm">
+                                <div class="form-check form-switch mb-3">
+                                    <input class="form-check-input" type="checkbox" id="amazonEnabled" {% if networks.amazon.enabled %}checked{% endif %}>
+                                    <label class="form-check-label" for="amazonEnabled">Enable Amazon Associates</label>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="amazonTrackingId" class="form-label">Tracking ID (tag)</label>
+                                    <input type="text" class="form-control" id="amazonTrackingId" placeholder="yourtag-20" value="{{ networks.amazon.get('tracking_id', '') }}">
+                                    <div class="form-text">Your Amazon Associates tracking ID (tag) for link attribution</div>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="amazonApiKey" class="form-label">API Key (Optional)</label>
+                                    <input type="text" class="form-control" id="amazonApiKey" placeholder="Your Amazon API Key" value="{{ networks.amazon.get('api_key', '') }}">
+                                </div>
+                                <div class="mb-3">
+                                    <label for="amazonApiSecret" class="form-label">API Secret (Optional)</label>
+                                    <input type="password" class="form-control" id="amazonApiSecret" placeholder="Your Amazon API Secret" value="{{ networks.amazon.get('api_secret', '') }}">
+                                </div>
+                                <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                                    <button type="button" class="btn btn-outline-primary me-md-2" id="testAmazon">Test Connection</button>
+                                    <button type="button" class="btn btn-primary" id="saveAmazon">Save Changes</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Commission Junction -->
+                <div class="tab-pane fade" id="commission_junction" role="tabpanel" aria-labelledby="cj-tab">
+                    <div class="card">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">Commission Junction</h5>
+                            <span class="badge {% if networks.commission_junction.enabled %}bg-success{% else %}bg-secondary{% endif %}">
+                                {% if networks.commission_junction.enabled %}Active{% else %}Inactive{% endif %}
+                            </span>
+                        </div>
+                        <div class="card-body">
+                            <form id="cjForm">
+                                <div class="form-check form-switch mb-3">
+                                    <input class="form-check-input" type="checkbox" id="cjEnabled" {% if networks.commission_junction.enabled %}checked{% endif %}>
+                                    <label class="form-check-label" for="cjEnabled">Enable Commission Junction</label>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="cjWebsiteId" class="form-label">Website ID</label>
+                                    <input type="text" class="form-control" id="cjWebsiteId" placeholder="1234567" value="{{ networks.commission_junction.get('website_id', '') }}">
+                                </div>
+                                <div class="mb-3">
+                                    <label for="cjApiKey" class="form-label">API Key</label>
+                                    <input type="text" class="form-control" id="cjApiKey" placeholder="Your CJ API Key" value="{{ networks.commission_junction.get('api_key', '') }}">
+                                </div>
+                                <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                                    <button type="button" class="btn btn-outline-primary me-md-2" id="testCJ">Test Connection</button>
+                                    <button type="button" class="btn btn-primary" id="saveCJ">Save Changes</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ShareASale -->
+                <div class="tab-pane fade" id="shareasale" role="tabpanel" aria-labelledby="shareasale-tab">
+                    <div class="card">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">ShareASale</h5>
+                            <span class="badge {% if networks.shareasale.enabled %}bg-success{% else %}bg-secondary{% endif %}">
+                                {% if networks.shareasale.enabled %}Active{% else %}Inactive{% endif %}
+                            </span>
+                        </div>
+                        <div class="card-body">
+                            <form id="shareasaleForm">
+                                <div class="form-check form-switch mb-3">
+                                    <input class="form-check-input" type="checkbox" id="shareasaleEnabled" {% if networks.shareasale.enabled %}checked{% endif %}>
+                                    <label class="form-check-label" for="shareasaleEnabled">Enable ShareASale</label>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="shareasaleAffiliateId" class="form-label">Affiliate ID</label>
+                                    <input type="text" class="form-control" id="shareasaleAffiliateId" placeholder="1234567" value="{{ networks.shareasale.get('affiliate_id', '') }}">
+                                </div>
+                                <div class="mb-3">
+                                    <label for="shareasaleApiToken" class="form-label">API Token</label>
+                                    <input type="text" class="form-control" id="shareasaleApiToken" placeholder="Your ShareASale API Token" value="{{ networks.shareasale.get('api_token', '') }}">
+                                </div>
+                                <div class="mb-3">
+                                    <label for="shareasaleApiSecret" class="form-label">API Secret</label>
+                                    <input type="password" class="form-control" id="shareasaleApiSecret" placeholder="Your ShareASale API Secret" value="{{ networks.shareasale.get('api_secret', '') }}">
+                                </div>
+                                <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                                    <button type="button" class="btn btn-outline-primary me-md-2" id="testShareASale">Test Connection</button>
+                                    <button type="button" class="btn btn-primary" id="saveShareASale">Save Changes</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Impact Radius -->
+                <div class="tab-pane fade" id="impact_radius" role="tabpanel" aria-labelledby="impact-tab">
+                    <div class="card">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">Impact Radius</h5>
+                            <span class="badge {% if networks.impact_radius.enabled %}bg-success{% else %}bg-secondary{% endif %}">
+                                {% if networks.impact_radius.enabled %}Active{% else %}Inactive{% endif %}
+                            </span>
+                        </div>
+                        <div class="card-body">
+                            <form id="impactForm">
+                                <div class="form-check form-switch mb-3">
+                                    <input class="form-check-input" type="checkbox" id="impactEnabled" {% if networks.impact_radius.enabled %}checked{% endif %}>
+                                    <label class="form-check-label" for="impactEnabled">Enable Impact Radius</label>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="impactAccountSid" class="form-label">Account SID</label>
+                                    <input type="text" class="form-control" id="impactAccountSid" placeholder="Your Impact Account SID" value="{{ networks.impact_radius.get('account_sid', '') }}">
+                                </div>
+                                <div class="mb-3">
+                                    <label for="impactAuthToken" class="form-label">Auth Token</label>
+                                    <input type="password" class="form-control" id="impactAuthToken" placeholder="Your Impact Auth Token" value="{{ networks.impact_radius.get('auth_token', '') }}">
+                                </div>
+                                <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                                    <button type="button" class="btn btn-outline-primary me-md-2" id="testImpact">Test Connection</button>
+                                    <button type="button" class="btn btn-primary" id="saveImpact">Save Changes</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- AWIN -->
+                <div class="tab-pane fade" id="awin" role="tabpanel" aria-labelledby="awin-tab">
+                    <div class="card">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">AWIN</h5>
+                            <span class="badge {% if networks.awin.enabled %}bg-success{% else %}bg-secondary{% endif %}">
+                                {% if networks.awin.enabled %}Active{% else %}Inactive{% endif %}
+                            </span>
+                        </div>
+                        <div class="card-body">
+                            <form id="awinForm">
+                                <div class="form-check form-switch mb-3">
+                                    <input class="form-check-input" type="checkbox" id="awinEnabled" {% if networks.awin.enabled %}checked{% endif %}>
+                                    <label class="form-check-label" for="awinEnabled">Enable AWIN</label>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="awinPublisherId" class="form-label">Publisher ID</label>
+                                    <input type="text" class="form-control" id="awinPublisherId" placeholder="1234567" value="{{ networks.awin.get('publisher_id', '') }}">
+                                </div>
+                                <div class="mb-3">
+                                    <label for="awinApiToken" class="form-label">API Token</label>
+                                    <input type="text" class="form-control" id="awinApiToken" placeholder="Your AWIN API Token" value="{{ networks.awin.get('api_token', '') }}">
+                                </div>
+                                <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                                    <button type="button" class="btn btn-outline-primary me-md-2" id="testAWIN">Test Connection</button>
+                                    <button type="button" class="btn btn-primary" id="saveAWIN">Save Changes</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Amazon form submission
+        document.getElementById('saveAmazon').addEventListener('click', function() {
+            const data = {
+                enabled: document.getElementById('amazonEnabled').checked,
+                tracking_id: document.getElementById('amazonTrackingId').value,
+                api_key: document.getElementById('amazonApiKey').value,
+                api_secret: document.getElementById('amazonApiSecret').value
+            };
+
+            updateNetwork('amazon', data);
+        });
+
+        // Test Amazon connection
+        document.getElementById('testAmazon').addEventListener('click', function() {
+            testNetworkConnection('amazon');
+        });
+
+        // Commission Junction form submission
+        document.getElementById('saveCJ').addEventListener('click', function() {
+            const data = {
+                enabled: document.getElementById('cjEnabled').checked,
+                website_id: document.getElementById('cjWebsiteId').value,
+                api_key: document.getElementById('cjApiKey').value
+            };
+
+            updateNetwork('commission_junction', data);
+        });
+
+        // Test CJ connection
+        document.getElementById('testCJ').addEventListener('click', function() {
+            testNetworkConnection('commission_junction');
+        });
+
+        // ShareASale form submission
+        document.getElementById('saveShareASale').addEventListener('click', function() {
+            const data = {
+                enabled: document.getElementById('shareasaleEnabled').checked,
+                affiliate_id: document.getElementById('shareasaleAffiliateId').value,
+                api_token: document.getElementById('shareasaleApiToken').value,
+                api_secret: document.getElementById('shareasaleApiSecret').value
+            };
+
+            updateNetwork('shareasale', data);
+        });
+
+        // Test ShareASale connection
+        document.getElementById('testShareASale').addEventListener('click', function() {
+            testNetworkConnection('shareasale');
+        });
+
+        // Impact Radius form submission
+        document.getElementById('saveImpact').addEventListener('click', function() {
+            const data = {
+                enabled: document.getElementById('impactEnabled').checked,
+                account_sid: document.getElementById('impactAccountSid').value,
+                auth_token: document.getElementById('impactAuthToken').value
+            };
+
+            updateNetwork('impact_radius', data);
+        });
+
+        // Test Impact connection
+        document.getElementById('testImpact').addEventListener('click', function() {
+            testNetworkConnection('impact_radius');
+        });
+
+        // AWIN form submission
+        document.getElementById('saveAWIN').addEventListener('click', function() {
+            const data = {
+                enabled: document.getElementById('awinEnabled').checked,
+                publisher_id: document.getElementById('awinPublisherId').value,
+                api_token: document.getElementById('awinApiToken').value
+            };
+
+            updateNetwork('awin', data);
+        });
+
+        // Test AWIN connection
+        document.getElementById('testAWIN').addEventListener('click', function() {
+            testNetworkConnection('awin');
+        });
+
+        // Helper function to update network configuration
+        function updateNetwork(network, data) {
+            fetch(`/api/affiliate/networks/${network}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(data)
+            })
+            .then(response => response.json())
+            .then(result => {
+                if (result.success) {
+                    // Show success message
+                    const alert = document.createElement('div');
+                    alert.className = 'alert alert-success alert-dismissible fade show';
+                    alert.innerHTML = `
+                        ${network.replace('_', ' ').charAt(0).toUpperCase() + network.replace('_', ' ').slice(1)} configuration updated successfully.
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    `;
+                    document.querySelector('.container').prepend(alert);
+                    
+                    // Update badge
+                    updateBadge(network, data.enabled);
+                } else {
+                    // Show error message
+                    const alert = document.createElement('div');
+                    alert.className = 'alert alert-danger alert-dismissible fade show';
+                    alert.innerHTML = `
+                        Error updating ${network} configuration: ${result.error}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    `;
+                    document.querySelector('.container').prepend(alert);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                const alert = document.createElement('div');
+                alert.className = 'alert alert-danger alert-dismissible fade show';
+                alert.innerHTML = `
+                    An error occurred while updating the configuration.
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                `;
+                document.querySelector('.container').prepend(alert);
+            });
+        }
+
+        // Helper function to test network connection
+        function testNetworkConnection(network) {
+            fetch(`/api/affiliate/networks/${network}/test`, {
+                method: 'POST'
+            })
+            .then(response => response.json())
+            .then(result => {
+                if (result.success) {
+                    // Show success message
+                    const alert = document.createElement('div');
+                    alert.className = 'alert alert-success alert-dismissible fade show';
+                    alert.innerHTML = `
+                        ${result.message || 'Connection test successful.'}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    `;
+                    document.querySelector('.container').prepend(alert);
+                } else {
+                    // Show error message
+                    const alert = document.createElement('div');
+                    alert.className = 'alert alert-danger alert-dismissible fade show';
+                    alert.innerHTML = `
+                        Connection test failed: ${result.error}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    `;
+                    document.querySelector('.container').prepend(alert);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                const alert = document.createElement('div');
+                alert.className = 'alert alert-danger alert-dismissible fade show';
+                alert.innerHTML = `
+                    An error occurred while testing the connection.
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                `;
+                document.querySelector('.container').prepend(alert);
+            });
+        }
+
+        // Helper function to update badge
+        function updateBadge(network, enabled) {
+            const badge = document.querySelector(`#${network} .card-header .badge`);
+            if (badge) {
+                if (enabled) {
+                    badge.className = 'badge bg-success';
+                    badge.textContent = 'Active';
+                } else {
+                    badge.className = 'badge bg-secondary';
+                    badge.textContent = 'Inactive';
+                }
+            }
+        }
+    });
+</script>
+{% endblock %}
