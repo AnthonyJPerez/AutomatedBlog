@@ -3,6 +3,7 @@ import json
 import logging
 import datetime
 import shutil
+import glob
 from flask import Flask, render_template, request, redirect, url_for, jsonify, flash
 from src.shared.storage_service import StorageService
 from src.shared.research_service import ResearchService
@@ -2239,6 +2240,37 @@ def api_ai_optimization_optimize_prompt():
     except Exception as e:
         logger.error(f"Error optimizing prompt: {str(e)}")
         return jsonify({"success": False, "message": str(e)}), 500
+
+# Helper function to get blog by ID
+def get_blog_by_id(blog_id):
+    """
+    Retrieves blog information by its ID
+    
+    Args:
+        blog_id (str): The ID of the blog to retrieve
+        
+    Returns:
+        dict: The blog configuration, or None if not found
+    """
+    try:
+        blog_config_path = os.path.join("data/blogs", blog_id, "config.json")
+        
+        # Check if file exists
+        if not os.path.exists(blog_config_path):
+            logger.warning(f"Blog configuration not found for ID: {blog_id}")
+            return None
+        
+        # Read the configuration file
+        with open(blog_config_path, 'r') as f:
+            blog_config = json.load(f)
+        
+        # Add the blog ID to the config
+        blog_config['id'] = blog_id
+        
+        return blog_config
+    except Exception as e:
+        logger.error(f"Error getting blog by ID {blog_id}: {str(e)}")
+        return None
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)), debug=True)
