@@ -151,6 +151,11 @@
                         {% if results.type == 'scraped_content' %}
                             <h3>{{ results.title }}</h3>
                             <p class="text-muted">Source: <a href="{{ results.url }}" target="_blank">{{ results.url }}</a></p>
+                            {% if results.blog_context %}
+                            <div class="alert alert-info">
+                                <i class="bi bi-info-circle-fill me-2"></i> Content analyzed in context of <strong>{{ results.blog_context }}</strong> blog
+                            </div>
+                            {% endif %}
                             
                             {% if results.image %}
                             <div class="text-center mb-3">
@@ -228,6 +233,12 @@
                             <p class="text-muted">All Categories</p>
                             {% endif %}
                             
+                            {% if results.blog_context %}
+                            <div class="alert alert-info">
+                                <i class="bi bi-info-circle-fill me-2"></i> Topics filtered for relevance to <strong>{{ results.blog_context }}</strong> blog
+                            </div>
+                            {% endif %}
+                            
                             <div class="table-responsive">
                                 <table class="table table-hover">
                                     <thead>
@@ -262,6 +273,12 @@
                         {% elif results.type == 'rss_feed' %}
                             <h3>RSS Feed Entries</h3>
                             <p class="text-muted">Source: {{ results.feed_url }}</p>
+                            
+                            {% if results.blog_context %}
+                            <div class="alert alert-info">
+                                <i class="bi bi-info-circle-fill me-2"></i> Feed entries analyzed for relevance to <strong>{{ results.blog_context }}</strong> blog
+                            </div>
+                            {% endif %}
                             
                             <div class="list-group">
                                 {% for entry in results.entries %}

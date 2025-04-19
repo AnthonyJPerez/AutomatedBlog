@@ -1745,20 +1745,42 @@ def scrape_url_page():
             flash("URL is required", "danger")
             return redirect(url_for('content_research'))
         
-        logger.info(f"Scraping content from URL: {url} using method: {method}")
+        logger.info(f"Scraping content from URL: {url} using method: {method}, blog_id: {blog_id}")
         
         # Check if web scraper service is available
         if not web_scraper_service:
             flash("Web scraper service is not available", "danger")
             return redirect(url_for('content_research'))
         
-        # Choose extraction method based on the form input
+        # Get blog context if specified
+        blog_context = None
+        if blog_id:
+            try:
+                blog_data = get_blog_by_id(blog_id)
+                if blog_data:
+                    blog_context = {
+                        'name': blog_data.get('name', ''),
+                        'theme': blog_data.get('theme', ''),
+                        'topics': blog_data.get('topics', []),
+                        'audience': blog_data.get('audience', '')
+                    }
+                    logger.info(f"Using blog context for URL scraping: {blog_context['name']}")
+            except Exception as e:
+                logger.warning(f"Could not get blog context for ID {blog_id}: {str(e)}")
+        
+        # Choose extraction method based on the form input and apply blog context if available
         if method == 'newspaper':
             # Use newspaper3k for article extraction
-            content_data = web_scraper_service.extract_with_newspaper(url)
+            if blog_context:
+                content_data = web_scraper_service.extract_with_newspaper_and_context(url, blog_context)
+            else:
+                content_data = web_scraper_service.extract_with_newspaper(url)
         else:
             # Use trafilatura for general content extraction
-            content_data = web_scraper_service.extract_content_from_url(url)
+            if blog_context:
+                content_data = web_scraper_service.extract_content_from_url_with_context(url, blog_context)
+            else:
+                content_data = web_scraper_service.extract_content_from_url(url)
         
         if not content_data:
             flash("Failed to extract content from the provided URL", "danger")
@@ -1831,7 +1853,8 @@ def scrape_url_page():
             'image': image,
             'wordcloud': wordcloud,
             'sentiment_chart': sentiment_chart,
-            'raw_data': content_data
+            'raw_data': content_data,
+            'blog_context': blog_context.get('name') if blog_context else None
         }
         
         return render_template('content_research.html', results=results)
@@ -1847,16 +1870,36 @@ def get_trending_topics():
     try:
         category = request.form.get('category')
         limit = int(request.form.get('limit', 10))
+        blog_id = request.form.get('blog_id')
         
-        logger.info(f"Getting trending topics for category: {category} with limit: {limit}")
+        logger.info(f"Getting trending topics for category: {category} with limit: {limit}, blog_id: {blog_id}")
         
         # Check if web scraper service is available
         if not web_scraper_service:
             flash("Web scraper service is not available", "danger")
             return redirect(url_for('content_research'))
         
-        # Get trending topics
-        topics = web_scraper_service.get_trending_topics(category, limit)
+        # Get blog context if specified
+        blog_context = None
+        if blog_id:
+            try:
+                blog_data = get_blog_by_id(blog_id)
+                if blog_data:
+                    blog_context = {
+                        'name': blog_data.get('name', ''),
+                        'theme': blog_data.get('theme', ''),
+                        'topics': blog_data.get('topics', []),
+                        'audience': blog_data.get('audience', '')
+                    }
+                    logger.info(f"Using blog context for trending topics: {blog_context['name']}")
+            except Exception as e:
+                logger.warning(f"Could not get blog context for ID {blog_id}: {str(e)}")
+        
+        # Get trending topics with optional blog context
+        if blog_context:
+            topics = web_scraper_service.get_trending_topics_with_context(category, limit, blog_context)
+        else:
+            topics = web_scraper_service.get_trending_topics(category, limit)
         
         if not topics:
             flash("No trending topics found", "warning")
@@ -1866,7 +1909,8 @@ def get_trending_topics():
         results = {
             'type': 'trending_topics',
             'category': category,
-            'topics': topics
+            'topics': topics,
+            'blog_context': blog_context.get('name') if blog_context else None
         }
         
         return render_template('content_research.html', results=results)
@@ -1882,20 +1926,40 @@ def parse_rss_feed():
     try:
         feed_url = request.form.get('feed_url')
         limit = int(request.form.get('limit', 10))
+        blog_id = request.form.get('blog_id')
         
         if not feed_url:
             flash("Feed URL is required", "danger")
             return redirect(url_for('content_research'))
         
-        logger.info(f"Parsing RSS feed: {feed_url} with limit: {limit}")
+        logger.info(f"Parsing RSS feed: {feed_url} with limit: {limit}, blog_id: {blog_id}")
         
         # Check if web scraper service is available
         if not web_scraper_service:
             flash("Web scraper service is not available", "danger")
             return redirect(url_for('content_research'))
         
-        # Fetch RSS feed
-        feed_entries = web_scraper_service.fetch_rss_feed(feed_url, limit)
+        # Get blog context if specified
+        blog_context = None
+        if blog_id:
+            try:
+                blog_data = get_blog_by_id(blog_id)
+                if blog_data:
+                    blog_context = {
+                        'name': blog_data.get('name', ''),
+                        'theme': blog_data.get('theme', ''),
+                        'topics': blog_data.get('topics', []),
+                        'audience': blog_data.get('audience', '')
+                    }
+                    logger.info(f"Using blog context for RSS feed parsing: {blog_context['name']}")
+            except Exception as e:
+                logger.warning(f"Could not get blog context for ID {blog_id}: {str(e)}")
+        
+        # Fetch RSS feed with optional blog context
+        if blog_context:
+            feed_entries = web_scraper_service.fetch_rss_feed_with_context(feed_url, limit, blog_context)
+        else:
+            feed_entries = web_scraper_service.fetch_rss_feed(feed_url, limit)
         
         if not feed_entries or len(feed_entries) == 0:
             flash("No entries found in the RSS feed", "warning")
@@ -1905,7 +1969,8 @@ def parse_rss_feed():
         results = {
             'type': 'rss_feed',
             'feed_url': feed_url,
-            'entries': feed_entries
+            'entries': feed_entries,
+            'blog_context': blog_context.get('name') if blog_context else None
         }
         
         return render_template('content_research.html', results=results)
