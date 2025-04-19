@@ -9,6 +9,7 @@ from src.shared.research_service import ResearchService
 from src.shared.openai_service import OpenAIService
 from src.shared.openai_service_optimizer import OptimizedOpenAIService
 from src.shared.billing_service import BillingService
+from src.shared.ai_optimization_controller import ai_optimization_bp, init_controller
 
 # Set up logging
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -32,6 +33,10 @@ optimized_openai_service = OptimizedOpenAIService(
     enable_caching=enable_caching
 )
 billing_service = BillingService()
+
+# Initialize and register the AI optimization controller
+init_controller(optimized_openai_service)
+app.register_blueprint(ai_optimization_bp, url_prefix='/api/ai-optimization')
 
 # Initialize social media service
 try:

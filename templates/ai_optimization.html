@@ -1,0 +1,497 @@
+{% extends 'base.html' %}
+
+{% block title %}AI Optimization Dashboard{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <h1 class="mb-4">AI Optimization Dashboard</h1>
+    
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">AI Cache Statistics</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <div class="card bg-light">
+                                <div class="card-body text-center">
+                                    <h3 id="cache-hit-ratio">0%</h3>
+                                    <p class="text-muted mb-0">Cache Hit Ratio</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <div class="card bg-light">
+                                <div class="card-body text-center">
+                                    <h3 id="cache-size">0</h3>
+                                    <p class="text-muted mb-0">Cached Responses</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <div class="card bg-light">
+                                <div class="card-body text-center">
+                                    <h3 id="total-requests">0</h3>
+                                    <p class="text-muted mb-0">Total Requests</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <div class="card bg-light">
+                                <div class="card-body text-center">
+                                    <h3 id="cost-savings">$0.00</h3>
+                                    <p class="text-muted mb-0">Estimated Savings</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-3">
+                        <button class="btn btn-warning" id="clear-cache-btn">Clear Cache</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-6">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Budget & Model Settings</h5>
+                </div>
+                <div class="card-body">
+                    <form id="budget-settings-form">
+                        <div class="mb-3">
+                            <label for="daily-budget" class="form-label">Daily Budget</label>
+                            <div class="input-group">
+                                <span class="input-group-text">$</span>
+                                <input type="number" class="form-control" id="daily-budget" min="1" step="0.01">
+                            </div>
+                            <div class="form-text">Maximum daily spending for AI generation</div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="monthly-budget" class="form-label">Monthly Budget</label>
+                            <div class="input-group">
+                                <span class="input-group-text">$</span>
+                                <input type="number" class="form-control" id="monthly-budget" min="10" step="0.01">
+                            </div>
+                            <div class="form-text">Maximum monthly spending for AI generation</div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="draft-model" class="form-label">Draft Model</label>
+                            <select class="form-select" id="draft-model">
+                                <option value="gpt-3.5-turbo">gpt-3.5-turbo (Cheaper)</option>
+                                <option value="gpt-4o">gpt-4o (Better)</option>
+                            </select>
+                            <div class="form-text">Model used for initial content drafts and research</div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="polish-model" class="form-label">Polish Model</label>
+                            <select class="form-select" id="polish-model">
+                                <option value="gpt-4o">gpt-4o (Default)</option>
+                                <option value="gpt-3.5-turbo">gpt-3.5-turbo (Cost-saving)</option>
+                            </select>
+                            <div class="form-text">Model used for final content polishing and enhancement</div>
+                        </div>
+                        
+                        <button type="submit" class="btn btn-primary">Update Budget & Model Settings</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Cache Settings</h5>
+                </div>
+                <div class="card-body">
+                    <form id="cache-settings-form">
+                        <div class="mb-3">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="enable-caching" checked>
+                                <label class="form-check-label" for="enable-caching">Enable Response Caching</label>
+                            </div>
+                            <div class="form-text">Cache responses to reduce costs and improve performance</div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="cache-ttl" class="form-label">Cache TTL (Time to Live)</label>
+                            <div class="input-group">
+                                <input type="number" class="form-control" id="cache-ttl" min="300" step="300">
+                                <span class="input-group-text">seconds</span>
+                            </div>
+                            <div class="form-text">How long to keep cached responses (3600 = 1 hour)</div>
+                        </div>
+                        
+                        <button type="submit" class="btn btn-primary">Update Cache Settings</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-6">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Prompt Analyzer</h5>
+                </div>
+                <div class="card-body">
+                    <form id="prompt-analyzer-form">
+                        <div class="mb-3">
+                            <label for="prompt-text" class="form-label">Prompt Text</label>
+                            <textarea class="form-control" id="prompt-text" rows="6" placeholder="Enter a prompt to analyze token count and cost..."></textarea>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="analyzer-model" class="form-label">Model</label>
+                            <select class="form-select" id="analyzer-model">
+                                <option value="gpt-3.5-turbo">gpt-3.5-turbo</option>
+                                <option value="gpt-4o">gpt-4o</option>
+                            </select>
+                        </div>
+                        
+                        <button type="submit" class="btn btn-primary">Analyze Prompt</button>
+                    </form>
+                    
+                    <div class="mt-4 d-none" id="analysis-results">
+                        <h6>Analysis Results:</h6>
+                        <div class="card bg-light">
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-6">
+                                        <p class="mb-1">Input Tokens: <span id="input-tokens" class="fw-bold">0</span></p>
+                                        <p class="mb-1">Est. Output Tokens: <span id="output-tokens" class="fw-bold">0</span></p>
+                                        <p class="mb-1">Total Tokens: <span id="total-tokens" class="fw-bold">0</span></p>
+                                    </div>
+                                    <div class="col-6">
+                                        <p class="mb-1">Input Cost: <span id="input-cost" class="fw-bold">$0.00</span></p>
+                                        <p class="mb-1">Output Cost: <span id="output-cost" class="fw-bold">$0.00</span></p>
+                                        <p class="mb-1">Total Cost: <span id="total-cost" class="fw-bold">$0.00</span></p>
+                                    </div>
+                                </div>
+                                <div class="alert mt-2 mb-0" id="budget-alert" role="alert">
+                                    Within budget limits
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Token Usage by Day</h5>
+                </div>
+                <div class="card-body">
+                    <div id="token-usage-chart" style="height: 300px;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Load AI optimization stats
+        fetchAIOptimizationStats();
+        
+        // Load settings
+        fetchAIOptimizationSettings();
+        
+        // Set up form handlers
+        document.getElementById('budget-settings-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            updateBudgetSettings();
+        });
+        
+        document.getElementById('cache-settings-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            updateCacheSettings();
+        });
+        
+        document.getElementById('prompt-analyzer-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            analyzePrompt();
+        });
+        
+        // Clear cache button
+        document.getElementById('clear-cache-btn').addEventListener('click', function() {
+            clearCache();
+        });
+    });
+    
+    function fetchAIOptimizationStats() {
+        fetch('/api/ai-optimization/stats')
+            .then(response => response.json())
+            .then(data => {
+                updateStatsDisplay(data);
+            })
+            .catch(error => {
+                console.error('Error fetching AI optimization stats:', error);
+            });
+    }
+    
+    function fetchAIOptimizationSettings() {
+        fetch('/api/ai-optimization/settings')
+            .then(response => response.json())
+            .then(data => {
+                updateSettingsDisplay(data);
+            })
+            .catch(error => {
+                console.error('Error fetching AI optimization settings:', error);
+            });
+    }
+    
+    function updateStatsDisplay(data) {
+        // Update cache stats
+        const cacheData = data.cache || {};
+        document.getElementById('cache-hit-ratio').textContent = Math.round((cacheData.hit_ratio || 0) * 100) + '%';
+        document.getElementById('cache-size').textContent = cacheData.size || 0;
+        
+        // Update usage stats
+        const usageData = data.usage || {};
+        document.getElementById('total-requests').textContent = usageData.requests || 0;
+        
+        // Calculate savings (cached requests * avg cost per request)
+        const cachedRequests = usageData.cached_requests || 0;
+        const avgCostPerRequest = 0.02; // Estimated average cost per request in USD
+        const estimatedSavings = cachedRequests * avgCostPerRequest;
+        document.getElementById('cost-savings').textContent = '$' + estimatedSavings.toFixed(2);
+        
+        // Create token usage chart
+        createTokenUsageChart(data.token_usage || {});
+    }
+    
+    function updateSettingsDisplay(data) {
+        // Update budget settings
+        document.getElementById('daily-budget').value = data.daily_budget || 10.0;
+        document.getElementById('monthly-budget').value = data.monthly_budget || 300.0;
+        
+        // Update model settings
+        document.getElementById('draft-model').value = data.OPENAI_DRAFT_MODEL || 'gpt-3.5-turbo';
+        document.getElementById('polish-model').value = data.OPENAI_POLISH_MODEL || 'gpt-4o';
+        
+        // Update cache settings
+        document.getElementById('enable-caching').checked = data.OPENAI_ENABLE_CACHING !== false;
+        document.getElementById('cache-ttl').value = data.OPENAI_CACHE_TTL_SECONDS || 3600;
+    }
+    
+    function updateBudgetSettings() {
+        const dailyBudget = parseFloat(document.getElementById('daily-budget').value);
+        const monthlyBudget = parseFloat(document.getElementById('monthly-budget').value);
+        const draftModel = document.getElementById('draft-model').value;
+        const polishModel = document.getElementById('polish-model').value;
+        
+        fetch('/api/ai-optimization/settings', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                OPENAI_DAILY_BUDGET: dailyBudget,
+                OPENAI_MONTHLY_BUDGET: monthlyBudget,
+                OPENAI_DRAFT_MODEL: draftModel,
+                OPENAI_POLISH_MODEL: polishModel
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('Budget and model settings updated successfully');
+            } else {
+                alert('Error updating settings: ' + (data.message || 'Unknown error'));
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('An error occurred while updating settings');
+        });
+    }
+    
+    function updateCacheSettings() {
+        const enableCaching = document.getElementById('enable-caching').checked;
+        const cacheTTL = parseInt(document.getElementById('cache-ttl').value);
+        
+        fetch('/api/ai-optimization/settings', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                OPENAI_ENABLE_CACHING: enableCaching,
+                OPENAI_CACHE_TTL_SECONDS: cacheTTL
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('Cache settings updated successfully');
+            } else {
+                alert('Error updating settings: ' + (data.message || 'Unknown error'));
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('An error occurred while updating settings');
+        });
+    }
+    
+    function clearCache() {
+        if (confirm("Are you sure you want to clear the AI response cache? This will remove all cached responses.")) {
+            fetch('/api/ai-optimization/cache/clear', {
+                method: 'POST'
+            })
+            .then(response => response.json())
+            .then(data => {
+                alert('Cache cleared successfully');
+                // Refresh stats
+                fetchAIOptimizationStats();
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('An error occurred while clearing the cache');
+            });
+        }
+    }
+    
+    function analyzePrompt() {
+        const promptText = document.getElementById('prompt-text').value;
+        const model = document.getElementById('analyzer-model').value;
+        
+        if (!promptText.trim()) {
+            alert('Please enter a prompt to analyze');
+            return;
+        }
+        
+        fetch('/api/ai-optimization/validate/prompt', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                prompt: promptText,
+                model: model
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            // Show results
+            document.getElementById('analysis-results').classList.remove('d-none');
+            
+            // Update token counts
+            document.getElementById('input-tokens').textContent = data.prompt_tokens || 0;
+            document.getElementById('output-tokens').textContent = data.estimated_output_tokens || 0;
+            document.getElementById('total-tokens').textContent = 
+                (data.prompt_tokens || 0) + (data.estimated_output_tokens || 0);
+            
+            // Update costs
+            document.getElementById('input-cost').textContent = '$' + (data.input_cost || 0).toFixed(5);
+            document.getElementById('output-cost').textContent = '$' + (data.output_cost || 0).toFixed(5);
+            document.getElementById('total-cost').textContent = '$' + (data.total_estimated_cost || 0).toFixed(5);
+            
+            // Update budget alert
+            const budgetAlert = document.getElementById('budget-alert');
+            if (data.within_budget) {
+                budgetAlert.className = 'alert alert-success mt-2 mb-0';
+                budgetAlert.textContent = 'Within daily budget limits';
+            } else {
+                budgetAlert.className = 'alert alert-danger mt-2 mb-0';
+                budgetAlert.textContent = 'Exceeds daily budget limits';
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('An error occurred while analyzing the prompt');
+        });
+    }
+    
+    function createTokenUsageChart(tokenUsage) {
+        // Format data for chart
+        const days = Object.keys(tokenUsage).sort();
+        const datasets = [];
+        
+        // Get unique models
+        const models = new Set();
+        for (const day of days) {
+            const dayData = tokenUsage[day] || {};
+            for (const model in dayData) {
+                models.add(model);
+            }
+        }
+        
+        // Create dataset for each model
+        const colorMap = {
+            'gpt-3.5-turbo': 'rgba(54, 162, 235, 0.7)',
+            'gpt-4o': 'rgba(255, 99, 132, 0.7)',
+            'unknown': 'rgba(153, 102, 255, 0.7)'
+        };
+        
+        for (const model of models) {
+            const data = days.map(day => {
+                const dayData = tokenUsage[day] || {};
+                return dayData[model] || 0;
+            });
+            
+            datasets.push({
+                label: model,
+                data: data,
+                backgroundColor: colorMap[model] || colorMap.unknown,
+                borderColor: colorMap[model] || colorMap.unknown,
+                borderWidth: 1
+            });
+        }
+        
+        // Create chart
+        const ctx = document.getElementById('token-usage-chart').getContext('2d');
+        new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: days,
+                datasets: datasets
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: 'Token Count'
+                        }
+                    },
+                    x: {
+                        title: {
+                            display: true,
+                            text: 'Date'
+                        }
+                    }
+                },
+                plugins: {
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                const value = context.raw;
+                                return `${context.dataset.label}: ${value.toLocaleString()} tokens`;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+</script>
+{% endblock %}
