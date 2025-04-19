@@ -40,6 +40,15 @@ billing_service = BillingService()
 init_controller(optimized_openai_service)
 app.register_blueprint(ai_optimization_bp, url_prefix='/api/ai-optimization')
 
+# Initialize analytics service
+try:
+    from src.shared.analytics_service import AnalyticsService
+    analytics_service = AnalyticsService(storage_service=storage_service)
+    logger.info("Analytics service initialized")
+except Exception as e:
+    logger.warning(f"Failed to initialize Analytics service: {str(e)}")
+    analytics_service = None
+
 # Initialize social media service
 try:
     from src.shared.social_media_service import SocialMediaService
