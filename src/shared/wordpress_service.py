@@ -23,6 +23,14 @@ class WordPressService:
         self.multisite_config = None
         self.network_id = None
         
+        # Cache for API responses to reduce external calls and improve performance
+        self._cache = {
+            'sites': {'data': None, 'expires': 0},
+            'domains': {},  # Will hold domain data by site_id
+            'tags': {}      # Will hold tag data by site_id
+        }
+        self._cache_ttl = 300  # 5 minutes cache TTL
+        
         # Get Key Vault name from environment variable
         key_vault_name = os.environ.get("KEY_VAULT_NAME")
         
@@ -84,6 +92,41 @@ class WordPressService:
         except Exception as e:
             self.logger.debug(f"Secret {secret_name} not found in Key Vault: {str(e)}")
             return None
+            
+    def _get_cached_data(self, cache_key, subkey=None):
+        """Get data from cache if it exists and hasn't expired"""
+        now = time.time()
+        
+        if subkey is not None:
+            if cache_key in self._cache and subkey in self._cache[cache_key]:
+                cache_entry = self._cache[cache_key][subkey]
+                if cache_entry.get('expires', 0) > now:
+                    self.logger.debug(f"Cache hit for {cache_key}/{subkey}")
+                    return cache_entry['data']
+        else:
+            if cache_key in self._cache and self._cache[cache_key].get('expires', 0) > now:
+                self.logger.debug(f"Cache hit for {cache_key}")
+                return self._cache[cache_key]['data']
+                
+        self.logger.debug(f"Cache miss for {cache_key}{f'/{subkey}' if subkey else ''}")
+        return None
+        
+    def _set_cached_data(self, cache_key, data, subkey=None, ttl=None):
+        """Store data in cache with expiration time"""
+        if ttl is None:
+            ttl = self._cache_ttl
+            
+        expires = time.time() + ttl
+        
+        if subkey is not None:
+            if cache_key not in self._cache:
+                self._cache[cache_key] = {}
+            self._cache[cache_key][subkey] = {'data': data, 'expires': expires}
+        else:
+            self._cache[cache_key] = {'data': data, 'expires': expires}
+            
+        self.logger.debug(f"Cached data for {cache_key}{f'/{subkey}' if subkey else ''} expires in {ttl}s")
+        return data
     
     def publish_post(self, wordpress_url, username, application_password, title, content, seo_metadata):
         """
@@ -127,6 +170,18 @@ class WordPressService:
                 '_yoast_wpseo_opengraph-description': seo_metadata.get('social_description', seo_metadata.get('meta_description', ''))
             }
         }
+        
+        # Security: Sanitize inputs to prevent WordPress injection attacks
+        if post_data['title']:
+            post_data['title'] = self._sanitize_content(post_data['title'])
+        if post_data['excerpt']:
+            post_data['excerpt'] = self._sanitize_content(post_data['excerpt'])
+        if post_data['meta']['_yoast_wpseo_metadesc']:
+            post_data['meta']['_yoast_wpseo_metadesc'] = self._sanitize_content(post_data['meta']['_yoast_wpseo_metadesc'])
+        if post_data['meta']['_yoast_wpseo_opengraph-title']:
+            post_data['meta']['_yoast_wpseo_opengraph-title'] = self._sanitize_content(post_data['meta']['_yoast_wpseo_opengraph-title'])
+        if post_data['meta']['_yoast_wpseo_opengraph-description']:
+            post_data['meta']['_yoast_wpseo_opengraph-description'] = self._sanitize_content(post_data['meta']['_yoast_wpseo_opengraph-description'])
         
         # Create tags from keywords if available
         if seo_metadata.get('keywords'):
@@ -365,6 +420,18 @@ class WordPressService:
             }
         }
         
+        # Security: Sanitize inputs for multisite as well
+        if post_data['title']:
+            post_data['title'] = self._sanitize_content(post_data['title'])
+        if post_data['excerpt']:
+            post_data['excerpt'] = self._sanitize_content(post_data['excerpt'])
+        if post_data['meta']['_yoast_wpseo_metadesc']:
+            post_data['meta']['_yoast_wpseo_metadesc'] = self._sanitize_content(post_data['meta']['_yoast_wpseo_metadesc'])
+        if post_data['meta']['_yoast_wpseo_opengraph-title']:
+            post_data['meta']['_yoast_wpseo_opengraph-title'] = self._sanitize_content(post_data['meta']['_yoast_wpseo_opengraph-title'])
+        if post_data['meta']['_yoast_wpseo_opengraph-description']:
+            post_data['meta']['_yoast_wpseo_opengraph-description'] = self._sanitize_content(post_data['meta']['_yoast_wpseo_opengraph-description'])
+        
         # Handle tags same as in publish_post
         if seo_metadata and seo_metadata.get('keywords'):
             # Get existing tags first for this specific site
@@ -423,13 +490,20 @@ class WordPressService:
     def get_site_list(self):
         """
         Get a list of all sites in the WordPress Multisite network.
+        Uses caching to reduce API calls.
         
         Returns:
             list: List of site information dictionaries with id, name, url, and domain
         """
+        # Check if we have cached data
+        cached_sites = self._get_cached_data('sites')
+        if cached_sites is not None:
+            return cached_sites
+            
         if not self.is_multisite:
             self.logger.warning("WordPress is not configured as Multisite")
-            return [{'id': 1, 'name': 'Main Site', 'url': self.default_wordpress_url, 'is_main': True}]
+            sites = [{'id': 1, 'name': 'Main Site', 'url': self.default_wordpress_url, 'is_main': True}]
+            return self._set_cached_data('sites', sites)
             
         if not self.default_wordpress_url or not self.default_wordpress_username or not self.default_wordpress_password:
             raise Exception("Default WordPress credentials are not available from Key Vault")
@@ -463,7 +537,8 @@ class WordPressService:
                         'is_main': site['id'] == network_id
                     })
                     
-                return site_list
+                # Cache the site list for future requests
+                return self._set_cached_data('sites', site_list)
             else:
                 self.logger.warning(f"Unexpected response format from sites endpoint: {sites}")
                 return []
@@ -475,6 +550,7 @@ class WordPressService:
     def get_mapped_domains(self, site_id):
         """
         Get all domains mapped to a specific site in the WordPress Multisite network.
+        Uses caching to reduce API calls.
         
         Args:
             site_id (int): The site ID to get mapped domains for
@@ -482,6 +558,12 @@ class WordPressService:
         Returns:
             list: List of mapped domain information including primary domain and aliases
         """
+        # Check cache first
+        site_id_str = str(site_id)  # Convert to string for dictionary key
+        cached_domains = self._get_cached_data('domains', site_id_str)
+        if cached_domains is not None:
+            return cached_domains
+            
         if not self.is_multisite:
             self.logger.warning("WordPress is not configured as Multisite")
             return []
@@ -504,7 +586,8 @@ class WordPressService:
             domains = self._make_request('GET', endpoint, auth=(self.default_wordpress_username, self.default_wordpress_password))
             
             if domains and isinstance(domains, list):
-                return domains
+                # Cache the domains for this site
+                return self._set_cached_data('domains', domains, site_id_str)
             else:
                 self.logger.warning(f"Unexpected response format from domains endpoint: {domains}")
                 return []
@@ -552,6 +635,12 @@ class WordPressService:
             
             if result and 'id' in result:
                 self.logger.info(f"Successfully mapped domain {domain} to site {site_id}")
+                
+                # Invalidate site domains cache since we've added a new domain
+                if 'domains' in self._cache and str(site_id) in self._cache['domains']:
+                    del self._cache['domains'][str(site_id)]
+                    self.logger.debug(f"Invalidated domains cache for site ID {site_id}")
+                
                 return {
                     'success': True,
                     'domain_id': result['id'],
@@ -650,3 +739,57 @@ class WordPressService:
             error_msg = f"JSON decode error: {e}"
             self.logger.error(error_msg)
             raise Exception(error_msg)
+            
+    def _sanitize_content(self, content):
+        """
+        Sanitize content to prevent WordPress injection attacks and XSS.
+        
+        Args:
+            content (str): The content to sanitize
+            
+        Returns:
+            str: Sanitized content
+        """
+        if not content:
+            return content
+            
+        # Basic HTML sanitization for WordPress
+        import re
+        import html
+        
+        # First, escape HTML entities
+        sanitized = html.escape(content)
+        
+        # Allow specific HTML tags that WordPress allows by default
+        allowed_tags = [
+            'p', 'br', 'em', 'strong', 'ul', 'ol', 'li', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
+            'blockquote', 'code', 'pre', 'a', 'img'
+        ]
+        
+        # Replace escaped tags with their original form for allowed tags
+        for tag in allowed_tags:
+            # Opening tags
+            sanitized = re.sub(
+                r'&lt;' + tag + r'(\s+[^&>]*)&gt;',
+                r'<' + tag + r'\1>',
+                sanitized
+            )
+            # Closing tags
+            sanitized = re.sub(
+                r'&lt;/' + tag + r'&gt;',
+                r'</' + tag + r'>',
+                sanitized
+            )
+            
+        # Remove potential script injections (even if escaped)
+        sanitized = re.sub(r'&lt;script.*?&gt;.*?&lt;/script&gt;', '', sanitized, flags=re.DOTALL)
+        sanitized = re.sub(r'<script.*?>.*?</script>', '', sanitized, flags=re.DOTALL)
+        
+        # Remove on* attributes that could contain JavaScript
+        sanitized = re.sub(r'(\s)on\w+\s*=\s*["\'][^"\']*["\']', '', sanitized)
+        
+        # Remove iframe tags that could embed malicious content
+        sanitized = re.sub(r'&lt;iframe.*?&gt;.*?&lt;/iframe&gt;', '', sanitized, flags=re.DOTALL)
+        sanitized = re.sub(r'<iframe.*?>.*?</iframe>', '', sanitized, flags=re.DOTALL)
+        
+        return sanitized
