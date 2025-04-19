@@ -15,5 +15,6 @@
     "url": "https://travel-blog-example.wordpress.com",
     "username": "traveladmin",
     "connected": true
-  }
+  },
+  "description": "Travel tips for overseas, useful products for frequent travelers, fun destinations for kids."
 }

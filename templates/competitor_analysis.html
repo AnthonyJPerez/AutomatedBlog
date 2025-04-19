@@ -1,0 +1,1157 @@
+{% extends 'base.html' %}
+
+{% block title %}Competitor Analysis{% endblock %}
+
+{% block head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <h1 class="mb-4">Competitor Analysis</h1>
+    
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <div class="card h-100">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="card-title mb-0">Tracked Competitors</h5>
+                    <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addCompetitorModal">
+                        <i class="bi bi-plus-circle me-1"></i> Add Competitor
+                    </button>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label for="blog-filter" class="form-label">Filter by Blog</label>
+                        <select class="form-select" id="blog-filter">
+                            <option value="">All Blogs</option>
+                            {% if blogs %}
+                                {% for blog in blogs %}
+                                    <option value="{{ blog.id }}">{{ blog.name }} - {{ blog.theme }}</option>
+                                {% endfor %}
+                            {% endif %}
+                        </select>
+                    </div>
+                    
+                    <div class="table-responsive">
+                        <table class="table table-hover" id="competitors-table">
+                            <thead>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>URL</th>
+                                    <th>Category</th>
+                                    <th>Priority</th>
+                                    <th>Last Analyzed</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="competitors-tbody">
+                                <tr>
+                                    <td colspan="6" class="text-center">Loading competitors...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Insights</h5>
+                </div>
+                <div class="card-body">
+                    <div id="insights-container">
+                        <p class="text-muted text-center">Select a competitor to view insights</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Gap Analysis</h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label for="gap-analysis-blog" class="form-label">Select Blog for Gap Analysis</label>
+                        <div class="input-group">
+                            <select class="form-select" id="gap-analysis-blog">
+                                <option value="" selected disabled>Select a blog</option>
+                                {% if blogs %}
+                                    {% for blog in blogs %}
+                                        <option value="{{ blog.id }}">{{ blog.name }} - {{ blog.theme }}</option>
+                                    {% endfor %}
+                                {% endif %}
+                            </select>
+                            <button class="btn btn-primary" id="run-gap-analysis">Analyze</button>
+                        </div>
+                        <div class="form-text">Compare your blog topics against competitor content to identify gaps</div>
+                    </div>
+                    
+                    <div id="gap-analysis-results" class="mt-4">
+                        <p class="text-muted text-center">Run gap analysis to see results</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Keyword Opportunities</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <canvas id="keyword-chart" height="300"></canvas>
+                        </div>
+                        <div class="col-md-6">
+                            <h5>Top Keywords</h5>
+                            <div id="top-keywords">
+                                <p class="text-muted text-center">Run gap analysis to see keyword opportunities</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Content Recommendations</h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label for="content-recommendation-blog" class="form-label">Select Blog</label>
+                        <select class="form-select" id="content-recommendation-blog">
+                            <option value="" selected disabled>Select a blog</option>
+                            {% if blogs %}
+                                {% for blog in blogs %}
+                                    <option value="{{ blog.id }}">{{ blog.name }} - {{ blog.theme }}</option>
+                                {% endfor %}
+                            {% endif %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="content-recommendation-topic" class="form-label">Topic (optional)</label>
+                        <input type="text" class="form-control" id="content-recommendation-topic" placeholder="Enter a specific topic">
+                    </div>
+                    <button class="btn btn-primary" id="get-content-recommendations">Get Recommendations</button>
+                    
+                    <div id="content-recommendations-results" class="mt-4">
+                        <p class="text-muted text-center">Select a blog and click 'Get Recommendations'</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="card-title mb-0">Report Generation</h5>
+                </div>
+                <div class="card-body">
+                    <form id="report-form">
+                        <div class="mb-3">
+                            <label for="report-blog" class="form-label">Select Blog</label>
+                            <select class="form-select" id="report-blog" required>
+                                <option value="" selected disabled>Select a blog</option>
+                                {% if blogs %}
+                                    {% for blog in blogs %}
+                                        <option value="{{ blog.id }}">{{ blog.name }} - {{ blog.theme }}</option>
+                                    {% endfor %}
+                                {% endif %}
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Report Format</label>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="report-format" id="format-html" value="html" checked>
+                                <label class="form-check-label" for="format-html">
+                                    HTML
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="report-format" id="format-markdown" value="markdown">
+                                <label class="form-check-label" for="format-markdown">
+                                    Markdown
+                                </label>
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Generate Report</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add Competitor Modal -->
+<div class="modal fade" id="addCompetitorModal" tabindex="-1" aria-labelledby="addCompetitorModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="addCompetitorModalLabel">Add Competitor</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="add-competitor-form">
+                    <div class="mb-3">
+                        <label for="competitor-url" class="form-label">URL *</label>
+                        <input type="url" class="form-control" id="competitor-url" placeholder="https://example.com" required>
+                        <div class="form-text">Enter the website or blog URL of the competitor</div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="competitor-name" class="form-label">Name</label>
+                        <input type="text" class="form-control" id="competitor-name" placeholder="Competitor Name">
+                        <div class="form-text">Leave blank to extract automatically from the website</div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="competitor-blog" class="form-label">Associated Blog</label>
+                        <select class="form-select" id="competitor-blog">
+                            <option value="">None (track as general competitor)</option>
+                            {% if blogs %}
+                                {% for blog in blogs %}
+                                    <option value="{{ blog.id }}">{{ blog.name }} - {{ blog.theme }}</option>
+                                {% endfor %}
+                            {% endif %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="competitor-category" class="form-label">Category</label>
+                        <input type="text" class="form-control" id="competitor-category" placeholder="e.g., Tech Blog, Marketing Agency">
+                    </div>
+                    <div class="mb-3">
+                        <label for="competitor-description" class="form-label">Description</label>
+                        <textarea class="form-control" id="competitor-description" rows="3"></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label for="competitor-priority" class="form-label">Priority</label>
+                        <select class="form-select" id="competitor-priority">
+                            <option value="1">High (1)</option>
+                            <option value="2">Medium (2)</option>
+                            <option value="3">Low (3)</option>
+                        </select>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="save-competitor">Add & Analyze</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Competitor Details Modal -->
+<div class="modal fade" id="competitorDetailsModal" tabindex="-1" aria-labelledby="competitorDetailsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="competitorDetailsModalLabel">Competitor Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="competitor-details-content">
+                <div class="text-center">
+                    <div class="spinner-border" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" id="analyze-competitor-btn">Refresh Analysis</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Report Preview Modal -->
+<div class="modal fade" id="reportPreviewModal" tabindex="-1" aria-labelledby="reportPreviewModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="reportPreviewModalLabel">Competitor Analysis Report</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="report-preview-content">
+                <div class="text-center">
+                    <div class="spinner-border" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" id="download-report">Download Report</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Initialize variables
+    let keywordChart = null;
+    let currentCompetitorId = null;
+    let reportData = null;
+    
+    document.addEventListener('DOMContentLoaded', function() {
+        // Load competitors on page load
+        loadCompetitors();
+        
+        // Blog filter change event
+        document.getElementById('blog-filter').addEventListener('change', function() {
+            loadCompetitors(this.value);
+        });
+        
+        // Add competitor form submission
+        document.getElementById('save-competitor').addEventListener('click', function() {
+            addCompetitor();
+        });
+        
+        // Gap analysis button
+        document.getElementById('run-gap-analysis').addEventListener('click', function() {
+            const blogId = document.getElementById('gap-analysis-blog').value;
+            if (blogId) {
+                runGapAnalysis(blogId);
+            } else {
+                alert('Please select a blog for gap analysis');
+            }
+        });
+        
+        // Content recommendations button
+        document.getElementById('get-content-recommendations').addEventListener('click', function() {
+            const blogId = document.getElementById('content-recommendation-blog').value;
+            const topic = document.getElementById('content-recommendation-topic').value;
+            
+            if (blogId) {
+                getContentRecommendations(blogId, topic);
+            } else {
+                alert('Please select a blog for content recommendations');
+            }
+        });
+        
+        // Report generation form submission
+        document.getElementById('report-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const blogId = document.getElementById('report-blog').value;
+            const format = document.querySelector('input[name="report-format"]:checked').value;
+            
+            if (blogId) {
+                generateReport(blogId, format);
+            } else {
+                alert('Please select a blog for the report');
+            }
+        });
+        
+        // Download report button
+        document.getElementById('download-report').addEventListener('click', function() {
+            if (reportData) {
+                downloadReport();
+            }
+        });
+    });
+    
+    // Load competitors
+    function loadCompetitors(blogId = '') {
+        const tbody = document.getElementById('competitors-tbody');
+        tbody.innerHTML = '<tr><td colspan="6" class="text-center"><div class="spinner-border spinner-border-sm" role="status"></div> Loading competitors...</td></tr>';
+        
+        fetch(`/api/competitors?blog_id=${blogId}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    displayCompetitors(data.competitors);
+                } else {
+                    tbody.innerHTML = `<tr><td colspan="6" class="text-center text-muted">${data.message || 'No competitors found'}</td></tr>`;
+                }
+            })
+            .catch(error => {
+                console.error('Error loading competitors:', error);
+                tbody.innerHTML = '<tr><td colspan="6" class="text-center text-danger">Error loading competitors</td></tr>';
+            });
+    }
+    
+    // Display competitors in the table
+    function displayCompetitors(competitors) {
+        const tbody = document.getElementById('competitors-tbody');
+        tbody.innerHTML = '';
+        
+        if (!competitors || competitors.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">No competitors found</td></tr>';
+            return;
+        }
+        
+        competitors.forEach(competitor => {
+            const row = document.createElement('tr');
+            
+            const lastAnalyzed = competitor.last_analyzed 
+                ? new Date(competitor.last_analyzed).toLocaleDateString() 
+                : 'Never';
+                
+            row.innerHTML = `
+                <td><a href="#" class="competitor-link" data-id="${competitor.id}">${competitor.name}</a></td>
+                <td><a href="${competitor.url}" target="_blank">${competitor.url}</a></td>
+                <td>${competitor.category || '-'}</td>
+                <td>${competitor.priority}</td>
+                <td>${lastAnalyzed}</td>
+                <td>
+                    <button class="btn btn-sm btn-outline-primary analyze-btn" data-id="${competitor.id}">
+                        <i class="bi bi-arrow-clockwise"></i>
+                    </button>
+                    <button class="btn btn-sm btn-outline-danger delete-btn" data-id="${competitor.id}">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </td>
+            `;
+            
+            tbody.appendChild(row);
+        });
+        
+        // Add event listeners to buttons
+        document.querySelectorAll('.analyze-btn').forEach(button => {
+            button.addEventListener('click', function() {
+                const competitorId = this.dataset.id;
+                analyzeCompetitor(competitorId);
+            });
+        });
+        
+        document.querySelectorAll('.delete-btn').forEach(button => {
+            button.addEventListener('click', function() {
+                const competitorId = this.dataset.id;
+                if (confirm('Are you sure you want to delete this competitor?')) {
+                    deleteCompetitor(competitorId);
+                }
+            });
+        });
+        
+        document.querySelectorAll('.competitor-link').forEach(link => {
+            link.addEventListener('click', function(e) {
+                e.preventDefault();
+                const competitorId = this.dataset.id;
+                showCompetitorDetails(competitorId);
+            });
+        });
+    }
+    
+    // Add a new competitor
+    function addCompetitor() {
+        const url = document.getElementById('competitor-url').value;
+        const name = document.getElementById('competitor-name').value;
+        const blogId = document.getElementById('competitor-blog').value;
+        const category = document.getElementById('competitor-category').value;
+        const description = document.getElementById('competitor-description').value;
+        const priority = document.getElementById('competitor-priority').value;
+        
+        if (!url) {
+            alert('URL is required');
+            return;
+        }
+        
+        // Show loading state
+        const saveButton = document.getElementById('save-competitor');
+        const originalText = saveButton.innerHTML;
+        saveButton.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Adding...';
+        saveButton.disabled = true;
+        
+        fetch('/api/competitors', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                url: url,
+                name: name || null,
+                blog_id: blogId || null,
+                category: category || null,
+                description: description || null,
+                priority: parseInt(priority)
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Close modal
+                const modal = bootstrap.Modal.getInstance(document.getElementById('addCompetitorModal'));
+                modal.hide();
+                
+                // Clear form
+                document.getElementById('add-competitor-form').reset();
+                
+                // Reload competitors
+                loadCompetitors(document.getElementById('blog-filter').value);
+                
+                // Show success message
+                alert(data.message);
+                
+                // Start analysis if competitor was added
+                if (data.competitor && data.competitor.id) {
+                    analyzeCompetitor(data.competitor.id);
+                }
+            } else {
+                alert(data.message || 'Error adding competitor');
+            }
+        })
+        .catch(error => {
+            console.error('Error adding competitor:', error);
+            alert('Error adding competitor');
+        })
+        .finally(() => {
+            // Reset button state
+            saveButton.innerHTML = originalText;
+            saveButton.disabled = false;
+        });
+    }
+    
+    // Analyze a competitor
+    function analyzeCompetitor(competitorId) {
+        if (!competitorId) return;
+        
+        // Show loading state for the specific row
+        const analyzeBtn = document.querySelector(`.analyze-btn[data-id="${competitorId}"]`);
+        if (analyzeBtn) {
+            analyzeBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>';
+            analyzeBtn.disabled = true;
+        }
+        
+        fetch(`/api/competitors/${competitorId}/analyze`, {
+            method: 'POST'
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Reload competitors to refresh last analyzed date
+                loadCompetitors(document.getElementById('blog-filter').value);
+                
+                // If competitor details modal is open, refresh it
+                if (currentCompetitorId === competitorId) {
+                    showCompetitorDetails(competitorId);
+                }
+                
+                // Show success message
+                alert(data.message);
+            } else {
+                alert(data.message || 'Error analyzing competitor');
+                
+                // Reset button state
+                if (analyzeBtn) {
+                    analyzeBtn.innerHTML = '<i class="bi bi-arrow-clockwise"></i>';
+                    analyzeBtn.disabled = false;
+                }
+            }
+        })
+        .catch(error => {
+            console.error('Error analyzing competitor:', error);
+            alert('Error analyzing competitor');
+            
+            // Reset button state
+            if (analyzeBtn) {
+                analyzeBtn.innerHTML = '<i class="bi bi-arrow-clockwise"></i>';
+                analyzeBtn.disabled = false;
+            }
+        });
+    }
+    
+    // Delete a competitor
+    function deleteCompetitor(competitorId) {
+        if (!competitorId) return;
+        
+        fetch(`/api/competitors/${competitorId}`, {
+            method: 'DELETE'
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Reload competitors
+                loadCompetitors(document.getElementById('blog-filter').value);
+                
+                // Show success message
+                alert(data.message);
+            } else {
+                alert(data.message || 'Error deleting competitor');
+            }
+        })
+        .catch(error => {
+            console.error('Error deleting competitor:', error);
+            alert('Error deleting competitor');
+        });
+    }
+    
+    // Show competitor details
+    function showCompetitorDetails(competitorId) {
+        if (!competitorId) return;
+        
+        currentCompetitorId = competitorId;
+        
+        // Open the modal and show loading state
+        const modal = new bootstrap.Modal(document.getElementById('competitorDetailsModal'));
+        modal.show();
+        
+        const modalContent = document.getElementById('competitor-details-content');
+        modalContent.innerHTML = `
+            <div class="text-center">
+                <div class="spinner-border" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+            </div>
+        `;
+        
+        // Set up analyze button
+        const analyzeBtn = document.getElementById('analyze-competitor-btn');
+        analyzeBtn.onclick = function() {
+            analyzeCompetitor(competitorId);
+        };
+        
+        // Fetch competitor details
+        fetch(`/api/competitors/${competitorId}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    displayCompetitorDetails(data.competitor);
+                } else {
+                    modalContent.innerHTML = `<div class="alert alert-danger">${data.message || 'Error loading competitor details'}</div>`;
+                }
+            })
+            .catch(error => {
+                console.error('Error loading competitor details:', error);
+                modalContent.innerHTML = '<div class="alert alert-danger">Error loading competitor details</div>';
+            });
+    }
+    
+    // Display competitor details in the modal
+    function displayCompetitorDetails(competitor) {
+        const modalContent = document.getElementById('competitor-details-content');
+        
+        // Format last analyzed date
+        const lastAnalyzed = competitor.last_analyzed 
+            ? new Date(competitor.last_analyzed).toLocaleString() 
+            : 'Never';
+        
+        // Create content
+        let content = `
+            <h3>${competitor.name}</h3>
+            <p><strong>URL:</strong> <a href="${competitor.url}" target="_blank">${competitor.url}</a></p>
+            <div class="row mb-4">
+                <div class="col-md-6">
+                    <p><strong>Category:</strong> ${competitor.category || 'Not specified'}</p>
+                    <p><strong>Priority:</strong> ${competitor.priority}</p>
+                </div>
+                <div class="col-md-6">
+                    <p><strong>Last Analyzed:</strong> ${lastAnalyzed}</p>
+                    <p><strong>Description:</strong> ${competitor.description || 'No description'}</p>
+                </div>
+            </div>
+        `;
+        
+        // Keywords and topics
+        content += `
+            <div class="row mb-4">
+                <div class="col-md-6">
+                    <h5>Top Keywords</h5>
+                    <div class="keyword-tags">
+        `;
+        
+        if (competitor.top_keywords && competitor.top_keywords.length > 0) {
+            competitor.top_keywords.forEach(keyword => {
+                content += `<span class="badge bg-light text-dark me-2 mb-2">${keyword.keyword} (${keyword.total_frequency})</span>`;
+            });
+        } else {
+            content += '<p class="text-muted">No keywords found</p>';
+        }
+        
+        content += `
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <h5>Top Topics</h5>
+                    <div class="topic-tags">
+        `;
+        
+        if (competitor.top_topics && competitor.top_topics.length > 0) {
+            competitor.top_topics.forEach(topic => {
+                content += `<span class="badge bg-secondary me-2 mb-2">${topic.topic} (${topic.frequency})</span>`;
+            });
+        } else {
+            content += '<p class="text-muted">No topics found</p>';
+        }
+        
+        content += `
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        // Recent content
+        content += `
+            <h5>Recent Content</h5>
+            <div class="table-responsive">
+                <table class="table table-sm">
+                    <thead>
+                        <tr>
+                            <th>Title</th>
+                            <th>Word Count</th>
+                            <th>Published Date</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+        `;
+        
+        if (competitor.articles && competitor.articles.length > 0) {
+            competitor.articles.forEach(article => {
+                const publishedDate = article.published_date 
+                    ? new Date(article.published_date).toLocaleDateString() 
+                    : 'Unknown';
+                
+                content += `
+                    <tr>
+                        <td><a href="${article.url}" target="_blank">${article.title}</a></td>
+                        <td>${article.word_count}</td>
+                        <td>${publishedDate}</td>
+                    </tr>
+                `;
+            });
+        } else {
+            content += '<tr><td colspan="3" class="text-center text-muted">No articles found</td></tr>';
+        }
+        
+        content += `
+                    </tbody>
+                </table>
+            </div>
+        `;
+        
+        // Update modal content
+        modalContent.innerHTML = content;
+        
+        // Update insights panel
+        updateInsightsPanel(competitor);
+    }
+    
+    // Update insights panel with competitor data
+    function updateInsightsPanel(competitor) {
+        const insightsContainer = document.getElementById('insights-container');
+        
+        let content = `
+            <h5>${competitor.name}</h5>
+            <p class="text-muted">Last analyzed: ${competitor.last_analyzed ? new Date(competitor.last_analyzed).toLocaleDateString() : 'Never'}</p>
+            
+            <div class="mb-3">
+                <h6>Content Insights</h6>
+                <ul class="list-unstyled">
+                    <li><i class="bi bi-file-text me-2"></i> ${competitor.articles ? competitor.articles.length : 0} articles analyzed</li>
+                    <li><i class="bi bi-tags me-2"></i> ${competitor.top_keywords ? competitor.top_keywords.length : 0} unique keywords</li>
+                    <li><i class="bi bi-bookmark me-2"></i> ${competitor.top_topics ? competitor.top_topics.length : 0} topics identified</li>
+                </ul>
+            </div>
+            
+            <div class="mb-3">
+                <h6>Top Keywords</h6>
+                <div class="keyword-cloud">
+        `;
+        
+        if (competitor.top_keywords && competitor.top_keywords.length > 0) {
+            competitor.top_keywords.slice(0, 10).forEach(keyword => {
+                content += `<span class="badge bg-light text-dark me-2 mb-2">${keyword.keyword}</span>`;
+            });
+        } else {
+            content += '<p class="text-muted">No keywords found</p>';
+        }
+        
+        content += `
+                </div>
+            </div>
+            
+            <button class="btn btn-sm btn-outline-primary" onclick="showCompetitorDetails(${competitor.id})">
+                View Details
+            </button>
+        `;
+        
+        insightsContainer.innerHTML = content;
+    }
+    
+    // Run gap analysis
+    function runGapAnalysis(blogId) {
+        const resultsContainer = document.getElementById('gap-analysis-results');
+        resultsContainer.innerHTML = `
+            <div class="text-center">
+                <div class="spinner-border" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <p class="mt-2 text-muted">Analyzing competitor content gaps...</p>
+            </div>
+        `;
+        
+        fetch(`/api/blogs/${blogId}/competitive-gap-analysis`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    displayGapAnalysis(data);
+                } else {
+                    resultsContainer.innerHTML = `<div class="alert alert-danger">${data.message || 'Error performing gap analysis'}</div>`;
+                }
+            })
+            .catch(error => {
+                console.error('Error performing gap analysis:', error);
+                resultsContainer.innerHTML = '<div class="alert alert-danger">Error performing gap analysis</div>';
+            });
+    }
+    
+    // Display gap analysis results
+    function displayGapAnalysis(data) {
+        const resultsContainer = document.getElementById('gap-analysis-results');
+        
+        if (!data.gap_topics || data.gap_topics.length === 0) {
+            resultsContainer.innerHTML = '<div class="alert alert-info">No significant content gaps found</div>';
+            return;
+        }
+        
+        let content = `
+            <h5>Content Gap Topics</h5>
+            <p class="text-muted">Topics your competitors are covering that you might be missing:</p>
+            <div class="row">
+        `;
+        
+        data.gap_topics.forEach(topic => {
+            content += `
+                <div class="col-md-6 mb-3">
+                    <div class="card h-100">
+                        <div class="card-body">
+                            <h6 class="card-title">${topic.topic}</h6>
+                            <p class="card-text text-muted">Frequency: ${topic.total_frequency}</p>
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+        
+        content += '</div>';
+        
+        resultsContainer.innerHTML = content;
+        
+        // Update keyword chart
+        updateKeywordChart(data.competitor_keywords);
+    }
+    
+    // Update keyword chart
+    function updateKeywordChart(keywords) {
+        const ctx = document.getElementById('keyword-chart').getContext('2d');
+        
+        // Destroy existing chart if it exists
+        if (keywordChart) {
+            keywordChart.destroy();
+        }
+        
+        // Prepare data for chart
+        const labels = [];
+        const data = [];
+        
+        if (keywords && keywords.length > 0) {
+            // Get top 10 keywords
+            const topKeywords = keywords.slice(0, 10);
+            
+            topKeywords.forEach(keyword => {
+                labels.push(keyword.keyword);
+                data.push(keyword.total_frequency);
+            });
+        }
+        
+        // Create new chart
+        keywordChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Keyword Frequency',
+                    data: data,
+                    backgroundColor: 'rgba(54, 162, 235, 0.5)',
+                    borderColor: 'rgba(54, 162, 235, 1)',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+        
+        // Update top keywords list
+        const topKeywordsContainer = document.getElementById('top-keywords');
+        
+        if (!keywords || keywords.length === 0) {
+            topKeywordsContainer.innerHTML = '<p class="text-muted">No keywords found</p>';
+            return;
+        }
+        
+        let keywordsHtml = '<div class="row">';
+        
+        keywords.slice(0, 15).forEach(keyword => {
+            keywordsHtml += `
+                <div class="col-md-6 mb-2">
+                    <span class="badge bg-light text-dark">${keyword.keyword}</span>
+                    <span class="text-muted">(${keyword.total_frequency})</span>
+                </div>
+            `;
+        });
+        
+        keywordsHtml += '</div>';
+        topKeywordsContainer.innerHTML = keywordsHtml;
+    }
+    
+    // Get content recommendations
+    function getContentRecommendations(blogId, topic = '') {
+        const resultsContainer = document.getElementById('content-recommendations-results');
+        resultsContainer.innerHTML = `
+            <div class="text-center">
+                <div class="spinner-border" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <p class="mt-2 text-muted">Generating recommendations...</p>
+            </div>
+        `;
+        
+        fetch(`/api/blogs/${blogId}/content-recommendations?topic=${encodeURIComponent(topic)}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    displayContentRecommendations(data.recommendations);
+                } else {
+                    resultsContainer.innerHTML = `<div class="alert alert-danger">${data.message || 'Error getting recommendations'}</div>`;
+                }
+            })
+            .catch(error => {
+                console.error('Error getting recommendations:', error);
+                resultsContainer.innerHTML = '<div class="alert alert-danger">Error getting recommendations</div>';
+            });
+    }
+    
+    // Display content recommendations
+    function displayContentRecommendations(recommendations) {
+        const resultsContainer = document.getElementById('content-recommendations-results');
+        
+        let content = `
+            <ul class="nav nav-tabs" id="recommendationTabs" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active" id="keywords-tab" data-bs-toggle="tab" data-bs-target="#keywords" type="button" role="tab" aria-controls="keywords" aria-selected="true">Keywords</button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="topics-tab" data-bs-toggle="tab" data-bs-target="#topics" type="button" role="tab" aria-controls="topics" aria-selected="false">Topic Ideas</button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="structure-tab" data-bs-toggle="tab" data-bs-target="#structure" type="button" role="tab" aria-controls="structure" aria-selected="false">Content Structure</button>
+                </li>
+            </ul>
+            <div class="tab-content pt-3" id="recommendationTabContent">
+                <div class="tab-pane fade show active" id="keywords" role="tabpanel" aria-labelledby="keywords-tab">
+        `;
+        
+        // Keywords tab
+        if (recommendations.keyword_recommendations && recommendations.keyword_recommendations.length > 0) {
+            content += '<div class="row">';
+            
+            recommendations.keyword_recommendations.forEach(keyword => {
+                content += `
+                    <div class="col-md-4 mb-3">
+                        <div class="card h-100">
+                            <div class="card-body">
+                                <h6 class="card-title">${keyword.keyword}</h6>
+                                <p class="card-text text-muted">Frequency: ${keyword.frequency}</p>
+                `;
+                
+                if (keyword.examples && keyword.examples.length > 0) {
+                    content += '<p class="mb-2">Example articles:</p><ul class="list-unstyled">';
+                    
+                    keyword.examples.forEach(example => {
+                        content += `<li><a href="${example.url}" target="_blank">${example.title}</a></li>`;
+                    });
+                    
+                    content += '</ul>';
+                }
+                
+                content += `
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            content += '</div>';
+        } else {
+            content += '<p class="text-muted">No keyword recommendations found</p>';
+        }
+        
+        // Topics tab
+        content += `
+                </div>
+                <div class="tab-pane fade" id="topics" role="tabpanel" aria-labelledby="topics-tab">
+        `;
+        
+        if (recommendations.topic_ideas && recommendations.topic_ideas.length > 0) {
+            content += '<div class="row">';
+            
+            recommendations.topic_ideas.forEach(topic => {
+                content += `
+                    <div class="col-md-6 mb-3">
+                        <div class="card h-100">
+                            <div class="card-body">
+                                <h6 class="card-title">${topic.topic}</h6>
+                                <p class="card-text text-muted">Frequency: ${topic.frequency}</p>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            content += '</div>';
+        } else {
+            content += '<p class="text-muted">No topic ideas found</p>';
+        }
+        
+        // Content structure tab
+        content += `
+                </div>
+                <div class="tab-pane fade" id="structure" role="tabpanel" aria-labelledby="structure-tab">
+        `;
+        
+        if (recommendations.content_structure && recommendations.content_structure.length > 0) {
+            recommendations.content_structure.forEach(structure => {
+                content += `
+                    <div class="card mb-3">
+                        <div class="card-header">
+                            <h6 class="mb-0"><a href="${structure.url}" target="_blank">${structure.title}</a></h6>
+                        </div>
+                        <div class="card-body">
+                `;
+                
+                if (structure.h1_tags && structure.h1_tags.length > 0) {
+                    content += '<h6>Main Headings:</h6><ul>';
+                    
+                    structure.h1_tags.forEach(tag => {
+                        content += `<li>${tag}</li>`;
+                    });
+                    
+                    content += '</ul>';
+                }
+                
+                if (structure.h2_tags && structure.h2_tags.length > 0) {
+                    content += '<h6>Subheadings:</h6><ul>';
+                    
+                    structure.h2_tags.forEach(tag => {
+                        content += `<li>${tag}</li>`;
+                    });
+                    
+                    content += '</ul>';
+                }
+                
+                content += `
+                        </div>
+                    </div>
+                `;
+            });
+        } else {
+            content += '<p class="text-muted">No content structure recommendations found</p>';
+        }
+        
+        content += `
+                </div>
+            </div>
+        `;
+        
+        resultsContainer.innerHTML = content;
+    }
+    
+    // Generate competitor analysis report
+    function generateReport(blogId, format) {
+        const previewContainer = document.getElementById('report-preview-content');
+        previewContainer.innerHTML = `
+            <div class="text-center">
+                <div class="spinner-border" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <p class="mt-2 text-muted">Generating report...</p>
+            </div>
+        `;
+        
+        // Open the modal
+        const modal = new bootstrap.Modal(document.getElementById('reportPreviewModal'));
+        modal.show();
+        
+        fetch(`/api/blogs/${blogId}/competitor-report?format=${format}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    reportData = data;
+                    
+                    if (format === 'html') {
+                        previewContainer.innerHTML = data.report;
+                    } else if (format === 'markdown') {
+                        // Convert markdown to HTML for preview
+                        previewContainer.innerHTML = `<pre class="p-3">${data.report}</pre>`;
+                    } else {
+                        previewContainer.innerHTML = `<pre class="p-3">${JSON.stringify(data.report, null, 2)}</pre>`;
+                    }
+                } else {
+                    previewContainer.innerHTML = `<div class="alert alert-danger">${data.message || 'Error generating report'}</div>`;
+                }
+            })
+            .catch(error => {
+                console.error('Error generating report:', error);
+                previewContainer.innerHTML = '<div class="alert alert-danger">Error generating report</div>';
+            });
+    }
+    
+    // Download report
+    function downloadReport() {
+        if (!reportData) return;
+        
+        const format = reportData.format;
+        const blogId = document.getElementById('report-blog').value;
+        const blogName = document.getElementById('report-blog').options[document.getElementById('report-blog').selectedIndex].text;
+        
+        let filename = `competitor-analysis-${blogName.replace(/[^a-z0-9]/gi, '-').toLowerCase()}-${new Date().toISOString().slice(0, 10)}`;
+        let content = reportData.report;
+        let contentType = '';
+        
+        if (format === 'html') {
+            filename += '.html';
+            contentType = 'text/html';
+        } else if (format === 'markdown') {
+            filename += '.md';
+            contentType = 'text/markdown';
+        } else {
+            filename += '.json';
+            contentType = 'application/json';
+            content = JSON.stringify(content, null, 2);
+        }
+        
+        const blob = new Blob([content], { type: contentType });
+        const url = URL.createObjectURL(blob);
+        
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    }
+</script>
+{% endblock %}

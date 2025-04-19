@@ -11,6 +11,7 @@ from src.shared.research_service import ResearchService
 from src.shared.openai_service import OpenAIService
 from src.shared.openai_service_optimizer import OptimizedOpenAIService
 from src.shared.billing_service import BillingService
+from src.shared.competitor_analysis_service import CompetitorAnalysisService
 from src.shared.ai_optimization_controller import ai_optimization_bp, init_controller
 
 # Set up logging
@@ -35,6 +36,14 @@ optimized_openai_service = OptimizedOpenAIService(
     enable_caching=enable_caching
 )
 billing_service = BillingService()
+
+# Initialize the competitor analysis service
+try:
+    competitor_analysis_service = CompetitorAnalysisService()
+    logger.info("Competitor Analysis service initialized")
+except Exception as e:
+    logger.warning(f"Failed to initialize Competitor Analysis service: {str(e)}")
+    competitor_analysis_service = None
 
 # Initialize and register the AI optimization controller
 init_controller(optimized_openai_service)
