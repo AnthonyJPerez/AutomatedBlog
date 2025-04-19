@@ -1723,7 +1723,15 @@ def trending_topics_api():
 @app.route('/content-research', methods=['GET'])
 def content_research_dash():
     """Content research tools page (dash version)"""
-    return render_template('content_research.html')
+    # Get list of blogs for the blog context selector
+    try:
+        blogs_data = get_blogs()
+        blogs = json.loads(blogs_data.data)
+    except Exception as e:
+        logger.error(f"Error getting blogs for research tools: {str(e)}")
+        blogs = []
+    
+    return render_template('content_research.html', blogs=blogs)
 
 @app.route('/scrape-url', methods=['POST'])
 def scrape_url_page():
@@ -1731,6 +1739,7 @@ def scrape_url_page():
     try:
         url = request.form.get('url')
         method = request.form.get('method')
+        blog_id = request.form.get('blog_id')  # Get the blog_id from the form
         
         if not url:
             flash("URL is required", "danger")
