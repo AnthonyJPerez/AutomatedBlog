@@ -1081,10 +1081,69 @@ def usage_dashboard():
                           blogs=blogs)
 
 @app.route('/api/usage/global')
+@app.route('/api/global/usage')
 def api_global_usage():
     """API endpoint to get global usage and billing information"""
     try:
+        # Get global usage data from billing service
         global_status = billing_service.get_all_services_status()
+        
+        # Get all blogs and their usage
+        blog_data_path = "data/blogs"
+        blogs_info = []
+        
+        if os.path.exists(blog_data_path):
+            # List all blog folders
+            local_blog_folders = [f for f in os.listdir(blog_data_path) 
+                                 if os.path.isdir(os.path.join(blog_data_path, f))]
+            
+            for blog_id in local_blog_folders:
+                try:
+                    blog_config_path = os.path.join(blog_data_path, blog_id, "config.json")
+                    usage_path = os.path.join(blog_data_path, blog_id, "usage.json")
+                    
+                    blog_info = {
+                        "id": blog_id,
+                        "name": "Unnamed Blog",
+                        "theme": "Unknown",
+                        "content_count": 0,
+                        "images_count": 0,
+                        "published_count": 0,
+                        "last_generated": None,
+                        "total_cost": 0.0
+                    }
+                    
+                    # Load blog config if exists
+                    if os.path.exists(blog_config_path):
+                        with open(blog_config_path, 'r') as f:
+                            blog_config = json.load(f)
+                            blog_info["name"] = blog_config.get("name", "Unnamed Blog")
+                            blog_info["theme"] = blog_config.get("theme", {}).get("name", "Unknown")
+                    
+                    # Load usage data if exists
+                    if os.path.exists(usage_path):
+                        with open(usage_path, 'r') as f:
+                            usage_data = json.load(f)
+                            blog_info["content_count"] = usage_data.get("content_count", 0)
+                            blog_info["images_count"] = usage_data.get("images_count", 0)
+                            blog_info["published_count"] = usage_data.get("published_count", 0)
+                            blog_info["last_generated"] = usage_data.get("last_generated", None)
+                            blog_info["total_cost"] = usage_data.get("total_cost", 0.0)
+                    
+                    blogs_info.append(blog_info)
+                    
+                except Exception as e:
+                    logger.error(f"Error loading blog data for {blog_id}: {str(e)}")
+        
+        # Add blogs to the response
+        global_status["blogs"] = blogs_info
+        
+        # Add total counts
+        global_status["total_blogs"] = len(blogs_info)
+        global_status["total_content"] = sum(blog.get("content_count", 0) for blog in blogs_info)
+        global_status["total_images"] = sum(blog.get("images_count", 0) for blog in blogs_info)
+        global_status["total_published"] = sum(blog.get("published_count", 0) for blog in blogs_info)
+        
         return jsonify(global_status)
     except Exception as e:
         logger.error(f"Error retrieving global usage data: {str(e)}")
