@@ -1,0 +1,181 @@
+{% extends "base.html" %}
+
+{% block title %}WordPress Domain Mapping{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1>WordPress Domain Mapping</h1>
+    
+    <div class="alert alert-info">
+        <i class="fas fa-info-circle"></i> Map custom domains to your WordPress Multisite network sites. This feature uses the Mercator plugin to manage domain mappings.
+    </div>
+    
+    {% if error_message %}
+    <div class="alert alert-danger">
+        <i class="fas fa-exclamation-triangle"></i> {{ error_message }}
+    </div>
+    {% endif %}
+    
+    {% if success_message %}
+    <div class="alert alert-success">
+        <i class="fas fa-check-circle"></i> {{ success_message }}
+    </div>
+    {% endif %}
+    
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5>Add New Domain Mapping</h5>
+        </div>
+        <div class="card-body">
+            <form method="POST" action="{{ url_for('wordpress_domain_mapping') }}">
+                <div class="row mb-3">
+                    <div class="col-md-4">
+                        <label for="site_id" class="form-label">Site</label>
+                        <select class="form-select" id="site_id" name="site_id" required>
+                            <option value="">Select a site...</option>
+                            {% for site in site_list %}
+                            <option value="{{ site.id }}" {% if request.args.get('site_id')|int == site.id %}selected{% endif %}>
+                                {{ site.name }} (ID: {{ site.id }}) - {{ site.url }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label for="domain" class="form-label">Domain Name</label>
+                        <input type="text" class="form-control" id="domain" name="domain" placeholder="example.com" required>
+                        <div class="form-text text-muted">Enter the domain name without http:// or https://</div>
+                    </div>
+                    <div class="col-md-2 d-flex align-items-end">
+                        <button type="submit" class="btn btn-primary w-100">
+                            <i class="fas fa-plus-circle"></i> Add Domain
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5>Existing Domain Mappings</h5>
+        </div>
+        <div class="card-body">
+            {% if site_list %}
+                <div class="accordion" id="mappingsAccordion">
+                    {% for site in site_list %}
+                    <div class="accordion-item">
+                        <h2 class="accordion-header" id="heading-{{ site.id }}">
+                            <button class="accordion-button {% if not site.mapped_domains or site.mapped_domains|length == 0 %}collapsed{% endif %}" type="button" data-bs-toggle="collapse" data-bs-target="#collapse-{{ site.id }}" aria-expanded="{{ 'true' if site.mapped_domains and site.mapped_domains|length > 0 else 'false' }}" aria-controls="collapse-{{ site.id }}">
+                                <div class="d-flex justify-content-between align-items-center w-100">
+                                    <span><strong>{{ site.name }}</strong> (ID: {{ site.id }})</span>
+                                    <span>
+                                        {% if site.mapped_domains %}
+                                            <span class="badge bg-primary">{{ site.mapped_domains|length }} domains</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary">No domains</span>
+                                        {% endif %}
+                                    </span>
+                                </div>
+                            </button>
+                        </h2>
+                        <div id="collapse-{{ site.id }}" class="accordion-collapse collapse {% if site.mapped_domains and site.mapped_domains|length > 0 %}show{% endif %}" aria-labelledby="heading-{{ site.id }}" data-bs-parent="#mappingsAccordion">
+                            <div class="accordion-body">
+                                <div class="small text-muted mb-2">Default URL: <a href="{{ site.url }}" target="_blank">{{ site.url }}</a></div>
+                                
+                                {% if site.mapped_domains and site.mapped_domains|length > 0 %}
+                                    <div class="table-responsive">
+                                        <table class="table table-striped table-hover">
+                                            <thead>
+                                                <tr>
+                                                    <th>Domain ID</th>
+                                                    <th>Domain</th>
+                                                    <th>Status</th>
+                                                    <th>Actions</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {% for domain in site.mapped_domains %}
+                                                <tr>
+                                                    <td>{{ domain.id }}</td>
+                                                    <td>
+                                                        <a href="https://{{ domain.domain }}" target="_blank">{{ domain.domain }}</a>
+                                                    </td>
+                                                    <td>
+                                                        {% if domain.active %}
+                                                            <span class="badge bg-success">Active</span>
+                                                        {% else %}
+                                                            <span class="badge bg-warning">Inactive</span>
+                                                        {% endif %}
+                                                    </td>
+                                                    <td>
+                                                        <form method="POST" action="{{ url_for('wordpress_domain_mapping') }}" class="d-inline">
+                                                            <input type="hidden" name="domain_id" value="{{ domain.id }}">
+                                                            <input type="hidden" name="site_id" value="{{ site.id }}">
+                                                            <input type="hidden" name="action" value="delete">
+                                                            <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Are you sure you want to delete this domain mapping?')">
+                                                                <i class="fas fa-trash"></i> Remove
+                                                            </button>
+                                                        </form>
+                                                    </td>
+                                                </tr>
+                                                {% endfor %}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                {% elif site.domain_error %}
+                                    <div class="alert alert-danger">
+                                        <i class="fas fa-exclamation-triangle"></i> Error retrieving domain mappings: {{ site.domain_error }}
+                                    </div>
+                                {% else %}
+                                    <div class="alert alert-warning">
+                                        <i class="fas fa-exclamation-circle"></i> No domains mapped to this site.
+                                    </div>
+                                    
+                                    <div class="text-center mt-3">
+                                        <a href="{{ url_for('wordpress_domain_mapping') }}?site_id={{ site.id }}" class="btn btn-sm btn-primary">
+                                            <i class="fas fa-plus-circle"></i> Add Domain Mapping
+                                        </a>
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="alert alert-warning">
+                    <i class="fas fa-exclamation-circle"></i> No sites found in your WordPress Multisite network.
+                </div>
+            {% endif %}
+        </div>
+    </div>
+    
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5>Domain Mapping Information</h5>
+        </div>
+        <div class="card-body">
+            <div class="alert alert-info">
+                <h5><i class="fas fa-info-circle"></i> Important Notes on Domain Mapping</h5>
+                <p>When mapping custom domains to your WordPress Multisite sites, please keep the following in mind:</p>
+                <ol>
+                    <li>You must configure DNS for each domain to point to your server's IP address.</li>
+                    <li>If using a subdomain installation, you'll need a wildcard SSL certificate.</li>
+                    <li>Custom domains need to be added to your server's virtual host configuration.</li>
+                    <li>For Azure App Service, configure custom domains in the Azure Portal as well.</li>
+                    <li>After mapping a domain, you may need to update permalinks in the WordPress admin.</li>
+                </ol>
+            </div>
+        </div>
+    </div>
+    
+    <div class="mt-4 mb-5">
+        <a href="{{ url_for('test_wordpress_multisite') }}" class="btn btn-secondary me-2">
+            <i class="fas fa-arrow-left"></i> Back to Multisite Management
+        </a>
+        <a href="{{ url_for('index') }}" class="btn btn-outline-secondary">
+            <i class="fas fa-home"></i> Dashboard
+        </a>
+    </div>
+</div>
+{% endblock %}

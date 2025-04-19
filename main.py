@@ -2027,17 +2027,33 @@ def wordpress_domain_mapping():
         
         # Handle domain mapping form submission
         if request.method == 'POST':
-            site_id = request.form.get('site_id')
-            domain = request.form.get('domain')
+            action = request.form.get('action', 'add')
             
-            if not site_id or not domain:
-                error_message = "Site ID and domain are required"
+            if action == 'delete':
+                # Handle domain deletion
+                domain_id = request.form.get('domain_id')
+                site_id = request.form.get('site_id')
+                if not domain_id or not site_id:
+                    error_message = "Domain ID and site ID are required for deletion"
+                else:
+                    try:
+                        result = wordpress_service.delete_domain_mapping(int(site_id), int(domain_id))
+                        success_message = f"Successfully removed domain mapping (ID: {domain_id}) from site {site_id}"
+                    except Exception as e:
+                        error_message = f"Error removing domain mapping: {str(e)}"
             else:
-                try:
-                    result = wordpress_service.map_domain(int(site_id), domain)
-                    success_message = f"Successfully mapped domain {domain} to site {site_id}"
-                except Exception as e:
-                    error_message = f"Error mapping domain: {str(e)}"
+                # Handle domain addition
+                site_id = request.form.get('site_id')
+                domain = request.form.get('domain')
+                
+                if not site_id or not domain:
+                    error_message = "Site ID and domain are required"
+                else:
+                    try:
+                        result = wordpress_service.map_domain(int(site_id), domain)
+                        success_message = f"Successfully mapped domain {domain} to site {site_id}"
+                    except Exception as e:
+                        error_message = f"Error mapping domain: {str(e)}"
         
         # Get mapped domains for each site
         for site in site_list:

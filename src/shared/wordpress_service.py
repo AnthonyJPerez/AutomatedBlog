@@ -564,6 +564,49 @@ class WordPressService:
         except Exception as e:
             self.logger.error(f"Error mapping domain: {str(e)}")
             raise Exception(f"Failed to map domain {domain} to site {site_id}: {str(e)}")
+            
+    def delete_domain_mapping(self, site_id, domain_id):
+        """
+        Delete a domain mapping from a site in the WordPress Multisite network.
+        
+        Args:
+            site_id (int): The site ID the domain is mapped to
+            domain_id (int): The ID of the domain mapping to delete
+            
+        Returns:
+            dict: Result of the domain mapping deletion operation
+        """
+        if not self.is_multisite:
+            raise Exception("WordPress is not configured as Multisite")
+            
+        if not self.default_wordpress_url or not self.default_wordpress_username or not self.default_wordpress_password:
+            raise Exception("Default WordPress credentials are not available from Key Vault")
+            
+        # Ensure WordPress URL has the correct format
+        wordpress_url = self.default_wordpress_url
+        if not wordpress_url.endswith('/'):
+            wordpress_url += '/'
+            
+        if not wordpress_url.endswith('wp-json/'):
+            wordpress_url += 'wp-json/'
+            
+        # Create the endpoint URL for the specific domain using Mercator REST API extension
+        endpoint = f"{wordpress_url}wp/v2/sites/{site_id}/domains/{domain_id}"
+        
+        try:
+            # DELETE request to remove the domain mapping
+            result = self._make_request('DELETE', endpoint, auth=(self.default_wordpress_username, self.default_wordpress_password))
+            
+            self.logger.info(f"Successfully deleted domain mapping ID {domain_id} from site {site_id}")
+            return {
+                'success': True,
+                'domain_id': domain_id,
+                'site_id': site_id
+            }
+                
+        except Exception as e:
+            self.logger.error(f"Error deleting domain mapping: {str(e)}")
+            raise Exception(f"Failed to delete domain mapping ID {domain_id} from site {site_id}: {str(e)}")
     
     def _make_request(self, method, url, **kwargs):
         """Make HTTP request with error handling and logging"""
