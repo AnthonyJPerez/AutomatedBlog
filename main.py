@@ -592,9 +592,13 @@ def generate_outline():
 def view_content(blog_id, run_id):
     """View content for a specific run"""
     try:
+        # Make sure we're using the correct blog_id and run_id
         # Get blog configuration
         blog_path = os.path.join("data/blogs", blog_id)
         config_path = os.path.join(blog_path, "config.json")
+        
+        logger.debug(f"Viewing content for blog_id: {blog_id}, run_id: {run_id}")
+        logger.debug(f"Config path: {config_path}")
         
         if not os.path.exists(config_path):
             flash(f"Blog configuration not found for ID: {blog_id}", "danger")
