@@ -1,0 +1,705 @@
+{% extends "base.html" %}
+
+{% block title %}Research Tools{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <h1>Content Research Tools</h1>
+            <p class="lead">Use these tools to research content, scrape websites, and analyze trends for your blog content generation.</p>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-12 mb-4">
+            <ul class="nav nav-tabs" id="research-tabs" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active" id="web-scraper-tab" data-bs-toggle="tab" data-bs-target="#web-scraper" type="button" role="tab" aria-controls="web-scraper" aria-selected="true">
+                        <i class="bi bi-globe"></i> Web Scraper
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="rss-feed-tab" data-bs-toggle="tab" data-bs-target="#rss-feed" type="button" role="tab" aria-controls="rss-feed" aria-selected="false">
+                        <i class="bi bi-rss"></i> RSS Feed
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="topic-research-tab" data-bs-toggle="tab" data-bs-target="#topic-research" type="button" role="tab" aria-controls="topic-research" aria-selected="false">
+                        <i class="bi bi-search"></i> Topic Research
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="trending-topics-tab" data-bs-toggle="tab" data-bs-target="#trending-topics" type="button" role="tab" aria-controls="trending-topics" aria-selected="false">
+                        <i class="bi bi-graph-up-arrow"></i> Trending Topics
+                    </button>
+                </li>
+            </ul>
+
+            <div class="tab-content p-3 border border-top-0 rounded-bottom" id="research-tabs-content">
+                <!-- Web Scraper Tab -->
+                <div class="tab-pane fade show active" id="web-scraper" role="tabpanel" aria-labelledby="web-scraper-tab">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5 class="mb-0">Scrape Website Content</h5>
+                                </div>
+                                <div class="card-body">
+                                    <form id="web-scraper-form">
+                                        <div class="mb-3">
+                                            <label for="url" class="form-label">Website URL</label>
+                                            <input type="url" class="form-control" id="scrape-url" name="url" placeholder="https://example.com" required>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label for="scrape-method" class="form-label">Extraction Method</label>
+                                            <select class="form-select" id="scrape-method" name="method">
+                                                <option value="general" selected>General Website (Better for most sites)</option>
+                                                <option value="article">Article or Blog Post (Better for news/articles)</option>
+                                            </select>
+                                        </div>
+                                        <button type="submit" class="btn btn-primary" id="scrape-btn">
+                                            <i class="bi bi-cloud-download"></i> Scrape Content
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-header d-flex justify-content-between align-items-center">
+                                    <h5 class="mb-0">Extraction Results</h5>
+                                    <div>
+                                        <button class="btn btn-sm btn-outline-secondary" id="copy-content-btn" disabled>
+                                            <i class="bi bi-clipboard"></i> Copy
+                                        </button>
+                                        <button class="btn btn-sm btn-outline-primary" id="save-content-btn" disabled>
+                                            <i class="bi bi-save"></i> Save
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="card-body">
+                                    <div id="scrape-results" class="p-3 bg-light rounded" style="max-height: 300px; overflow-y: auto;">
+                                        <p class="text-muted">Content extraction results will appear here.</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row mt-4" id="content-analysis-section" style="display: none;">
+                        <div class="col-md-12">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5 class="mb-0">Content Analysis</h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <h6>Key Information</h6>
+                                            <table class="table table-sm">
+                                                <tbody>
+                                                    <tr>
+                                                        <th width="40%">Title</th>
+                                                        <td id="content-title">-</td>
+                                                    </tr>
+                                                    <tr>
+                                                        <th>Word Count</th>
+                                                        <td id="content-wordcount">-</td>
+                                                    </tr>
+                                                    <tr>
+                                                        <th>Sentiment</th>
+                                                        <td id="content-sentiment">-</td>
+                                                    </tr>
+                                                    <tr>
+                                                        <th>Date Extracted</th>
+                                                        <td id="content-date">-</td>
+                                                    </tr>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <h6>Top Keywords</h6>
+                                            <div id="content-keywords" class="p-2 bg-light rounded" style="max-height: 150px; overflow-y: auto;">
+                                                <span class="text-muted">No keywords detected</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- RSS Feed Tab -->
+                <div class="tab-pane fade" id="rss-feed" role="tabpanel" aria-labelledby="rss-feed-tab">
+                    <div class="row">
+                        <div class="col-md-5">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5 class="mb-0">RSS Feed Reader</h5>
+                                </div>
+                                <div class="card-body">
+                                    <form id="rss-feed-form">
+                                        <div class="mb-3">
+                                            <label for="feed-url" class="form-label">RSS Feed URL</label>
+                                            <input type="url" class="form-control" id="feed-url" name="feed_url" placeholder="https://example.com/feed" required>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label for="feed-limit" class="form-label">Number of Entries</label>
+                                            <input type="number" class="form-control" id="feed-limit" name="limit" min="1" max="50" value="10">
+                                        </div>
+                                        <button type="submit" class="btn btn-primary" id="fetch-feed-btn">
+                                            <i class="bi bi-rss"></i> Fetch Feed
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-7">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5 class="mb-0">Feed Entries</h5>
+                                </div>
+                                <div class="card-body">
+                                    <div id="feed-entries" class="p-3 bg-light rounded" style="max-height: 400px; overflow-y: auto;">
+                                        <p class="text-muted">RSS feed entries will appear here.</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Topic Research Tab -->
+                <div class="tab-pane fade" id="topic-research" role="tabpanel" aria-labelledby="topic-research-tab">
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5 class="mb-0">Research a Topic</h5>
+                                </div>
+                                <div class="card-body">
+                                    <form id="topic-research-form">
+                                        <div class="mb-3">
+                                            <label for="research-topic" class="form-label">Topic</label>
+                                            <input type="text" class="form-control" id="research-topic" name="topic" placeholder="Enter a topic to research" required>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label for="research-sources" class="form-label">Number of Sources</label>
+                                            <input type="number" class="form-control" id="research-sources" name="num_sources" min="1" max="10" value="3">
+                                        </div>
+                                        <button type="submit" class="btn btn-primary" id="research-btn">
+                                            <i class="bi bi-search"></i> Research Topic
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-8">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5 class="mb-0">Research Results</h5>
+                                </div>
+                                <div class="card-body">
+                                    <div id="research-results" class="p-3 bg-light rounded" style="max-height: 400px; overflow-y: auto;">
+                                        <p class="text-muted">Research results will appear here.</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Trending Topics Tab -->
+                <div class="tab-pane fade" id="trending-topics" role="tabpanel" aria-labelledby="trending-topics-tab">
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5 class="mb-0">Trending Topics</h5>
+                                </div>
+                                <div class="card-body">
+                                    <form id="trending-topics-form">
+                                        <div class="mb-3">
+                                            <label for="topic-category" class="form-label">Category</label>
+                                            <select class="form-select" id="topic-category" name="category">
+                                                <option value="" selected>All Categories</option>
+                                                <option value="technology">Technology</option>
+                                                <option value="business">Business</option>
+                                                <option value="health">Health</option>
+                                                <option value="lifestyle">Lifestyle</option>
+                                            </select>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label for="topic-limit" class="form-label">Number of Topics</label>
+                                            <input type="number" class="form-control" id="topic-limit" name="limit" min="5" max="20" value="10">
+                                        </div>
+                                        <button type="submit" class="btn btn-primary" id="get-topics-btn">
+                                            <i class="bi bi-graph-up-arrow"></i> Get Trending Topics
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-8">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5 class="mb-0">Trending Topics List</h5>
+                                </div>
+                                <div class="card-body">
+                                    <div id="topics-results">
+                                        <p class="text-muted">Trending topics will appear here.</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Web Scraper Form
+        document.getElementById('web-scraper-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const url = document.getElementById('scrape-url').value;
+            const method = document.getElementById('scrape-method').value;
+            const scrapeBtn = document.getElementById('scrape-btn');
+            
+            // Show loading state
+            scrapeBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Scraping...';
+            scrapeBtn.disabled = true;
+            
+            // Clear previous results
+            document.getElementById('scrape-results').innerHTML = '<p class="text-muted">Loading content...</p>';
+            document.getElementById('content-analysis-section').style.display = 'none';
+            
+            // Disable copy and save buttons
+            document.getElementById('copy-content-btn').disabled = true;
+            document.getElementById('save-content-btn').disabled = true;
+            
+            // Make API request
+            fetch('/api/scrape-url', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    url: url,
+                    method: method
+                })
+            })
+            .then(response => response.json())
+            .then(result => {
+                // Reset button state
+                scrapeBtn.innerHTML = '<i class="bi bi-cloud-download"></i> Scrape Content';
+                scrapeBtn.disabled = false;
+                
+                if (result.success) {
+                    // Display the extracted content
+                    const content = result.data;
+                    
+                    // Show the text content
+                    let displayText = '';
+                    if (method === 'article' && content.text) {
+                        displayText = content.text;
+                    } else if (content.content) {
+                        displayText = content.content;
+                    } else if (content.text) {
+                        displayText = content.text;
+                    } else {
+                        displayText = 'No content extracted.';
+                    }
+                    
+                    document.getElementById('scrape-results').innerHTML = `<pre class="text-wrap">${displayText}</pre>`;
+                    
+                    // Update content analysis section
+                    document.getElementById('content-analysis-section').style.display = 'block';
+                    
+                    // Update content title
+                    if (content.title) {
+                        document.getElementById('content-title').textContent = content.title;
+                    } else {
+                        document.getElementById('content-title').textContent = 'Unknown';
+                    }
+                    
+                    // Update word count
+                    if (displayText) {
+                        const wordCount = displayText.split(/\s+/).filter(word => word.length > 0).length;
+                        document.getElementById('content-wordcount').textContent = wordCount.toLocaleString();
+                    } else {
+                        document.getElementById('content-wordcount').textContent = '0';
+                    }
+                    
+                    // Update sentiment
+                    if (content.analysis && content.analysis.sentiment) {
+                        const sentiment = content.analysis.sentiment;
+                        let sentimentText = sentiment.category;
+                        let sentimentClass = 'text-primary';
+                        
+                        if (sentiment.category === 'positive') {
+                            sentimentClass = 'text-success';
+                        } else if (sentiment.category === 'negative') {
+                            sentimentClass = 'text-danger';
+                        } else {
+                            sentimentClass = 'text-secondary';
+                        }
+                        
+                        document.getElementById('content-sentiment').innerHTML = 
+                            `<span class="${sentimentClass}">${sentimentText}</span> ` +
+                            `(Polarity: ${sentiment.polarity.toFixed(2)}, ` +
+                            `Subjectivity: ${sentiment.subjectivity.toFixed(2)})`;
+                    } else {
+                        document.getElementById('content-sentiment').textContent = 'Not available';
+                    }
+                    
+                    // Update date
+                    if (content.extracted_at) {
+                        document.getElementById('content-date').textContent = new Date(content.extracted_at).toLocaleString();
+                    } else {
+                        document.getElementById('content-date').textContent = new Date().toLocaleString();
+                    }
+                    
+                    // Update keywords
+                    if (content.analysis && content.analysis.keywords && content.analysis.keywords.length > 0) {
+                        const keywordsHtml = content.analysis.keywords.map(keyword => 
+                            `<span class="badge bg-secondary me-1 mb-1">${keyword}</span>`
+                        ).join('');
+                        document.getElementById('content-keywords').innerHTML = keywordsHtml;
+                    } else {
+                        document.getElementById('content-keywords').innerHTML = '<span class="text-muted">No keywords detected</span>';
+                    }
+                    
+                    // Enable copy and save buttons
+                    document.getElementById('copy-content-btn').disabled = false;
+                    document.getElementById('save-content-btn').disabled = false;
+                } else {
+                    // Show error message
+                    document.getElementById('scrape-results').innerHTML = 
+                        `<div class="alert alert-danger">Error: ${result.message || 'Failed to extract content'}</div>`;
+                }
+            })
+            .catch(error => {
+                // Reset button state
+                scrapeBtn.innerHTML = '<i class="bi bi-cloud-download"></i> Scrape Content';
+                scrapeBtn.disabled = false;
+                
+                // Show error message
+                document.getElementById('scrape-results').innerHTML = 
+                    `<div class="alert alert-danger">Error: ${error.message || 'Failed to connect to server'}</div>`;
+            });
+        });
+        
+        // Copy content button
+        document.getElementById('copy-content-btn').addEventListener('click', function() {
+            const content = document.querySelector('#scrape-results pre').textContent;
+            navigator.clipboard.writeText(content)
+                .then(() => {
+                    this.innerHTML = '<i class="bi bi-check-lg"></i> Copied!';
+                    setTimeout(() => {
+                        this.innerHTML = '<i class="bi bi-clipboard"></i> Copy';
+                    }, 2000);
+                })
+                .catch(err => {
+                    alert('Failed to copy content: ' + err);
+                });
+        });
+        
+        // RSS Feed Form
+        document.getElementById('rss-feed-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const feedUrl = document.getElementById('feed-url').value;
+            const limit = document.getElementById('feed-limit').value;
+            const fetchBtn = document.getElementById('fetch-feed-btn');
+            
+            // Show loading state
+            fetchBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Fetching...';
+            fetchBtn.disabled = true;
+            
+            // Clear previous results
+            document.getElementById('feed-entries').innerHTML = '<p class="text-muted">Loading feed entries...</p>';
+            
+            // Make API request
+            fetch('/api/rss-feed', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    feed_url: feedUrl,
+                    limit: parseInt(limit)
+                })
+            })
+            .then(response => response.json())
+            .then(result => {
+                // Reset button state
+                fetchBtn.innerHTML = '<i class="bi bi-rss"></i> Fetch Feed';
+                fetchBtn.disabled = false;
+                
+                if (result.success && result.data.length > 0) {
+                    // Display the feed entries
+                    const entries = result.data;
+                    
+                    let entriesHtml = '';
+                    entries.forEach(entry => {
+                        entriesHtml += `
+                            <div class="card mb-3">
+                                <div class="card-header">
+                                    <a href="${entry.link}" target="_blank" class="text-decoration-none">
+                                        <h6 class="mb-0">${entry.title}</h6>
+                                    </a>
+                                </div>
+                                <div class="card-body">
+                                    <p class="small text-muted">${entry.published || 'No date'}</p>
+                                    <p>${entry.summary_text || entry.summary || 'No summary available.'}</p>
+                                </div>
+                                <div class="card-footer">
+                                    <a href="${entry.link}" target="_blank" class="btn btn-sm btn-outline-primary">
+                                        <i class="bi bi-box-arrow-up-right"></i> Read Full Article
+                                    </a>
+                                </div>
+                            </div>
+                        `;
+                    });
+                    
+                    document.getElementById('feed-entries').innerHTML = entriesHtml;
+                } else {
+                    // Show error or empty message
+                    document.getElementById('feed-entries').innerHTML = 
+                        `<div class="alert alert-warning">
+                            ${result.success ? 'No entries found in this feed.' : 'Error: ' + result.message}
+                        </div>`;
+                }
+            })
+            .catch(error => {
+                // Reset button state
+                fetchBtn.innerHTML = '<i class="bi bi-rss"></i> Fetch Feed';
+                fetchBtn.disabled = false;
+                
+                // Show error message
+                document.getElementById('feed-entries').innerHTML = 
+                    `<div class="alert alert-danger">Error: ${error.message || 'Failed to connect to server'}</div>`;
+            });
+        });
+        
+        // Topic Research Form
+        document.getElementById('topic-research-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const topic = document.getElementById('research-topic').value;
+            const numSources = document.getElementById('research-sources').value;
+            const researchBtn = document.getElementById('research-btn');
+            
+            // Show loading state
+            researchBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Researching...';
+            researchBtn.disabled = true;
+            
+            // Clear previous results
+            document.getElementById('research-results').innerHTML = '<p class="text-muted">Researching topic, please wait...</p>';
+            
+            // Make API request
+            fetch('/api/research-topic', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    topic: topic,
+                    num_sources: parseInt(numSources)
+                })
+            })
+            .then(response => response.json())
+            .then(result => {
+                // Reset button state
+                researchBtn.innerHTML = '<i class="bi bi-search"></i> Research Topic';
+                researchBtn.disabled = false;
+                
+                if (result.success) {
+                    // Display the research results
+                    const research = result.data;
+                    
+                    let researchHtml = `
+                        <div class="mb-4">
+                            <h5>Research Summary: ${research.topic}</h5>
+                            <p><strong>Sources analyzed:</strong> ${research.sources}</p>
+                            <p><strong>Research date:</strong> ${new Date(research.research_date).toLocaleString()}</p>
+                        </div>
+                    `;
+                    
+                    // Add keywords section
+                    if (research.keywords && research.keywords.length > 0) {
+                        researchHtml += `
+                            <div class="mb-4">
+                                <h5>Top Keywords</h5>
+                                <div class="mb-3">
+                                    ${research.keywords.map(k => 
+                                        `<span class="badge bg-primary me-1 mb-1">${k.keyword} (${k.count})</span>`
+                                    ).join('')}
+                                </div>
+                            </div>
+                        `;
+                    }
+                    
+                    // Add wordcloud section if available
+                    if (research.wordcloud_path) {
+                        researchHtml += `
+                            <div class="mb-4">
+                                <h5>Word Cloud</h5>
+                                <img src="${research.wordcloud_path}" alt="Word Cloud" class="img-fluid">
+                            </div>
+                        `;
+                    }
+                    
+                    // Add articles section
+                    if (research.articles && research.articles.length > 0) {
+                        researchHtml += `<div class="mb-4"><h5>Source Articles</h5>`;
+                        
+                        research.articles.forEach(article => {
+                            researchHtml += `
+                                <div class="card mb-3">
+                                    <div class="card-header">
+                                        <a href="${article.url}" target="_blank" class="text-decoration-none">
+                                            <h6 class="mb-0">${article.title || 'Untitled Article'}</h6>
+                                        </a>
+                                    </div>
+                                    <div class="card-body">
+                                        <p>${article.analysis && article.analysis.summary ? 
+                                            article.analysis.summary : 
+                                            (article.content ? article.content.substring(0, 200) + '...' : 'No summary available.')}
+                                        </p>
+                                    </div>
+                                    <div class="card-footer">
+                                        <a href="${article.url}" target="_blank" class="btn btn-sm btn-outline-primary">
+                                            <i class="bi bi-box-arrow-up-right"></i> View Source
+                                        </a>
+                                    </div>
+                                </div>
+                            `;
+                        });
+                        
+                        researchHtml += `</div>`;
+                    }
+                    
+                    document.getElementById('research-results').innerHTML = researchHtml;
+                } else {
+                    // Show error message
+                    document.getElementById('research-results').innerHTML = 
+                        `<div class="alert alert-danger">Error: ${result.message || 'Failed to research topic'}</div>`;
+                }
+            })
+            .catch(error => {
+                // Reset button state
+                researchBtn.innerHTML = '<i class="bi bi-search"></i> Research Topic';
+                researchBtn.disabled = false;
+                
+                // Show error message
+                document.getElementById('research-results').innerHTML = 
+                    `<div class="alert alert-danger">Error: ${error.message || 'Failed to connect to server'}</div>`;
+            });
+        });
+        
+        // Trending Topics Form
+        document.getElementById('trending-topics-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const category = document.getElementById('topic-category').value;
+            const limit = document.getElementById('topic-limit').value;
+            const getTopicsBtn = document.getElementById('get-topics-btn');
+            
+            // Show loading state
+            getTopicsBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Loading...';
+            getTopicsBtn.disabled = true;
+            
+            // Clear previous results
+            document.getElementById('topics-results').innerHTML = '<p class="text-muted">Loading trending topics...</p>';
+            
+            // Make API request
+            let url = `/api/trending-topics?limit=${limit}`;
+            if (category) {
+                url += `&category=${category}`;
+            }
+            
+            fetch(url)
+            .then(response => response.json())
+            .then(result => {
+                // Reset button state
+                getTopicsBtn.innerHTML = '<i class="bi bi-graph-up-arrow"></i> Get Trending Topics';
+                getTopicsBtn.disabled = false;
+                
+                if (result.success && result.data.length > 0) {
+                    // Display the trending topics
+                    const topics = result.data;
+                    
+                    // Create table
+                    let topicsHtml = `
+                        <div class="table-responsive">
+                            <table class="table table-striped">
+                                <thead>
+                                    <tr>
+                                        <th>#</th>
+                                        <th>Topic</th>
+                                        <th>Trending Score</th>
+                                        <th>24h Change</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                    `;
+                    
+                    topics.forEach((topic, index) => {
+                        const changeClass = topic.change > 0 ? 'text-success' : (topic.change < 0 ? 'text-danger' : 'text-secondary');
+                        const changeIcon = topic.change > 0 ? 'bi-arrow-up' : (topic.change < 0 ? 'bi-arrow-down' : 'bi-dash');
+                        
+                        topicsHtml += `
+                            <tr>
+                                <td>${index + 1}</td>
+                                <td><strong>${topic.topic}</strong></td>
+                                <td>
+                                    <div class="progress" style="height: 6px;">
+                                        <div class="progress-bar" role="progressbar" style="width: ${topic.score}%;" 
+                                            aria-valuenow="${topic.score}" aria-valuemin="0" aria-valuemax="100"></div>
+                                    </div>
+                                    <small class="text-muted">${topic.score.toFixed(1)}</small>
+                                </td>
+                                <td class="${changeClass}">
+                                    <i class="bi ${changeIcon}"></i> ${Math.abs(topic.change).toFixed(1)}%
+                                </td>
+                            </tr>
+                        `;
+                    });
+                    
+                    topicsHtml += `
+                                </tbody>
+                            </table>
+                        </div>
+                    `;
+                    
+                    document.getElementById('topics-results').innerHTML = topicsHtml;
+                } else {
+                    // Show error or empty message
+                    document.getElementById('topics-results').innerHTML = 
+                        `<div class="alert alert-warning">
+                            ${result.success ? 'No trending topics found.' : 'Error: ' + result.message}
+                        </div>`;
+                }
+            })
+            .catch(error => {
+                // Reset button state
+                getTopicsBtn.innerHTML = '<i class="bi bi-graph-up-arrow"></i> Get Trending Topics';
+                getTopicsBtn.disabled = false;
+                
+                // Show error message
+                document.getElementById('topics-results').innerHTML = 
+                    `<div class="alert alert-danger">Error: ${error.message || 'Failed to connect to server'}</div>`;
+            });
+        });
+    });
+</script>
+{% endblock %}

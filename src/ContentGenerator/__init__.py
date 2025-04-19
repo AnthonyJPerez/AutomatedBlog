@@ -85,14 +85,32 @@ def main(inputBlob: func.InputStream, outputContent: func.Out[str], outputRecomm
     topic_keyword = selected_topic.get('keyword', '')
     topic_title = selected_topic.get('title', f'Article about {topic_keyword}')
     
+    # Extract web research data if available
+    web_research_data = None
+    if selected_topic.get('web_research'):
+        web_research_data = selected_topic['web_research']
+        logger.info(f'Found web research data for topic: {topic_title}')
+    
     # Generate outline using OpenAI
     try:
         logger.info(f'Generating outline for topic: {topic_title}')
+        
+        # Create a more comprehensive context if we have web research data
+        context = {}
+        if web_research_data:
+            context = {
+                'related_keywords': web_research_data.get('related_keywords', []),
+                'topic_summary': web_research_data.get('summary', ''),
+                'sources': web_research_data.get('sources', []),
+                'sentiment': web_research_data.get('sentiment', {})
+            }
+        
         outline = openai_service.generate_outline(
             topic=topic_title,
             theme=theme,
             tone='professional',
-            target_audience='general'
+            target_audience='general',
+            context=context
         )
     except Exception as e:
         logger.error(f'Error generating outline: {str(e)}')
@@ -101,13 +119,31 @@ def main(inputBlob: func.InputStream, outputContent: func.Out[str], outputRecomm
     # Generate content draft using OpenAI (GPT-3.5 equivalent)
     try:
         logger.info(f'Generating content draft for topic: {topic_title}')
+        
+        # Use the same context for content generation if available
+        content_context = {}
+        if web_research_data:
+            content_context = {
+                'related_keywords': web_research_data.get('related_keywords', []),
+                'topic_summary': web_research_data.get('summary', ''),
+                'sources': web_research_data.get('sources', []),
+                'sentiment': web_research_data.get('sentiment', {}),
+                'related_trends': web_research_data.get('related_trends', [])
+            }
+            
+            # Log source references being used for content
+            source_urls = [s.get('url') for s in content_context.get('sources', []) if s.get('url')]
+            if source_urls:
+                logger.info(f'Using {len(source_urls)} reference sources for content generation')
+        
         content_draft = openai_service.generate_content(
             topic=topic_title,
             outline=outline,
             theme=theme,
             tone='professional',
             target_audience='general',
-            content_type='article'
+            content_type='article',
+            context=content_context
         )
     except Exception as e:
         logger.error(f'Error generating content draft: {str(e)}')
@@ -116,13 +152,27 @@ def main(inputBlob: func.InputStream, outputContent: func.Out[str], outputRecomm
     # Polish content using OpenAI (GPT-4 equivalent)
     try:
         logger.info('Polishing content with GPT-4')
+        
+        # Use the same context for polishing if available
+        polish_context = {}
+        if web_research_data:
+            # For polishing, provide additional context that may help improve the content
+            polish_context = {
+                'content_draft': content_draft,
+                'related_keywords': web_research_data.get('related_keywords', []),
+                'source_references': web_research_data.get('sources', []),
+                'sentiment_target': web_research_data.get('sentiment', {}).get('category', 'neutral'),
+                'related_trends': web_research_data.get('related_trends', [])
+            }
+        
         polished_content = openai_service.generate_content(
             topic=topic_title,
             outline=outline,
             theme=theme,
             tone='professional',
             target_audience='general',
-            content_type='polish'
+            content_type='polish',
+            context=polish_context
         )
     except Exception as e:
         logger.error(f'Error polishing content: {str(e)}')

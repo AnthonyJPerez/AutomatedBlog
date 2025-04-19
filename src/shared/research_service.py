@@ -9,10 +9,18 @@ import requests
 from requests.adapters import HTTPAdapter
 from requests.packages.urllib3.util.retry import Retry
 
+# Import web scraper service if available
+try:
+    from .web_scraper_service import web_scraper_service
+    web_scraper_available = True
+except ImportError:
+    web_scraper_available = False
+
 class ResearchService:
     """
-    Service for researching trending topics using Google Trends.
-    Provides methods to identify popular and trending topics related to a blog theme.
+    Service for researching trending topics using Google Trends and web scraping.
+    Provides methods to identify popular and trending topics related to a blog theme,
+    and enhances the research with additional content from web sources.
     """
     
     def __init__(self):
@@ -39,6 +47,13 @@ class ResearchService:
         except Exception as e:
             self.logger.error(f"Error initializing PyTrends: {str(e)}")
             self.pytrends_available = False
+        
+        # Track web scraper availability
+        self.web_scraper_available = web_scraper_available
+        if self.web_scraper_available:
+            self.logger.info("Web scraper service is available for enhanced research")
+        else:
+            self.logger.warning("Web scraper service is not available, using basic research only")
         
         # Initialize cache for trend data (to avoid duplicate API calls)
         self.trend_cache = {}
@@ -137,10 +152,106 @@ class ResearchService:
         # Limit to max_results
         final_results = sorted_results[:max_results]
         
+        # Enhance results with web scraper if available
+        if self.web_scraper_available and web_scraper_service:
+            try:
+                self.logger.info(f"Enhancing research results with web scraper data for {theme}")
+                enriched_results = self.enrich_topics_with_web_data(final_results, theme)
+                final_results = enriched_results
+            except Exception as e:
+                self.logger.error(f"Error enhancing research results with web scraper: {str(e)}")
+        
         # Add to cache
         self.trend_cache[cache_key] = (time.time(), final_results)
         
         return final_results
+        
+    def enrich_topics_with_web_data(self, topics, theme):
+        """
+        Enhance topic research results with additional data from web sources.
+        
+        Args:
+            topics (list): List of topic results from research_topics
+            theme (str): The blog theme
+            
+        Returns:
+            list: Enhanced list of topics with additional web data
+        """
+        if not self.web_scraper_available or not web_scraper_service:
+            return topics
+        
+        enriched_topics = []
+        
+        for topic in topics:
+            try:
+                # Create keyword for searching
+                keyword = topic['keyword']
+                search_term = f"{keyword} {theme}".strip()
+                
+                # Get trending topics for related content
+                trending_topics = web_scraper_service.get_trending_topics(
+                    category=theme.lower() if theme else None, 
+                    limit=5
+                )
+                
+                # Get additional context for the topic
+                self.logger.info(f"Researching web content for: {search_term}")
+                research_data = web_scraper_service.research_topic(search_term, num_sources=2)
+                
+                # Extract relevant information
+                web_keywords = []
+                sentiment_info = None
+                summary = None
+                sources = []
+                
+                if research_data:
+                    # Get keywords from web research
+                    if 'keywords' in research_data and research_data['keywords']:
+                        web_keywords = [item['keyword'] for item in research_data['keywords'][:10] if 'keyword' in item]
+                    
+                    # Get sources for context
+                    if 'articles' in research_data and research_data['articles']:
+                        for article in research_data['articles']:
+                            if article and 'url' in article:
+                                source = {
+                                    'url': article.get('url', ''),
+                                    'title': article.get('title', 'Untitled Article'),
+                                }
+                                
+                                # Get text summary if available
+                                if 'analysis' in article and 'summary' in article['analysis']:
+                                    source['summary'] = article['analysis']['summary']
+                                    
+                                # Get sentiment if available
+                                if 'analysis' in article and 'sentiment' in article['analysis']:
+                                    if not sentiment_info:  # Save first sentiment info found
+                                        sentiment_info = article['analysis']['sentiment']
+                                
+                                sources.append(source)
+                                
+                                # Use first article summary if we don't have one yet
+                                if not summary and source.get('summary'):
+                                    summary = source.get('summary')
+                
+                # Enhance the original topic with additional context
+                enriched_topic = topic.copy()  # Don't modify the original
+                
+                # Add web research data
+                enriched_topic['web_research'] = {
+                    'related_keywords': web_keywords,
+                    'summary': summary,
+                    'sources': sources[:3],  # Limit to top 3 sources
+                    'sentiment': sentiment_info,
+                    'related_trends': trending_topics[:5] if trending_topics else []
+                }
+                
+                enriched_topics.append(enriched_topic)
+                
+            except Exception as e:
+                self.logger.error(f"Error enriching topic {topic['keyword']}: {str(e)}")
+                enriched_topics.append(topic)  # Use original if enrichment fails
+        
+        return enriched_topics
     
     def _generate_title(self, keyword, theme):
         """
