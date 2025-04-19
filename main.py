@@ -1203,6 +1203,39 @@ def update_blog_credentials(blog_id):
     except Exception as e:
         logger.error(f"Error updating credentials for blog {blog_id}: {str(e)}")
         return jsonify({"error": str(e)}), 500
+        
+@app.route('/api/blog/<blog_id>/social-media', methods=['POST'])
+def update_blog_social_media(blog_id):
+    """API endpoint to update blog-specific social media settings"""
+    try:
+        blog_config_path = os.path.join("data/blogs", blog_id, "config.json")
+        if not os.path.exists(blog_config_path):
+            return jsonify({"success": False, "message": f"Blog {blog_id} not found"}), 404
+        
+        # Load the current config
+        with open(blog_config_path, 'r') as f:
+            blog_config = json.load(f)
+        
+        # Get social media data from request
+        data = request.json
+        if not data or 'social_media' not in data:
+            return jsonify({"success": False, "message": "No social media data provided"}), 400
+        
+        # Update social media settings
+        blog_config['social_media'] = data['social_media']
+        
+        # Save the updated config
+        with open(blog_config_path, 'w') as f:
+            json.dump(blog_config, f, indent=2)
+        
+        return jsonify({
+            "success": True, 
+            "message": "Social media settings updated successfully",
+            "data": blog_config['social_media']
+        })
+    except Exception as e:
+        logger.error(f"Error updating social media settings for blog {blog_id}: {str(e)}")
+        return jsonify({"success": False, "message": f"Error: {str(e)}"}), 500
 
 @app.route('/api/global/credentials', methods=['POST'])
 def update_global_credentials():

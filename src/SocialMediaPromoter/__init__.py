@@ -83,16 +83,29 @@ def main(inputBlob: func.InputStream, outputBlob: func.Out[str]) -> None:
                     lines = content_md.split('\n')
                     title = None
                     excerpt = ""
+                    tags = []
+                    
+                    # Store the full content for Medium
+                    full_content = content_md
                     
                     for line in lines:
                         if not title and line.startswith('# '):
                             title = line[2:].strip()
                         elif title and not line.startswith('#') and len(excerpt) < 300:
                             excerpt += line + " "
+                        
+                        # Look for tags/categories if specified with a certain format
+                        # For example: "Tags: tech, ai, blogging"
+                        if line.lower().startswith("tags:") or line.lower().startswith("categories:"):
+                            tag_text = line.split(":", 1)[1].strip()
+                            # Split by comma and trim whitespace
+                            tags = [tag.strip() for tag in tag_text.split(",") if tag.strip()]
                     
                     content_data = {
                         "title": title or "New Blog Post",
-                        "excerpt": excerpt[:300].strip()
+                        "excerpt": excerpt[:300].strip(),
+                        "content": full_content,  # Store full content for Medium
+                        "tags": tags
                     }
                     
                     # Look for an image reference

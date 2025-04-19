@@ -142,6 +142,86 @@
                 </div>
                 {% endif %}
                 
+                <!-- Social Media Integration Section -->
+                <div class="row mt-4">
+                    <div class="col-md-12">
+                        <h5>Social Media Integration</h5>
+                        <div class="card mb-3">
+                            <div class="card-body">
+                                <div class="form-check form-switch mb-3">
+                                    <input class="form-check-input" type="checkbox" id="enable-social-media" 
+                                        {% if blog.social_media and blog.social_media.enabled %}checked{% endif %}>
+                                    <label class="form-check-label" for="enable-social-media">
+                                        Enable Social Media Promotion
+                                    </label>
+                                </div>
+                                
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <h6>Platforms</h6>
+                                        <div class="form-check">
+                                            <input class="form-check-input platform-check" type="checkbox" value="twitter" id="platform-twitter"
+                                                {% if blog.social_media and blog.social_media.platforms and 'twitter' in blog.social_media.platforms %}checked{% endif %}>
+                                            <label class="form-check-label" for="platform-twitter">
+                                                Twitter
+                                            </label>
+                                        </div>
+                                        <div class="form-check">
+                                            <input class="form-check-input platform-check" type="checkbox" value="linkedin" id="platform-linkedin"
+                                                {% if blog.social_media and blog.social_media.platforms and 'linkedin' in blog.social_media.platforms %}checked{% endif %}>
+                                            <label class="form-check-label" for="platform-linkedin">
+                                                LinkedIn
+                                            </label>
+                                        </div>
+                                        <div class="form-check">
+                                            <input class="form-check-input platform-check" type="checkbox" value="facebook" id="platform-facebook"
+                                                {% if blog.social_media and blog.social_media.platforms and 'facebook' in blog.social_media.platforms %}checked{% endif %}>
+                                            <label class="form-check-label" for="platform-facebook">
+                                                Facebook
+                                            </label>
+                                        </div>
+                                        <div class="form-check">
+                                            <input class="form-check-input platform-check" type="checkbox" value="reddit" id="platform-reddit"
+                                                {% if blog.social_media and blog.social_media.platforms and 'reddit' in blog.social_media.platforms %}checked{% endif %}>
+                                            <label class="form-check-label" for="platform-reddit">
+                                                Reddit
+                                            </label>
+                                        </div>
+                                        <div class="form-check">
+                                            <input class="form-check-input platform-check" type="checkbox" value="medium" id="platform-medium"
+                                                {% if blog.social_media and blog.social_media.platforms and 'medium' in blog.social_media.platforms %}checked{% endif %}>
+                                            <label class="form-check-label" for="platform-medium">
+                                                Medium
+                                            </label>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="col-md-6">
+                                        <h6>Blog-Specific Settings</h6>
+                                        <div class="mb-3">
+                                            <label for="reddit-subreddit" class="form-label">Default Subreddit</label>
+                                            <input type="text" class="form-control" id="reddit-subreddit" 
+                                                   value="{{ blog.social_media.reddit_subreddit if blog.social_media and blog.social_media.reddit_subreddit else 'blogging' }}" 
+                                                   placeholder="e.g., blogging">
+                                            <div class="form-text">The subreddit where content will be posted</div>
+                                        </div>
+                                        
+                                        <div class="mb-3">
+                                            <label for="medium-publication" class="form-label">Medium Publication ID</label>
+                                            <input type="text" class="form-control" id="medium-publication" 
+                                                   value="{{ blog.social_media.medium_publication if blog.social_media and blog.social_media.medium_publication else '' }}" 
+                                                   placeholder="Optional - leave blank for personal account">
+                                            <div class="form-text">Publication ID if publishing to a Medium publication</div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <button id="save-social-media-settings" class="btn btn-primary mt-3">Save Social Media Settings</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
                 {% if blog.domain_suggestions %}
                 <div class="row mt-4">
                     <div class="col-md-12">
@@ -241,4 +321,61 @@
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Social Media Settings Handling
+        const saveSocialMediaButton = document.getElementById('save-social-media-settings');
+        if (saveSocialMediaButton) {
+            saveSocialMediaButton.addEventListener('click', function() {
+                // Get settings
+                const enabled = document.getElementById('enable-social-media').checked;
+                
+                // Get selected platforms
+                const platforms = [];
+                document.querySelectorAll('.platform-check:checked').forEach(function(checkbox) {
+                    platforms.push(checkbox.value);
+                });
+                
+                // Get platform-specific settings
+                const redditSubreddit = document.getElementById('reddit-subreddit').value;
+                const mediumPublication = document.getElementById('medium-publication').value;
+                
+                // Prepare data for API call
+                const blogId = '{{ blog.id }}';
+                const data = {
+                    social_media: {
+                        enabled: enabled,
+                        platforms: platforms,
+                        reddit_subreddit: redditSubreddit,
+                        medium_publication: mediumPublication
+                    }
+                };
+                
+                // Send to server
+                fetch(`/api/blog/${blogId}/social-media`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(data)
+                })
+                .then(response => response.json())
+                .then(result => {
+                    if (result.success) {
+                        alert('Social media settings saved successfully!');
+                    } else {
+                        alert('Error saving social media settings: ' + result.message);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('An error occurred while saving settings');
+                });
+            });
+        }
+    });
+</script>
 {% endblock %}
