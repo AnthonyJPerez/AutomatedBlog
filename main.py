@@ -1877,5 +1877,76 @@ def page_not_found(e):
 def server_error(e):
     return render_template('500.html'), 500
 
+@app.route('/test/wordpress-connection')
+def test_wordpress_connection():
+    """Test endpoint for WordPress connection with Key Vault integration"""
+    try:
+        # Import the WordPressService
+        from src.shared.wordpress_service import WordPressService
+        
+        # Initialize the service
+        wordpress_service = WordPressService()
+        
+        # Check if we have credentials loaded from Key Vault
+        connection_info = {
+            "status": "checking",
+            "message": "Checking WordPress connection status...",
+            "url_from_keyvault": None,
+            "username_from_keyvault": None,
+            "has_password": False
+        }
+        
+        # Check if we have WordPress URL from Key Vault
+        if wordpress_service.default_wordpress_url:
+            connection_info["url_from_keyvault"] = wordpress_service.default_wordpress_url
+            connection_info["status"] = "url_found"
+        
+        # Check if we have WordPress username from Key Vault
+        if wordpress_service.default_wordpress_username:
+            connection_info["username_from_keyvault"] = wordpress_service.default_wordpress_username
+            if connection_info["status"] == "url_found":
+                connection_info["status"] = "username_found"
+        
+        # Check if we have WordPress password from Key Vault
+        if wordpress_service.default_wordpress_password:
+            connection_info["has_password"] = True
+            if connection_info["status"] == "username_found":
+                connection_info["status"] = "credentials_found"
+                connection_info["message"] = "WordPress credentials found in Key Vault."
+        
+        # If we have all credentials, try to test the connection
+        if connection_info["status"] == "credentials_found":
+            try:
+                # Create a test post title with timestamp to avoid duplication
+                test_title = f"Test Post from Key Vault Connection - {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+                test_content = "<p>This is a test post created to verify the WordPress connection using credentials from Key Vault.</p>"
+                
+                # Try to publish a test post
+                publish_result = wordpress_service.publish_to_default_wordpress(
+                    title=test_title,
+                    content=test_content,
+                    seo_metadata={
+                        "slug": "",
+                        "meta_description": "Test post for Key Vault WordPress connection",
+                        "keywords": ["test", "key-vault", "wordpress"]
+                    }
+                )
+                
+                # If we get here, the connection was successful
+                connection_info["status"] = "connected"
+                connection_info["message"] = "Successfully connected to WordPress and published a test post."
+                connection_info["post_id"] = publish_result.get("post_id")
+                connection_info["post_url"] = publish_result.get("post_url")
+                
+            except Exception as e:
+                connection_info["status"] = "error"
+                connection_info["message"] = f"Error connecting to WordPress: {str(e)}"
+        
+        return render_template('wordpress_test.html', connection_info=connection_info)
+        
+    except Exception as e:
+        logger.error(f"Error in test_wordpress_connection endpoint: {str(e)}")
+        return jsonify({"status": "error", "message": f"WordPress connection test failed: {str(e)}"})
+
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)), debug=True)

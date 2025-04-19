@@ -1,0 +1,114 @@
+{% extends "base.html" %}
+
+{% block title %}WordPress Connection Test{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1>WordPress Connection Test</h1>
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5>WordPress Connection Status</h5>
+        </div>
+        <div class="card-body">
+            {% if connection_info.status == "connected" %}
+                <div class="alert alert-success">
+                    <h4><i class="fas fa-check-circle"></i> Connected Successfully!</h4>
+                    <p>{{ connection_info.message }}</p>
+                    <p>Successfully published a test post to WordPress.</p>
+                    <a href="{{ connection_info.post_url }}" target="_blank" class="btn btn-primary">
+                        <i class="fas fa-external-link-alt"></i> View Test Post
+                    </a>
+                </div>
+            {% elif connection_info.status == "credentials_found" %}
+                <div class="alert alert-info">
+                    <h4><i class="fas fa-info-circle"></i> Credentials Found</h4>
+                    <p>{{ connection_info.message }}</p>
+                    <p>Credentials have been found in Key Vault, but connection has not been tested yet.</p>
+                    <a href="{{ url_for('test_wordpress_connection') }}" class="btn btn-primary">
+                        Test Connection
+                    </a>
+                </div>
+            {% elif connection_info.status == "error" %}
+                <div class="alert alert-danger">
+                    <h4><i class="fas fa-exclamation-triangle"></i> Connection Error</h4>
+                    <p>{{ connection_info.message }}</p>
+                </div>
+            {% else %}
+                <div class="alert alert-warning">
+                    <h4><i class="fas fa-exclamation-circle"></i> Incomplete Credentials</h4>
+                    <p>{{ connection_info.message }}</p>
+                    {% if connection_info.status == "url_found" %}
+                        <p>WordPress URL has been found, but username or password is missing.</p>
+                    {% elif connection_info.status == "username_found" %}
+                        <p>WordPress URL and username have been found, but password is missing.</p>
+                    {% else %}
+                        <p>No WordPress credentials found in Key Vault.</p>
+                    {% endif %}
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <h5>WordPress Details</h5>
+        </div>
+        <div class="card-body">
+            <table class="table">
+                <tbody>
+                    <tr>
+                        <th style="width: 30%;">WordPress URL:</th>
+                        <td>
+                            {% if connection_info.url_from_keyvault %}
+                                {{ connection_info.url_from_keyvault }}
+                            {% else %}
+                                <span class="text-muted">Not found in Key Vault</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    <tr>
+                        <th>WordPress Username:</th>
+                        <td>
+                            {% if connection_info.username_from_keyvault %}
+                                {{ connection_info.username_from_keyvault }}
+                            {% else %}
+                                <span class="text-muted">Not found in Key Vault</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    <tr>
+                        <th>WordPress App Password:</th>
+                        <td>
+                            {% if connection_info.has_password %}
+                                <span class="text-success">Available in Key Vault</span>
+                            {% else %}
+                                <span class="text-danger">Not found in Key Vault</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% if connection_info.status == "connected" %}
+                    <tr>
+                        <th>Post ID:</th>
+                        <td>{{ connection_info.post_id }}</td>
+                    </tr>
+                    <tr>
+                        <th>Post URL:</th>
+                        <td>
+                            <a href="{{ connection_info.post_url }}" target="_blank">
+                                {{ connection_info.post_url }}
+                            </a>
+                        </td>
+                    </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="mt-4">
+        <a href="{{ url_for('index') }}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left"></i> Back to Dashboard
+        </a>
+    </div>
+</div>
+{% endblock %}
