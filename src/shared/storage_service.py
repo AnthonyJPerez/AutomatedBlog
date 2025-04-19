@@ -98,6 +98,30 @@ class StorageService:
             self.logger.error(f"Error creating directory {directory_path}: {str(e)}")
             return False
     
+    def get_local_json(self, file_path):
+        """
+        Load JSON data from a local file.
+        
+        Args:
+            file_path (str): Path to the JSON file
+            
+        Returns:
+            dict: Parsed JSON data or None if file not found or invalid
+        """
+        try:
+            if not os.path.exists(file_path):
+                self.logger.warning(f"File not found: {file_path}")
+                return None
+                
+            with open(file_path, 'r', encoding='utf-8') as file:
+                return json.load(file)
+        except json.JSONDecodeError as e:
+            self.logger.error(f"Error parsing JSON from {file_path}: {str(e)}")
+            return None
+        except Exception as e:
+            self.logger.error(f"Error reading file {file_path}: {str(e)}")
+            return None
+    
     def get_blob(self, container_name, blob_name):
         """
         Get a blob from storage.

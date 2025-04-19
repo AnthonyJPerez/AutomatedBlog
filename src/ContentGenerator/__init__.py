@@ -65,7 +65,19 @@ def main(inputBlob: func.InputStream, outputContent: func.Out[str], outputRecomm
     # Extract relevant information from research data
     topics = research_data.get('topics', [])
     theme = research_data.get('theme', '')
+    blog_id = research_data.get('blog_id', '')
     research_results = research_data.get('research_results', [])
+    
+    # Load theme.json if blog_id is available
+    theme_info = None
+    if blog_id:
+        try:
+            theme_path = f'data/blogs/{blog_id}/config/theme.json'
+            theme_info = storage_service.get_local_json(theme_path)
+            if theme_info:
+                logger.info(f'Loaded theme information for blog: {blog_id}')
+        except Exception as e:
+            logger.warning(f'Could not load theme.json for blog {blog_id}: {str(e)}')
     
     # Select the best topic based on research results
     selected_topic = None
@@ -110,7 +122,8 @@ def main(inputBlob: func.InputStream, outputContent: func.Out[str], outputRecomm
             theme=theme,
             tone='professional',
             target_audience='general',
-            context=context
+            context=context,
+            theme_info=theme_info
         )
     except Exception as e:
         logger.error(f'Error generating outline: {str(e)}')

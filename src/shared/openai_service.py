@@ -571,7 +571,7 @@ class OpenAIService:
             if quality not in valid_qualities:
                 quality = "standard"
             
-            # Enhance the prompt for better results based on style
+            # Base style prompt
             style_prompt = ""
             if style == "illustration":
                 style_prompt = "Create an illustration in a clean, modern style. "
@@ -582,13 +582,71 @@ class OpenAIService:
             elif style == "minimalist":
                 style_prompt = "Create a minimalist image with clean lines, limited colors, and simple composition. "
             
+            # Default image requirements
+            image_requirements = """
+            The image should be visually appealing, relevant to the topic, and suitable for a professional blog.
+            Do not include any text in the image unless specifically requested.
+            """
+            
+            # Enhance with theme information if available
+            theme_context = ""
+            visual_style = ""
+            brand_elements = ""
+            color_palette = ""
+            
+            if theme_info:
+                # Add theme context for better relevance
+                if "theme_prompt" in theme_info:
+                    theme_context = f"Theme context: {theme_info['theme_prompt']}\n"
+                
+                # Add visual style guidance
+                if "visual_style" in theme_info:
+                    if isinstance(theme_info["visual_style"], dict):
+                        vs = theme_info["visual_style"]
+                        visual_style = "Visual style guidelines:\n"
+                        
+                        if "mood" in vs:
+                            visual_style += f"- Mood: {vs['mood']}\n"
+                        if "aesthetic" in vs:
+                            visual_style += f"- Aesthetic: {vs['aesthetic']}\n"
+                        if "imagery_type" in vs:
+                            visual_style += f"- Imagery type: {vs['imagery_type']}\n"
+                    elif isinstance(theme_info["visual_style"], str):
+                        visual_style = f"Visual style: {theme_info['visual_style']}\n"
+                
+                # Add brand elements if specified
+                if "brand_elements" in theme_info:
+                    if isinstance(theme_info["brand_elements"], dict):
+                        be = theme_info["brand_elements"]
+                        brand_elements = "Brand elements to incorporate:\n"
+                        
+                        if "logo_elements" in be:
+                            brand_elements += f"- Logo elements: {be['logo_elements']}\n"
+                        if "colors" in be:
+                            brand_elements += f"- Brand colors: {be['colors']}\n"
+                        if "fonts" in be:
+                            brand_elements += f"- Typography inspired by: {be['fonts']}\n"
+                    elif isinstance(theme_info["brand_elements"], list):
+                        brand_elements = "Brand elements to incorporate: " + ", ".join(theme_info["brand_elements"]) + "\n"
+                
+                # Add color palette
+                if "color_palette" in theme_info:
+                    if isinstance(theme_info["color_palette"], list):
+                        color_palette = "Color palette: " + ", ".join(theme_info["color_palette"]) + "\n"
+                    elif isinstance(theme_info["color_palette"], str):
+                        color_palette = f"Color palette: {theme_info['color_palette']}\n"
+            
             enhanced_prompt = f"""
             {style_prompt}Create a high-quality, professional image for a blog post with the following description:
             
             {prompt}
             
-            The image should be visually appealing, relevant to the topic, and suitable for a professional blog.
-            Do not include any text in the image unless specifically requested.
+            {theme_context}
+            {visual_style}
+            {brand_elements}
+            {color_palette}
+            
+            {image_requirements}
             """
             
             # Generate the image
