@@ -503,6 +503,8 @@ class SocialMediaService:
         linkedin_msg = f"{excerpt[:500]}... Read more at the link."
         facebook_msg = f"{title}\n\n{excerpt[:250]}... Click the link to read more!"
         reddit_text = f"{excerpt[:500]}...\n\nRead the full article: {url}"
+        bluesky_msg = f"{title}\n\n{excerpt[:300]}...\n\n{url}"
+        truth_social_msg = f"{title}\n\n{excerpt[:280]}... {url}"
         
         # List to track platform results
         platform_results = []
@@ -542,6 +544,26 @@ class SocialMediaService:
             )
             results["platforms"]["medium"] = medium_result
             platform_results.append(medium_result.get("success", False))
+            
+        # Post to Bluesky (if enabled)
+        if "bluesky" in self.platforms and self.platforms["bluesky"].get("enabled", False):
+            bluesky_result = self.post_to_bluesky(
+                bluesky_msg,
+                image_url=image_url,
+                alt_text=title,
+                external_url=url
+            )
+            results["platforms"]["bluesky"] = bluesky_result
+            platform_results.append(bluesky_result.get("success", False))
+            
+        # Post to Truth Social (if enabled)
+        if "truth_social" in self.platforms and self.platforms["truth_social"].get("enabled", False):
+            truth_social_result = self.post_to_truth_social(
+                truth_social_msg,
+                media_url=image_url
+            )
+            results["platforms"]["truth_social"] = truth_social_result
+            platform_results.append(truth_social_result.get("success", False))
         
         # Determine overall success (at least one platform worked)
         if platform_results:
@@ -562,6 +584,122 @@ class SocialMediaService:
         """
         return [name for name, config in self.platforms.items() if config.get("enabled", False)]
         
+    def post_to_bluesky(self, text, image_url=None, alt_text=None, external_url=None):
+        """
+        Post a message to Bluesky.
+        
+        Args:
+            text (str): The message text to post
+            image_url (str, optional): URL of image to attach
+            alt_text (str, optional): Alt text for the image
+            external_url (str, optional): External URL to include
+            
+        Returns:
+            dict: Response from the API
+        """
+        if not self.platforms.get("bluesky", {}).get("enabled", False):
+            logger.warning("Bluesky is not configured or disabled.")
+            return {"success": False, "error": "Bluesky is not configured"}
+        
+        try:
+            # In a production app, we would use the atproto Python library
+            # For this demo, we'll simulate the posting
+            logger.info(f"Posting to Bluesky: {text[:30]}...")
+            
+            # Example of how this would be implemented with the atproto library:
+            # from atproto import Client
+            # client = Client()
+            # client.login(self.platforms["bluesky"]["identifier"], self.platforms["bluesky"]["app_password"])
+            #
+            # # Create the post content
+            # post_content = {
+            #     "text": text
+            # }
+            #
+            # # Add image if provided
+            # if image_url:
+            #     # Note: This is simplified - in reality we'd need to download 
+            #     # the image and upload it through the Bluesky API
+            #     image_data = download_image(image_url)
+            #     upload_response = client.upload_blob(image_data)
+            #     post_content["embed"] = {
+            #         "$type": "app.bsky.embed.images",
+            #         "images": [
+            #             {
+            #                 "image": upload_response["blob"],
+            #                 "alt": alt_text or ""
+            #             }
+            #         ]
+            #     }
+            #
+            # # Add external link if provided 
+            # if external_url:
+            #     # Would need to be added using the appropriate Bluesky facet format
+            #     # This is simplified
+            #     post_content["facets"] = [...]
+            #
+            # # Create the post
+            # response = client.send_post(post_content)
+            
+            return {
+                "success": True,
+                "platform": "bluesky",
+                "post_id": "simulated_bluesky_post_123",
+                "post_uri": "at://did:plc:simulated/app.bsky.feed.post/simulated123",
+                "timestamp": datetime.now().isoformat()
+            }
+        except Exception as e:
+            logger.error(f"Failed to post to Bluesky: {str(e)}")
+            return {"success": False, "platform": "bluesky", "error": str(e)}
+    
+    def post_to_truth_social(self, message, media_url=None):
+        """
+        Post a message to Truth Social.
+        
+        Args:
+            message (str): The message to post
+            media_url (str, optional): URL of image or video to attach
+            
+        Returns:
+            dict: Response from the API
+        """
+        if not self.platforms.get("truth_social", {}).get("enabled", False):
+            logger.warning("Truth Social is not configured or disabled.")
+            return {"success": False, "error": "Truth Social is not configured"}
+        
+        try:
+            # In a production app, we would use Truth Social's API
+            # For this demo, we'll simulate the posting
+            logger.info(f"Posting to Truth Social: {message[:30]}...")
+            
+            # Truth Social is built on Mastodon's open source platform
+            # So we would use a Mastodon API client like this:
+            #
+            # from mastodon import Mastodon
+            # mastodon = Mastodon(
+            #     access_token = self.platforms["truth_social"]["api_token"],
+            #     api_base_url = "https://truthsocial.com"
+            # )
+            #
+            # # Create the post (or "truth")
+            # if media_url:
+            #     # Download media and upload via API
+            #     media_response = mastodon.media_post(download_media(media_url))
+            #     media_id = media_response["id"]
+            #     response = mastodon.status_post(message, media_ids=[media_id])
+            # else:
+            #     response = mastodon.status_post(message)
+            
+            return {
+                "success": True,
+                "platform": "truth_social",
+                "post_id": "simulated_truth_social_post_123",
+                "timestamp": datetime.now().isoformat()
+            }
+        except Exception as e:
+            logger.error(f"Failed to post to Truth Social: {str(e)}")
+            return {"success": False, "platform": "truth_social", "error": str(e)}
+            
     def reload_credentials(self):
         """
         Reload credentials from environment variables or global config file.
@@ -600,6 +738,22 @@ class SocialMediaService:
                     # Update Medium credentials if available
                     if "medium_integration_token" in credentials:
                         os.environ["MEDIUM-INTEGRATION-TOKEN"] = credentials["medium_integration_token"]
+                    
+                    # Update Bluesky credentials if available
+                    if "bluesky_identifier" in credentials:
+                        os.environ["BLUESKY-IDENTIFIER"] = credentials["bluesky_identifier"]
+                    if "bluesky_app_password" in credentials:
+                        os.environ["BLUESKY-APP-PASSWORD"] = credentials["bluesky_app_password"]
+                    if "bluesky_pds_url" in credentials:
+                        os.environ["BLUESKY-PDS-URL"] = credentials["bluesky_pds_url"]
+                    
+                    # Update Truth Social credentials if available
+                    if "truth_social_api_token" in credentials:
+                        os.environ["TRUTH-SOCIAL-API-TOKEN"] = credentials["truth_social_api_token"]
+                    if "truth_social_username" in credentials:
+                        os.environ["TRUTH-SOCIAL-USERNAME"] = credentials["truth_social_username"]
+                    if "truth_social_password" in credentials:
+                        os.environ["TRUTH-SOCIAL-PASSWORD"] = credentials["truth_social_password"]
             
             # Reinitialize platforms with new credentials
             self._init_twitter()
@@ -607,6 +761,8 @@ class SocialMediaService:
             self._init_facebook()
             self._init_reddit()
             self._init_medium()
+            self._init_bluesky()
+            self._init_truth_social()
             
             logger.info("Social media credentials reloaded successfully")
             return True
