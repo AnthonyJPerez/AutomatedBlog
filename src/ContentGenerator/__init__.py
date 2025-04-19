@@ -68,6 +68,10 @@ def main(inputBlob: func.InputStream, outputContent: func.Out[str], outputRecomm
     blog_id = research_data.get('blog_id', '')
     research_results = research_data.get('research_results', [])
     
+    # Log extracted research details
+    logger.info(f'Processing content generation for blog: {blog_id} with theme: {theme}')
+    logger.info(f'Found {len(research_results)} research results to process')
+    
     # Load theme.json if blog_id is available
     theme_info = None
     if blog_id:
@@ -117,12 +121,12 @@ def main(inputBlob: func.InputStream, outputContent: func.Out[str], outputRecomm
                 'sentiment': web_research_data.get('sentiment', {})
             }
         
+        prompt = f"Create a detailed outline for a blog post about '{topic_title}'"
         outline = openai_service.generate_outline(
             topic=topic_title,
             theme=theme,
             tone='professional',
             target_audience='general',
-            context=context,
             theme_info=theme_info
         )
     except Exception as e:
@@ -149,14 +153,83 @@ def main(inputBlob: func.InputStream, outputContent: func.Out[str], outputRecomm
             if source_urls:
                 logger.info(f'Using {len(source_urls)} reference sources for content generation')
         
+        # Create an enhanced prompt for content generation using theme.json information
+        prompt = f"Write a comprehensive blog post about {topic_title}"
+        
+        # Add theme-specific information from theme.json if available
+        if theme_info:
+            # Extract content strategy information
+            content_strategy = theme_info.get('content_strategy', {})
+            if content_strategy:
+                tone = content_strategy.get('tone', 'professional')
+                style = content_strategy.get('style', '')
+                content_types = content_strategy.get('content_types', [])
+                length = content_strategy.get('preferred_length', '')
+                
+                if tone:
+                    prompt += f" using a {tone} tone"
+                if style:
+                    prompt += f" and {style} style"
+                if length:
+                    prompt += f". The article should be {length}"
+                
+                # Add content type specific instructions
+                if content_types and len(content_types) > 0:
+                    content_type_desc = ', '.join(content_types[:3])
+                    prompt += f". This content should follow formats common for: {content_type_desc}"
+            
+            # Add audience information
+            audience = theme_info.get('target_audience', {})
+            if audience and isinstance(audience, dict):
+                demographics = audience.get('demographics', '')
+                interests = audience.get('interests', [])
+                expertise = audience.get('expertise_level', '')
+                pain_points = audience.get('pain_points', [])
+                
+                if demographics:
+                    prompt += f". Target audience demographics: {demographics}"
+                if expertise:
+                    prompt += f". The audience has a {expertise} level of expertise"
+                if interests and len(interests) > 0:
+                    interests_str = ', '.join(interests[:3])
+                    prompt += f". They are interested in: {interests_str}"
+                if pain_points and len(pain_points) > 0:
+                    pain_points_str = ', '.join(pain_points[:3])
+                    prompt += f". Address these pain points: {pain_points_str}"
+            
+            # Add SEO and keyword information
+            seo = theme_info.get('seo_strategy', {})
+            if seo and isinstance(seo, dict):
+                key_terms = seo.get('key_terms', [])
+                competitors = seo.get('competitors', [])
+                
+                if key_terms and len(key_terms) > 0:
+                    key_terms_str = ', '.join(key_terms[:5])
+                    prompt += f". Incorporate these key terms naturally: {key_terms_str}"
+                
+            # Add brand identity information
+            brand = theme_info.get('brand_identity', {})
+            if brand and isinstance(brand, dict):
+                values = brand.get('values', [])
+                voice = brand.get('voice', '')
+                
+                if voice:
+                    prompt += f". Write with a {voice} brand voice"
+                if values and len(values) > 0:
+                    values_str = ', '.join(values[:3])
+                    prompt += f" that reflects these values: {values_str}"
+                    
+        prompt += "."
+        logger.info(f"Enhanced content prompt created using theme information")
+        
         content_draft = openai_service.generate_content(
-            topic=topic_title,
+            prompt=prompt,
             outline=outline,
             theme=theme,
             tone='professional',
             target_audience='general',
             content_type='article',
-            context=content_context
+            theme_info=theme_info
         )
     except Exception as e:
         logger.error(f'Error generating content draft: {str(e)}')
@@ -178,14 +251,67 @@ def main(inputBlob: func.InputStream, outputContent: func.Out[str], outputRecomm
                 'related_trends': web_research_data.get('related_trends', [])
             }
         
+        # Create an enhanced prompt for polishing the content using theme.json details
+        polish_prompt = f"Polish and improve the following blog post about {topic_title}."
+        
+        # Add theme-specific information from theme.json if available
+        if theme_info:
+            # Extract content strategy information
+            content_strategy = theme_info.get('content_strategy', {})
+            if content_strategy:
+                tone = content_strategy.get('tone', 'professional')
+                style = content_strategy.get('style', '')
+                voice = content_strategy.get('voice', '')
+                
+                if tone:
+                    polish_prompt += f" Ensure the tone is {tone}"
+                if style:
+                    polish_prompt += f" with a {style} style"
+                if voice:
+                    polish_prompt += f" and {voice} voice"
+            
+            # Add SEO and keyword information
+            seo = theme_info.get('seo_strategy', {})
+            if seo and isinstance(seo, dict):
+                key_terms = seo.get('key_terms', [])
+                seo_goals = seo.get('goals', [])
+                
+                if key_terms and len(key_terms) > 0:
+                    key_terms_str = ', '.join(key_terms[:5])
+                    polish_prompt += f". Ensure these key terms are well-integrated: {key_terms_str}"
+                if seo_goals and len(seo_goals) > 0:
+                    goals_str = ', '.join(seo_goals[:2])
+                    polish_prompt += f". Keep in mind these SEO goals: {goals_str}"
+            
+            # Add brand identity information
+            brand = theme_info.get('brand_identity', {})
+            if brand and isinstance(brand, dict):
+                values = brand.get('values', [])
+                messaging = brand.get('key_messaging', [])
+                
+                if values and len(values) > 0:
+                    values_str = ', '.join(values[:3])
+                    polish_prompt += f". Reflect these brand values: {values_str}"
+                if messaging and len(messaging) > 0:
+                    messaging_str = ', '.join(messaging[:2])
+                    polish_prompt += f". Incorporate this key messaging if relevant: {messaging_str}"
+        
+        # Add general quality requirements
+        polish_prompt += ". Make sure the content is well-structured, engaging, factually accurate, and has a logical flow. Improve transitions between sections, enhance clarity, and ensure a strong opening and conclusion."
+        
+        # Add original draft to polish
+        polish_prompt += f"\n\nHere's the draft content to polish:\n\n{content_draft}"
+        
+        logger.info(f"Enhanced polish prompt created using theme information")
+        
         polished_content = openai_service.generate_content(
-            topic=topic_title,
+            prompt=polish_prompt,
             outline=outline,
             theme=theme,
             tone='professional',
             target_audience='general',
             content_type='polish',
-            context=polish_context
+            theme_info=theme_info
         )
     except Exception as e:
         logger.error(f'Error polishing content: {str(e)}')
@@ -223,17 +349,61 @@ def main(inputBlob: func.InputStream, outputContent: func.Out[str], outputRecomm
     image_info = None
     try:
         logger.info(f'Generating featured image for topic: {topic_title}')
-        # Create an image prompt based on the topic and theme
+        # Create an enhanced image prompt based on the topic, theme, and theme.json details
         image_prompt = f"Create a professional featured image for a blog post about '{topic_title}'."
         if theme:
             image_prompt += f" The blog's theme is '{theme}'."
+            
+        # Add theme-specific styling from theme.json if available
+        if theme_info:
+            # Extract visual style information
+            visual_style = theme_info.get('visual_style', {})
+            if visual_style:
+                style_description = visual_style.get('description', '')
+                color_palette = visual_style.get('color_palette', [])
+                imagery_style = visual_style.get('imagery_style', '')
+                
+                if style_description:
+                    image_prompt += f" Visual style: {style_description}."
+                if color_palette and len(color_palette) > 0:
+                    colors_str = ', '.join(color_palette)
+                    image_prompt += f" Use this color palette: {colors_str}."
+                if imagery_style:
+                    image_prompt += f" The imagery style should be {imagery_style}."
+            
+            # Add audience information if available to better target the image
+            audience = theme_info.get('target_audience', {})
+            if audience and isinstance(audience, dict):
+                demographics = audience.get('demographics', '')
+                interests = audience.get('interests', [])
+                
+                if demographics:
+                    image_prompt += f" Target audience demographics: {demographics}."
+                if interests and len(interests) > 0:
+                    interests_str = ', '.join(interests[:3])  # Use top 3 interests
+                    image_prompt += f" Incorporate elements relevant to these interests: {interests_str}."
+            
+            # Add brand identity information if available
+            brand = theme_info.get('brand_identity', {})
+            if brand and isinstance(brand, dict):
+                brand_values = brand.get('values', [])
+                brand_voice = brand.get('voice', '')
+                
+                if brand_values and len(brand_values) > 0:
+                    values_str = ', '.join(brand_values[:3])  # Use top 3 values
+                    image_prompt += f" Reflect these brand values: {values_str}."
+                if brand_voice:
+                    image_prompt += f" The brand voice is {brand_voice}."
+                    
+        logger.info(f"Enhanced image prompt created using theme information")
         
-        # Generate the image
+        # Generate the image with theme-specific styling
         image_info = openai_service.generate_image(
             prompt=image_prompt,
             size="1024x1024",
             style="natural",
-            quality="standard"
+            quality="standard",
+            theme_info=theme_info
         )
         
         logger.info(f'Image generation result: {image_info.get("success", False)}')
