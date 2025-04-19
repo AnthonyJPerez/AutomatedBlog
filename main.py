@@ -147,6 +147,60 @@ def translate_text_api():
             "message": f"Translation error: {str(e)}"
         }), 500
     
+# Add cache management API routes
+@app.route('/api/translation/cache/stats', methods=['GET'])
+def translation_cache_stats_api():
+    """
+    API endpoint to get translation cache statistics
+    """
+    if not translation_service:
+        return jsonify({
+            "success": False,
+            "message": "Translation service is not available"
+        }), 500
+        
+    try:
+        stats = translation_service.get_cache_stats()
+        
+        return jsonify({
+            "success": True,
+            "cache_stats": stats,
+            "timestamp": datetime.datetime.now().isoformat()
+        })
+    except Exception as e:
+        logger.error(f"Error getting translation cache stats: {str(e)}")
+        return jsonify({
+            "success": False,
+            "message": f"Error getting translation cache stats: {str(e)}"
+        }), 500
+        
+@app.route('/api/translation/cache/clear', methods=['POST'])
+def translation_cache_clear_api():
+    """
+    API endpoint to clear the translation cache
+    """
+    if not translation_service:
+        return jsonify({
+            "success": False,
+            "message": "Translation service is not available"
+        }), 500
+        
+    try:
+        result = translation_service.clear_cache()
+        
+        return jsonify({
+            "success": True,
+            "operation": "clear_cache",
+            "result": result,
+            "timestamp": datetime.datetime.now().isoformat()
+        })
+    except Exception as e:
+        logger.error(f"Error clearing translation cache: {str(e)}")
+        return jsonify({
+            "success": False,
+            "message": f"Error clearing translation cache: {str(e)}"
+        }), 500
+
 # Add language context processor
 @app.context_processor
 def inject_language_data():

@@ -1,0 +1,7 @@
+{
+  "source_language": "en",
+  "target_language": "es",
+  "original_text": "Hello, this is a test message.",
+  "translation": "Error generating response: 'NoneType' object has no attribute 'chat'",
+  "timestamp": "2025-04-19T19:36:57.579833"
+}
