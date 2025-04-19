@@ -905,6 +905,7 @@ def trending_topics_api_new():
                 if blog:
                     # Create a context dictionary with relevant blog information
                     blog_context = {
+                        "name": blog.get("name", ""),
                         "theme": blog.get("theme"),
                         "topics": blog.get("topics", []),
                         "description": blog.get("description", ""),
@@ -916,17 +917,26 @@ def trending_topics_api_new():
                 logger.warning(f"Error getting blog context for ID {blog_id}: {str(e)}")
                 # Continue without context if blog info can't be loaded
         
-        # Get trending topics with optional blog context
+        # Get trending topics with optional blog context - use the context-aware method when a blog is selected
         logger.info(f"Getting trending topics for category: {category} with limit: {limit}")
-        topics = web_scraper_service.get_trending_topics(
-            category=category, 
-            limit=limit,
-            context=blog_context
-        )
+        if blog_context:
+            logger.info(f"Using context-aware trending topics method for blog: {blog_context.get('name')}")
+            topics = web_scraper_service.get_trending_topics_with_context(
+                category=category, 
+                limit=limit,
+                blog_context=blog_context
+            )
+        else:
+            topics = web_scraper_service.get_trending_topics(
+                category=category, 
+                limit=limit
+            )
         
         return jsonify({
             "success": True,
-            "data": topics
+            "data": topics,
+            "used_context_aware_method": blog_context is not None,
+            "blog_name": blog_context.get("name") if blog_context else None
         })
         
     except Exception as e:
@@ -945,10 +955,11 @@ def rss_feed_api():
             "message": "Web scraper service is not available"
         }), 500
     
-    # Get feed URL and limit from request
+    # Get feed URL, limit, and blog_id from request
     data = request.json
     feed_url = data.get('feed_url')
     limit = data.get('limit', 10)
+    blog_id = data.get('blog_id')
     
     if not feed_url:
         return jsonify({
@@ -957,13 +968,36 @@ def rss_feed_api():
         }), 400
     
     try:
-        # Parse the RSS feed
+        # Get blog context if specified
+        blog_context = None
+        if blog_id:
+            try:
+                blog_data = get_blog_by_id(blog_id)
+                if blog_data:
+                    blog_context = {
+                        'name': blog_data.get('name', ''),
+                        'theme': blog_data.get('theme', ''),
+                        'topics': blog_data.get('topics', []),
+                        'audience': blog_data.get('audience', ''),
+                        'tone': blog_data.get('tone', 'informative')
+                    }
+                    logger.info(f"Using blog context for RSS feed parsing: {blog_context['name']}")
+            except Exception as e:
+                logger.warning(f"Could not get blog context for ID {blog_id}: {str(e)}")
+        
+        # Parse the RSS feed with or without context
         logger.info(f"Parsing RSS feed: {feed_url} with limit: {limit}")
-        entries = web_scraper_service.parse_rss_feed(feed_url, limit=limit)
+        if blog_context:
+            entries = web_scraper_service.fetch_rss_feed_with_context(feed_url, limit, blog_context)
+            logger.info(f"Parsed RSS feed with blog context filtering")
+        else:
+            entries = web_scraper_service.fetch_rss_feed(feed_url, limit)
         
         return jsonify({
             "success": True,
-            "data": entries
+            "data": entries,
+            "used_context_aware_method": blog_context is not None,
+            "blog_name": blog_context.get("name") if blog_context else None
         })
         
     except Exception as e:
