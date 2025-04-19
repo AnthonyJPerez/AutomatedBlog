@@ -3,125 +3,89 @@
 {% block title %}Usage & Billing Dashboard{% endblock %}
 
 {% block content %}
-<div class="row">
-    <div class="col-12">
-        <h2 class="mb-4">
-            <i class="bi bi-graph-up me-2"></i>Usage & Billing Dashboard
-        </h2>
-    </div>
-</div>
-
-<!-- Global Usage Stats -->
-<div class="row mb-4">
-    <div class="col-12">
-        <div class="card border-0 shadow-sm">
-            <div class="card-header bg-primary text-white">
-                <h4 class="mb-0"><i class="bi bi-globe me-2"></i>Global Service Status</h4>
+<div class="container py-4">
+    <h1 class="mb-4">Usage & Billing Dashboard</h1>
+    
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Global API Usage</h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-4">
+                        <h6 class="text-muted">OpenAI API</h6>
+                        <div class="progress mb-2">
+                            <div id="openai-usage-bar" class="progress-bar bg-primary" role="progressbar" style="width: 0%"></div>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span id="openai-usage-text">0 / 0 tokens</span>
+                            <span id="openai-credits" class="badge bg-info">$0.00</span>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <h6 class="text-muted">Image Generation (DALL-E)</h6>
+                        <div class="progress mb-2">
+                            <div id="image-usage-bar" class="progress-bar bg-success" role="progressbar" style="width: 0%"></div>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span id="image-usage-text">0 / 0 images</span>
+                            <span id="image-credits" class="badge bg-info">$0.00</span>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <h6 class="text-muted">WordPress API</h6>
+                        <div class="progress mb-2">
+                            <div id="wordpress-usage-bar" class="progress-bar bg-warning" role="progressbar" style="width: 0%"></div>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span id="wordpress-usage-text">0 / 0 requests</span>
+                            <span id="wordpress-credits" class="badge bg-info">$0.00</span>
+                        </div>
+                    </div>
+                </div>
             </div>
-            <div class="card-body">
-                <div class="row">
-                    <div class="col-md-4 mb-3">
-                        <div class="card h-100 border-0 bg-light">
-                            <div class="card-body">
-                                <h5 class="card-title">
-                                    <i class="bi bi-robot me-2 text-primary"></i>OpenAI
-                                </h5>
-                                <p class="card-text">
-                                    <span class="badge bg-{{ global_status.openai.status_color }}">
-                                        {{ global_status.openai.status }}
-                                    </span>
-                                </p>
-                                <div class="mt-3">
-                                    <strong>Current Month Usage:</strong>
-                                    <div class="progress mt-2" style="height: 20px;">
-                                        <div class="progress-bar bg-{{ global_status.openai.progress_color }}" 
-                                             role="progressbar" 
-                                             style="width: {{ global_status.openai.usage_percentage }}%;" 
-                                             aria-valuenow="{{ global_status.openai.usage_percentage }}" 
-                                             aria-valuemin="0" 
-                                             aria-valuemax="100">
-                                            ${{ global_status.openai.current_usage }} / ${{ global_status.openai.usage_limit }}
-                                        </div>
-                                    </div>
+        </div>
+        
+        <div class="col-md-6">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Content Generation Statistics</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <div class="card bg-light">
+                                <div class="card-body text-center">
+                                    <h3 id="total-blogs">0</h3>
+                                    <p class="text-muted mb-0">Active Blogs</p>
                                 </div>
-                            </div>
-                            <div class="card-footer bg-transparent border-0">
-                                <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#openaiDetailsModal">
-                                    <i class="bi bi-info-circle me-1"></i>View Details
-                                </button>
-                                <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#updateOpenaiModal">
-                                    <i class="bi bi-gear me-1"></i>Update Key
-                                </button>
                             </div>
                         </div>
-                    </div>
-                    
-                    <div class="col-md-4 mb-3">
-                        <div class="card h-100 border-0 bg-light">
-                            <div class="card-body">
-                                <h5 class="card-title">
-                                    <i class="bi bi-hdd-rack me-2 text-info"></i>Azure Resources
-                                </h5>
-                                <p class="card-text">
-                                    <span class="badge bg-{{ global_status.azure.status_color }}">
-                                        {{ global_status.azure.status }}
-                                    </span>
-                                </p>
-                                <div class="mt-3">
-                                    <strong>Current Month Usage:</strong>
-                                    <div class="progress mt-2" style="height: 20px;">
-                                        <div class="progress-bar bg-{{ global_status.azure.progress_color }}" 
-                                             role="progressbar" 
-                                             style="width: {{ global_status.azure.usage_percentage }}%;" 
-                                             aria-valuenow="{{ global_status.azure.usage_percentage }}" 
-                                             aria-valuemin="0" 
-                                             aria-valuemax="100">
-                                            ${{ global_status.azure.current_usage }} / ${{ global_status.azure.usage_limit }}
-                                        </div>
-                                    </div>
+                        <div class="col-md-6 mb-3">
+                            <div class="card bg-light">
+                                <div class="card-body text-center">
+                                    <h3 id="total-content">0</h3>
+                                    <p class="text-muted mb-0">Content Pieces</p>
                                 </div>
-                            </div>
-                            <div class="card-footer bg-transparent border-0">
-                                <button class="btn btn-sm btn-outline-info" data-bs-toggle="modal" data-bs-target="#azureDetailsModal">
-                                    <i class="bi bi-info-circle me-1"></i>View Details
-                                </button>
                             </div>
                         </div>
-                    </div>
-                    
-                    <div class="col-md-4 mb-3">
-                        <div class="card h-100 border-0 bg-light">
-                            <div class="card-body">
-                                <h5 class="card-title">
-                                    <i class="bi bi-share me-2 text-success"></i>Social Media
-                                </h5>
-                                <p class="card-text">
-                                    {% if global_status.social_media.twitter.status == 'Enabled' %}
-                                    <span class="badge bg-success">Twitter: Enabled</span>
-                                    {% else %}
-                                    <span class="badge bg-secondary">Twitter: Disabled</span>
-                                    {% endif %}
-                                    
-                                    {% if global_status.social_media.linkedin.status == 'Enabled' %}
-                                    <span class="badge bg-success">LinkedIn: Enabled</span>
-                                    {% else %}
-                                    <span class="badge bg-secondary">LinkedIn: Disabled</span>
-                                    {% endif %}
-                                    
-                                    {% if global_status.social_media.facebook.status == 'Enabled' %}
-                                    <span class="badge bg-success">Facebook: Enabled</span>
-                                    {% else %}
-                                    <span class="badge bg-secondary">Facebook: Disabled</span>
-                                    {% endif %}
-                                </p>
-                                <div class="mt-3">
-                                    <strong>Posts This Month:</strong> {{ global_status.social_media.total_posts }}
+                        <div class="col-md-6 mb-3">
+                            <div class="card bg-light">
+                                <div class="card-body text-center">
+                                    <h3 id="total-images">0</h3>
+                                    <p class="text-muted mb-0">Images Generated</p>
                                 </div>
                             </div>
-                            <div class="card-footer bg-transparent border-0">
-                                <button class="btn btn-sm btn-outline-success" data-bs-toggle="modal" data-bs-target="#socialMediaModal">
-                                    <i class="bi bi-gear me-1"></i>Configure
-                                </button>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <div class="card bg-light">
+                                <div class="card-body text-center">
+                                    <h3 id="total-published">0</h3>
+                                    <p class="text-muted mb-0">Published Posts</p>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -129,385 +93,98 @@
             </div>
         </div>
     </div>
-</div>
-
-<!-- Blog-specific Usage Stats -->
-<div class="row">
-    <div class="col-12">
-        <div class="card border-0 shadow-sm">
-            <div class="card-header bg-dark text-white">
-                <h4 class="mb-0"><i class="bi bi-journals me-2"></i>Blog-Specific Usage</h4>
+    
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="card-title mb-0">Blog-Specific Usage</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover" id="blog-usage-table">
+                            <thead>
+                                <tr>
+                                    <th>Blog</th>
+                                    <th>Theme</th>
+                                    <th>Content Generated</th>
+                                    <th>Images</th>
+                                    <th>Published</th>
+                                    <th>Last Generated</th>
+                                    <th>Total Usage</th>
+                                </tr>
+                            </thead>
+                            <tbody id="blog-usage-tbody">
+                                <!-- Dynamically populated -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
             </div>
-            <div class="card-body">
-                <div class="accordion accordion-flush" id="blogUsageAccordion">
-                    {% for blog in blogs %}
-                    <div class="accordion-item">
-                        <h2 class="accordion-header" id="heading-{{ blog.id }}">
-                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapse-{{ blog.id }}" aria-expanded="false" aria-controls="collapse-{{ blog.id }}">
-                                <span class="fw-bold">{{ blog.name }}</span> - {{ blog.theme }}
-                            </button>
-                        </h2>
-                        <div id="collapse-{{ blog.id }}" class="accordion-collapse collapse" aria-labelledby="heading-{{ blog.id }}" data-bs-parent="#blogUsageAccordion">
-                            <div class="accordion-body">
-                                <div class="row mb-3">
-                                    <div class="col-md-6">
-                                        <div class="card h-100 border-0 bg-light">
-                                            <div class="card-body">
-                                                <h5 class="card-title">
-                                                    <i class="bi bi-lightning-charge me-2 text-warning"></i>API Usage
-                                                </h5>
-                                                <div class="mt-3">
-                                                    <strong>OpenAI Credits Used:</strong> 
-                                                    <div class="d-flex align-items-center">
-                                                        <div class="progress flex-grow-1 me-2" style="height: 15px;">
-                                                            <div class="progress-bar bg-{{ blog.usage.openai.progress_color }}" 
-                                                                 role="progressbar" 
-                                                                 style="width: {{ blog.usage.openai.usage_percentage }}%;" 
-                                                                 aria-valuenow="{{ blog.usage.openai.usage_percentage }}" 
-                                                                 aria-valuemin="0" 
-                                                                 aria-valuemax="100">
-                                                                {{ blog.usage.openai.usage_percentage }}%
-                                                            </div>
-                                                        </div>
-                                                        <span>${{ blog.usage.openai.current_usage }}</span>
-                                                    </div>
-                                                </div>
-                                                <div class="mt-3">
-                                                    <strong>WordPress API Calls:</strong> {{ blog.usage.wordpress.api_calls }}
-                                                </div>
-                                                <div class="mt-3">
-                                                    <strong>Social Media Posts:</strong> {{ blog.usage.social_media.posts_count }}
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    
-                                    <div class="col-md-6">
-                                        <div class="card h-100 border-0 bg-light">
-                                            <div class="card-body">
-                                                <h5 class="card-title">
-                                                    <i class="bi bi-key me-2 text-danger"></i>API Credentials
-                                                </h5>
-                                                <p class="text-muted small">Blog-specific credentials override global settings</p>
-                                                
-                                                <div class="mt-3">
-                                                    <strong>OpenAI API Key:</strong> 
-                                                    {% if blog.credentials.has_openai_key %}
-                                                    <span class="badge bg-success">Custom Key Set</span>
-                                                    {% else %}
-                                                    <span class="badge bg-secondary">Using Global</span>
-                                                    {% endif %}
-                                                </div>
-                                                
-                                                <div class="mt-3">
-                                                    <strong>WordPress:</strong> 
-                                                    {% if blog.wordpress_connected %}
-                                                    <span class="badge bg-success">Connected</span>
-                                                    {% else %}
-                                                    <span class="badge bg-warning text-dark">Not Verified</span>
-                                                    {% endif %}
-                                                </div>
-                                                
-                                                <div class="mt-3">
-                                                    <strong>Social Media Keys:</strong>
-                                                    {% if blog.credentials.has_twitter_key %}
-                                                    <span class="badge bg-primary">Twitter</span>
-                                                    {% endif %}
-                                                    
-                                                    {% if blog.credentials.has_linkedin_key %}
-                                                    <span class="badge bg-primary">LinkedIn</span>
-                                                    {% endif %}
-                                                    
-                                                    {% if blog.credentials.has_facebook_key %}
-                                                    <span class="badge bg-primary">Facebook</span>
-                                                    {% endif %}
-                                                    
-                                                    {% if not blog.credentials.has_twitter_key and not blog.credentials.has_linkedin_key and not blog.credentials.has_facebook_key %}
-                                                    <span class="badge bg-secondary">Using Global</span>
-                                                    {% endif %}
-                                                </div>
-                                            </div>
-                                            <div class="card-footer bg-transparent border-0">
-                                                <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#updateBlogCredentials-{{ blog.id }}" data-blog-id="{{ blog.id }}">
-                                                    <i class="bi bi-pencil-square me-1"></i>Update Credentials
-                                                </button>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                                
-                                <div class="d-flex justify-content-end">
-                                    <a href="{{ url_for('blog_detail', blog_id=blog.id) }}" class="btn btn-outline-primary">
-                                        <i class="bi bi-journal-text me-1"></i>View Blog Details
-                                    </a>
-                                </div>
-                                
-                                <!-- Blog Credentials Update Modal -->
-                                <div class="modal fade" id="updateBlogCredentials-{{ blog.id }}" tabindex="-1" aria-labelledby="updateBlogCredentialsLabel-{{ blog.id }}" aria-hidden="true">
-                                    <div class="modal-dialog modal-lg">
-                                        <div class="modal-content">
-                                            <div class="modal-header">
-                                                <h5 class="modal-title" id="updateBlogCredentialsLabel-{{ blog.id }}">
-                                                    Update Credentials for {{ blog.name }}
-                                                </h5>
-                                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                                            </div>
-                                            <div class="modal-body">
-                                                <form id="updateCredentialsForm-{{ blog.id }}">
-                                                    <div class="mb-3">
-                                                        <label for="openaiApiKey-{{ blog.id }}" class="form-label">OpenAI API Key</label>
-                                                        <div class="input-group">
-                                                            <input type="password" class="form-control" id="openaiApiKey-{{ blog.id }}" name="openai_api_key" placeholder="Leave blank to use global credentials">
-                                                            <button class="btn btn-outline-secondary toggle-password" type="button" data-target="openaiApiKey-{{ blog.id }}">
-                                                                <i class="bi bi-eye"></i>
-                                                            </button>
-                                                        </div>
-                                                        <div class="form-text">Blog-specific OpenAI API key (optional)</div>
-                                                    </div>
-                                                    
-                                                    <h6 class="mt-4 mb-3">Social Media Credentials</h6>
-                                                    <div class="row g-3">
-                                                        <div class="col-md-4">
-                                                            <label for="twitterApiKey-{{ blog.id }}" class="form-label">Twitter API Key</label>
-                                                            <div class="input-group">
-                                                                <input type="password" class="form-control" id="twitterApiKey-{{ blog.id }}" name="twitter_api_key" placeholder="Use global credentials">
-                                                                <button class="btn btn-outline-secondary toggle-password" type="button" data-target="twitterApiKey-{{ blog.id }}">
-                                                                    <i class="bi bi-eye"></i>
-                                                                </button>
-                                                            </div>
-                                                        </div>
-                                                        <div class="col-md-4">
-                                                            <label for="linkedinApiKey-{{ blog.id }}" class="form-label">LinkedIn API Key</label>
-                                                            <div class="input-group">
-                                                                <input type="password" class="form-control" id="linkedinApiKey-{{ blog.id }}" name="linkedin_api_key" placeholder="Use global credentials">
-                                                                <button class="btn btn-outline-secondary toggle-password" type="button" data-target="linkedinApiKey-{{ blog.id }}">
-                                                                    <i class="bi bi-eye"></i>
-                                                                </button>
-                                                            </div>
-                                                        </div>
-                                                        <div class="col-md-4">
-                                                            <label for="facebookApiKey-{{ blog.id }}" class="form-label">Facebook API Key</label>
-                                                            <div class="input-group">
-                                                                <input type="password" class="form-control" id="facebookApiKey-{{ blog.id }}" name="facebook_api_key" placeholder="Use global credentials">
-                                                                <button class="btn btn-outline-secondary toggle-password" type="button" data-target="facebookApiKey-{{ blog.id }}">
-                                                                    <i class="bi bi-eye"></i>
-                                                                </button>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                    
-                                                    <h6 class="mt-4 mb-3">WordPress Credentials</h6>
-                                                    <div class="row g-3">
-                                                        <div class="col-md-4">
-                                                            <label for="wordpressUrl-{{ blog.id }}" class="form-label">WordPress URL</label>
-                                                            <input type="url" class="form-control" id="wordpressUrl-{{ blog.id }}" name="wordpress_url" value="{{ blog.wordpress_url if blog.wordpress_url else '' }}">
-                                                        </div>
-                                                        <div class="col-md-4">
-                                                            <label for="wordpressUsername-{{ blog.id }}" class="form-label">Username</label>
-                                                            <input type="text" class="form-control" id="wordpressUsername-{{ blog.id }}" name="wordpress_username" value="{{ blog.wordpress_username if blog.wordpress_username else '' }}">
-                                                        </div>
-                                                        <div class="col-md-4">
-                                                            <label for="wordpressAppPassword-{{ blog.id }}" class="form-label">App Password</label>
-                                                            <div class="input-group">
-                                                                <input type="password" class="form-control" id="wordpressAppPassword-{{ blog.id }}" name="wordpress_app_password" placeholder="Update password">
-                                                                <button class="btn btn-outline-secondary toggle-password" type="button" data-target="wordpressAppPassword-{{ blog.id }}">
-                                                                    <i class="bi bi-eye"></i>
-                                                                </button>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </form>
-                                            </div>
-                                            <div class="modal-footer">
-                                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                                                <button type="button" class="btn btn-primary update-credentials-btn" data-blog-id="{{ blog.id }}">
-                                                    <i class="bi bi-check-lg me-1"></i>Save Changes
-                                                </button>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
+        </div>
+    </div>
+    
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">OpenAI Credentials</h5>
+                </div>
+                <div class="card-body">
+                    <form id="openai-credentials-form">
+                        <div class="mb-3">
+                            <label for="openai-api-key" class="form-label">OpenAI API Key</label>
+                            <div class="input-group">
+                                <input type="password" class="form-control" id="openai-api-key" placeholder="sk-...">
+                                <button class="btn btn-outline-secondary toggle-password" type="button">
+                                    <i class="bi bi-eye"></i>
+                                </button>
+                            </div>
+                            <div class="form-text">Used for content generation and image creation.</div>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Update OpenAI Credentials</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Social Media Credentials</h5>
+                </div>
+                <div class="card-body">
+                    <form id="social-media-credentials-form">
+                        <div class="mb-3">
+                            <label for="twitter-api-key" class="form-label">Twitter API Key</label>
+                            <div class="input-group">
+                                <input type="password" class="form-control" id="twitter-api-key">
+                                <button class="btn btn-outline-secondary toggle-password" type="button">
+                                    <i class="bi bi-eye"></i>
+                                </button>
                             </div>
                         </div>
-                    </div>
-                    {% endfor %}
+                        <div class="mb-3">
+                            <label for="linkedin-api-key" class="form-label">LinkedIn API Key</label>
+                            <div class="input-group">
+                                <input type="password" class="form-control" id="linkedin-api-key">
+                                <button class="btn btn-outline-secondary toggle-password" type="button">
+                                    <i class="bi bi-eye"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="facebook-api-key" class="form-label">Facebook API Key</label>
+                            <div class="input-group">
+                                <input type="password" class="form-control" id="facebook-api-key">
+                                <button class="btn btn-outline-secondary toggle-password" type="button">
+                                    <i class="bi bi-eye"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Update Social Media Credentials</button>
+                    </form>
                 </div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Modals for global services -->
-<!-- OpenAI Details Modal -->
-<div class="modal fade" id="openaiDetailsModal" tabindex="-1" aria-labelledby="openaiDetailsModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="openaiDetailsModalLabel">OpenAI Usage Details</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <div class="table-responsive">
-                    <table class="table table-striped">
-                        <thead>
-                            <tr>
-                                <th>Model</th>
-                                <th>Requests</th>
-                                <th>Tokens</th>
-                                <th>Cost</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for model in global_status.openai.models %}
-                            <tr>
-                                <td>{{ model.name }}</td>
-                                <td>{{ model.requests }}</td>
-                                <td>{{ model.tokens }}</td>
-                                <td>${{ model.cost }}</td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                        <tfoot>
-                            <tr class="table-primary">
-                                <th>Total</th>
-                                <th>{{ global_status.openai.total_requests }}</th>
-                                <th>{{ global_status.openai.total_tokens }}</th>
-                                <th>${{ global_status.openai.current_usage }}</th>
-                            </tr>
-                        </tfoot>
-                    </table>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Azure Details Modal -->
-<div class="modal fade" id="azureDetailsModal" tabindex="-1" aria-labelledby="azureDetailsModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="azureDetailsModalLabel">Azure Resources Usage</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <div class="table-responsive">
-                    <table class="table table-striped">
-                        <thead>
-                            <tr>
-                                <th>Resource</th>
-                                <th>Type</th>
-                                <th>Region</th>
-                                <th>Cost</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for resource in global_status.azure.resources %}
-                            <tr>
-                                <td>{{ resource.name }}</td>
-                                <td>{{ resource.type }}</td>
-                                <td>{{ resource.region }}</td>
-                                <td>${{ resource.cost }}</td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                        <tfoot>
-                            <tr class="table-info">
-                                <th colspan="3">Total</th>
-                                <th>${{ global_status.azure.current_usage }}</th>
-                            </tr>
-                        </tfoot>
-                    </table>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Social Media Modal -->
-<div class="modal fade" id="socialMediaModal" tabindex="-1" aria-labelledby="socialMediaModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="socialMediaModalLabel">Social Media Configuration</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <form id="socialMediaForm">
-                    <div class="mb-3">
-                        <label for="twitterApiKey" class="form-label">Twitter API Key</label>
-                        <div class="input-group">
-                            <input type="password" class="form-control" id="twitterApiKey" name="twitter_api_key" placeholder="Enter API Key">
-                            <button class="btn btn-outline-secondary toggle-password" type="button" data-target="twitterApiKey">
-                                <i class="bi bi-eye"></i>
-                            </button>
-                        </div>
-                    </div>
-                    
-                    <div class="mb-3">
-                        <label for="linkedinApiKey" class="form-label">LinkedIn API Key</label>
-                        <div class="input-group">
-                            <input type="password" class="form-control" id="linkedinApiKey" name="linkedin_api_key" placeholder="Enter API Key">
-                            <button class="btn btn-outline-secondary toggle-password" type="button" data-target="linkedinApiKey">
-                                <i class="bi bi-eye"></i>
-                            </button>
-                        </div>
-                    </div>
-                    
-                    <div class="mb-3">
-                        <label for="facebookApiKey" class="form-label">Facebook API Key</label>
-                        <div class="input-group">
-                            <input type="password" class="form-control" id="facebookApiKey" name="facebook_api_key" placeholder="Enter API Key">
-                            <button class="btn btn-outline-secondary toggle-password" type="button" data-target="facebookApiKey">
-                                <i class="bi bi-eye"></i>
-                            </button>
-                        </div>
-                    </div>
-                </form>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" class="btn btn-success" id="saveSocialMediaBtn">
-                    <i class="bi bi-check-lg me-1"></i>Save Changes
-                </button>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Update OpenAI Key Modal -->
-<div class="modal fade" id="updateOpenaiModal" tabindex="-1" aria-labelledby="updateOpenaiModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="updateOpenaiModalLabel">Update OpenAI API Key</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <form id="openaiKeyForm">
-                    <div class="mb-3">
-                        <label for="globalOpenaiApiKey" class="form-label">Global OpenAI API Key</label>
-                        <div class="input-group">
-                            <input type="password" class="form-control" id="globalOpenaiApiKey" name="openai_api_key" placeholder="Enter API Key">
-                            <button class="btn btn-outline-secondary toggle-password" type="button" data-target="globalOpenaiApiKey">
-                                <i class="bi bi-eye"></i>
-                            </button>
-                        </div>
-                        <div class="form-text">This key will be used for all blogs unless overridden</div>
-                    </div>
-                </form>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" class="btn btn-primary" id="saveOpenaiKeyBtn">
-                    <i class="bi bi-check-lg me-1"></i>Save Key
-                </button>
             </div>
         </div>
     </div>
@@ -516,183 +193,162 @@
 
 {% block scripts %}
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Toggle password visibility
-    document.querySelectorAll('.toggle-password').forEach(button => {
-        button.addEventListener('click', function() {
-            const targetId = this.getAttribute('data-target');
-            const input = document.getElementById(targetId);
-            
-            if (input.type === 'password') {
-                input.type = 'text';
-                this.innerHTML = '<i class="bi bi-eye-slash"></i>';
-            } else {
-                input.type = 'password';
-                this.innerHTML = '<i class="bi bi-eye"></i>';
-            }
-        });
-    });
-    
-    // Update blog credentials
-    document.querySelectorAll('.update-credentials-btn').forEach(button => {
-        button.addEventListener('click', function() {
-            const blogId = this.getAttribute('data-blog-id');
-            const form = document.getElementById(`updateCredentialsForm-${blogId}`);
-            const formData = new FormData(form);
-            const data = {};
-            
-            // Convert FormData to JSON
-            formData.forEach((value, key) => {
-                data[key] = value;
-            });
-            
-            // Add WordPress object if needed
-            if (data.wordpress_url || data.wordpress_username || data.wordpress_app_password) {
-                data.wordpress = {
-                    url: data.wordpress_url,
-                    username: data.wordpress_username,
-                    app_password: data.wordpress_app_password
-                };
+    document.addEventListener('DOMContentLoaded', function() {
+        // Load global usage data
+        fetchGlobalUsage();
+        
+        // Toggle password visibility
+        document.querySelectorAll('.toggle-password').forEach(button => {
+            button.addEventListener('click', function() {
+                const input = this.parentElement.querySelector('input');
+                const icon = this.querySelector('i');
                 
-                // Remove individual WordPress fields
-                delete data.wordpress_url;
-                delete data.wordpress_username;
-                delete data.wordpress_app_password;
-            }
+                if (input.type === 'password') {
+                    input.type = 'text';
+                    icon.classList.remove('bi-eye');
+                    icon.classList.add('bi-eye-slash');
+                } else {
+                    input.type = 'password';
+                    icon.classList.remove('bi-eye-slash');
+                    icon.classList.add('bi-eye');
+                }
+            });
+        });
+        
+        // OpenAI credentials form
+        document.getElementById('openai-credentials-form').addEventListener('submit', function(e) {
+            e.preventDefault();
             
-            // Send request to update credentials
-            fetch(`/api/blog/${blogId}/credentials`, {
+            const apiKey = document.getElementById('openai-api-key').value;
+            
+            fetch('/api/global/credentials', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify(data)
+                body: JSON.stringify({
+                    openai_api_key: apiKey
+                })
             })
             .then(response => response.json())
-            .then(result => {
-                if (result.success) {
-                    // Close modal and show success message
-                    const modal = bootstrap.Modal.getInstance(document.getElementById(`updateBlogCredentials-${blogId}`));
-                    modal.hide();
-                    
-                    // Show alert
-                    const alertDiv = document.createElement('div');
-                    alertDiv.className = 'alert alert-success alert-dismissible fade show';
-                    alertDiv.innerHTML = `
-                        <strong>Success!</strong> ${result.message}
-                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                    `;
-                    document.querySelector('main > .container').insertBefore(alertDiv, document.querySelector('main > .container').firstChild);
-                    
-                    // Reload page after short delay
-                    setTimeout(() => {
-                        window.location.reload();
-                    }, 2000);
+            .then(data => {
+                if (data.success) {
+                    alert('OpenAI credentials updated successfully');
                 } else {
-                    // Show error message
-                    alert(`Error: ${result.message}`);
+                    alert('Error updating OpenAI credentials: ' + data.message);
                 }
             })
             .catch(error => {
-                console.error('Error updating credentials:', error);
-                alert('An error occurred while updating credentials. Please try again.');
+                console.error('Error:', error);
+                alert('An error occurred while updating credentials');
+            });
+        });
+        
+        // Social media credentials form
+        document.getElementById('social-media-credentials-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const twitterApiKey = document.getElementById('twitter-api-key').value;
+            const linkedinApiKey = document.getElementById('linkedin-api-key').value;
+            const facebookApiKey = document.getElementById('facebook-api-key').value;
+            
+            fetch('/api/global/social-media-credentials', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    twitter_api_key: twitterApiKey,
+                    linkedin_api_key: linkedinApiKey,
+                    facebook_api_key: facebookApiKey
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('Social media credentials updated successfully');
+                } else {
+                    alert('Error updating social media credentials: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('An error occurred while updating credentials');
             });
         });
     });
     
-    // Save global OpenAI API key
-    document.getElementById('saveOpenaiKeyBtn').addEventListener('click', function() {
-        const apiKey = document.getElementById('globalOpenaiApiKey').value;
-        
-        // Send request to update global OpenAI API key
-        fetch('/api/global/credentials', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                openai_api_key: apiKey
+    function fetchGlobalUsage() {
+        fetch('/api/global/usage')
+            .then(response => response.json())
+            .then(data => {
+                updateUsageDisplay(data);
+                updateBlogUsageTable(data.blogs);
             })
-        })
-        .then(response => response.json())
-        .then(result => {
-            if (result.success) {
-                // Close modal and show success message
-                const modal = bootstrap.Modal.getInstance(document.getElementById('updateOpenaiModal'));
-                modal.hide();
-                
-                // Show alert
-                const alertDiv = document.createElement('div');
-                alertDiv.className = 'alert alert-success alert-dismissible fade show';
-                alertDiv.innerHTML = `
-                    <strong>Success!</strong> OpenAI API key updated successfully.
-                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                `;
-                document.querySelector('main > .container').insertBefore(alertDiv, document.querySelector('main > .container').firstChild);
-                
-                // Reload page after short delay
-                setTimeout(() => {
-                    window.location.reload();
-                }, 2000);
-            } else {
-                // Show error message
-                alert(`Error: ${result.message}`);
-            }
-        })
-        .catch(error => {
-            console.error('Error updating OpenAI API key:', error);
-            alert('An error occurred while updating the OpenAI API key. Please try again.');
-        });
-    });
+            .catch(error => {
+                console.error('Error fetching global usage:', error);
+            });
+    }
     
-    // Save social media credentials
-    document.getElementById('saveSocialMediaBtn').addEventListener('click', function() {
-        const twitterApiKey = document.getElementById('twitterApiKey').value;
-        const linkedinApiKey = document.getElementById('linkedinApiKey').value;
-        const facebookApiKey = document.getElementById('facebookApiKey').value;
+    function updateUsageDisplay(data) {
+        // Update OpenAI usage
+        const openAiUsage = data.openai || {};
+        const openAiPercentage = Math.min(100, Math.round((openAiUsage.tokens_used || 0) / (openAiUsage.tokens_limit || 1) * 100));
+        document.getElementById('openai-usage-bar').style.width = openAiPercentage + '%';
+        document.getElementById('openai-usage-text').textContent = `${openAiUsage.tokens_used || 0} / ${openAiUsage.tokens_limit || 0} tokens`;
+        document.getElementById('openai-credits').textContent = `$${(openAiUsage.cost || 0).toFixed(2)}`;
         
-        // Send request to update social media credentials
-        fetch('/api/global/social-media-credentials', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                twitter_api_key: twitterApiKey,
-                linkedin_api_key: linkedinApiKey,
-                facebook_api_key: facebookApiKey
-            })
-        })
-        .then(response => response.json())
-        .then(result => {
-            if (result.success) {
-                // Close modal and show success message
-                const modal = bootstrap.Modal.getInstance(document.getElementById('socialMediaModal'));
-                modal.hide();
+        // Update Image usage
+        const imageUsage = data.image_generation || {};
+        const imagePercentage = Math.min(100, Math.round((imageUsage.images_generated || 0) / (imageUsage.images_limit || 1) * 100));
+        document.getElementById('image-usage-bar').style.width = imagePercentage + '%';
+        document.getElementById('image-usage-text').textContent = `${imageUsage.images_generated || 0} / ${imageUsage.images_limit || 0} images`;
+        document.getElementById('image-credits').textContent = `$${(imageUsage.cost || 0).toFixed(2)}`;
+        
+        // Update WordPress usage
+        const wordpressUsage = data.wordpress || {};
+        const wordpressPercentage = Math.min(100, Math.round((wordpressUsage.requests_made || 0) / (wordpressUsage.requests_limit || 1) * 100));
+        document.getElementById('wordpress-usage-bar').style.width = wordpressPercentage + '%';
+        document.getElementById('wordpress-usage-text').textContent = `${wordpressUsage.requests_made || 0} / ${wordpressUsage.requests_limit || 0} requests`;
+        document.getElementById('wordpress-credits').textContent = `$${(wordpressUsage.cost || 0).toFixed(2)}`;
+        
+        // Update statistics
+        document.getElementById('total-blogs').textContent = data.total_blogs || 0;
+        document.getElementById('total-content').textContent = data.total_content || 0;
+        document.getElementById('total-images').textContent = data.total_images || 0;
+        document.getElementById('total-published').textContent = data.total_published || 0;
+    }
+    
+    function updateBlogUsageTable(blogs) {
+        const tbody = document.getElementById('blog-usage-tbody');
+        tbody.innerHTML = '';
+        
+        if (!blogs || blogs.length === 0) {
+            const row = document.createElement('tr');
+            row.innerHTML = '<td colspan="7" class="text-center">No blogs configured yet</td>';
+            tbody.appendChild(row);
+            return;
+        }
+        
+        blogs.forEach(blog => {
+            const row = document.createElement('tr');
+            
+            const lastGenerated = blog.last_generated 
+                ? new Date(blog.last_generated).toLocaleDateString() 
+                : 'Never';
                 
-                // Show alert
-                const alertDiv = document.createElement('div');
-                alertDiv.className = 'alert alert-success alert-dismissible fade show';
-                alertDiv.innerHTML = `
-                    <strong>Success!</strong> Social media credentials updated successfully.
-                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                `;
-                document.querySelector('main > .container').insertBefore(alertDiv, document.querySelector('main > .container').firstChild);
-                
-                // Reload page after short delay
-                setTimeout(() => {
-                    window.location.reload();
-                }, 2000);
-            } else {
-                // Show error message
-                alert(`Error: ${result.message}`);
-            }
-        })
-        .catch(error => {
-            console.error('Error updating social media credentials:', error);
-            alert('An error occurred while updating social media credentials. Please try again.');
+            row.innerHTML = `
+                <td><a href="/blog/${blog.id}">${blog.name}</a></td>
+                <td>${blog.theme}</td>
+                <td>${blog.content_count || 0}</td>
+                <td>${blog.images_count || 0}</td>
+                <td>${blog.published_count || 0}</td>
+                <td>${lastGenerated}</td>
+                <td>$${(blog.total_cost || 0).toFixed(2)}</td>
+            `;
+            
+            tbody.appendChild(row);
         });
-    });
-});
+    }
 </script>
 {% endblock %}
