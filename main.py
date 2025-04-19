@@ -4380,5 +4380,161 @@ def api_bootstrap_social_media(blog_id, platform):
         logger.error(f"Error bootstrapping social media: {str(e)}")
         return jsonify({"success": False, "error": f"Error bootstrapping social media: {str(e)}"}), 500
 
+# ======================================================
+# JSON Editor Routes
+# ======================================================
+
+@app.route('/blog/<blog_id>/json_editor', methods=['GET'])
+def json_editor_list(blog_id):
+    """List all JSON files available for editing for a specific blog"""
+    # Check if blog exists
+    blog_path = os.path.join("data/blogs", blog_id)
+    if not os.path.exists(blog_path):
+        flash("Blog not found.", "danger")
+        return redirect(url_for('index'))
+    
+    # Get blog information
+    blog = get_blog_by_id(blog_id)
+    if not blog:
+        flash("Blog information could not be loaded.", "danger")
+        return redirect(url_for('index'))
+    
+    # Find all JSON files in the blog's directory structure
+    json_files = []
+    
+    # Add the root config.json
+    root_config_path = os.path.join(blog_path, "config.json")
+    if os.path.exists(root_config_path):
+        json_files.append({
+            'path': 'config.json',
+            'full_path': root_config_path,
+            'type': 'Main Config',
+            'description': 'Primary blog configuration'
+        })
+    
+    # Add config directory JSON files
+    config_dir = os.path.join(blog_path, "config")
+    if os.path.exists(config_dir):
+        for filename in os.listdir(config_dir):
+            if filename.endswith('.json'):
+                file_path = os.path.join(config_dir, filename)
+                json_files.append({
+                    'path': f'config/{filename}',
+                    'full_path': file_path,
+                    'type': 'Blog Config',
+                    'description': get_json_file_description(filename)
+                })
+    
+    # Add runs directory JSON files (just showing the structure, not listing all runs)
+    runs_dir = os.path.join(blog_path, "runs")
+    if os.path.exists(runs_dir):
+        run_dirs = sorted(os.listdir(runs_dir), reverse=True)[:5]  # Show only recent 5 runs
+        for run_dir in run_dirs:
+            run_path = os.path.join(runs_dir, run_dir)
+            if os.path.isdir(run_path):
+                for filename in os.listdir(run_path):
+                    if filename.endswith('.json'):
+                        file_path = os.path.join(run_path, filename)
+                        json_files.append({
+                            'path': f'runs/{run_dir}/{filename}',
+                            'full_path': file_path,
+                            'type': 'Run Data',
+                            'description': f'Run data from {run_dir}'
+                        })
+    
+    return render_template('json_editor_list.html',
+                          blog=blog,
+                          blog_id=blog_id,
+                          json_files=json_files)
+
+@app.route('/blog/<blog_id>/json_editor/<path:file_path>', methods=['GET', 'POST'])
+def json_editor(blog_id, file_path):
+    """Edit a specific JSON file for a blog"""
+    # Check if blog exists
+    blog_path = os.path.join("data/blogs", blog_id)
+    if not os.path.exists(blog_path):
+        flash("Blog not found.", "danger")
+        return redirect(url_for('index'))
+    
+    # Get blog information
+    blog = get_blog_by_id(blog_id)
+    if not blog:
+        flash("Blog information could not be loaded.", "danger")
+        return redirect(url_for('index'))
+    
+    # Construct full file path
+    full_file_path = os.path.join(blog_path, file_path)
+    
+    # Security check: Make sure the path is within the blog's directory
+    if not os.path.abspath(full_file_path).startswith(os.path.abspath(blog_path)):
+        flash("Invalid file path specified.", "danger")
+        return redirect(url_for('json_editor_list', blog_id=blog_id))
+    
+    # Check if file exists
+    if not os.path.exists(full_file_path):
+        flash("File not found.", "danger")
+        return redirect(url_for('json_editor_list', blog_id=blog_id))
+    
+    # Process form submission
+    if request.method == 'POST':
+        try:
+            json_content = request.form.get('json_content', '').strip()
+            
+            # Parse to ensure it's valid JSON
+            json_data = json.loads(json_content)
+            
+            # Save the updated content
+            with open(full_file_path, 'w') as f:
+                json.dump(json_data, f, indent=2)
+            
+            flash("JSON file updated successfully!", "success")
+            return redirect(url_for('json_editor', blog_id=blog_id, file_path=file_path))
+        
+        except json.JSONDecodeError as e:
+            flash(f"Invalid JSON: {str(e)}", "danger")
+        except Exception as e:
+            flash(f"Error saving file: {str(e)}", "danger")
+    
+    # Read file content
+    try:
+        with open(full_file_path, 'r') as f:
+            file_content = f.read()
+        
+        # Try to parse and pretty print
+        json_data = json.loads(file_content)
+        pretty_content = json.dumps(json_data, indent=2)
+        
+        file_description = get_json_file_description(os.path.basename(file_path))
+        
+        return render_template('json_editor.html',
+                              blog=blog,
+                              blog_id=blog_id,
+                              file_path=file_path,
+                              file_description=file_description,
+                              json_content=pretty_content)
+    
+    except json.JSONDecodeError as e:
+        flash(f"Error parsing JSON file: {str(e)}", "danger")
+        return redirect(url_for('json_editor_list', blog_id=blog_id))
+    except Exception as e:
+        flash(f"Error reading file: {str(e)}", "danger")
+        return redirect(url_for('json_editor_list', blog_id=blog_id))
+
+def get_json_file_description(filename):
+    """Get a human-readable description for a JSON file based on its filename"""
+    descriptions = {
+        'config.json': 'Main blog configuration',
+        'theme.json': 'Blog theme and audience settings',
+        'topics.json': 'Content topic list',
+        'frequency.json': 'Content generation frequency settings',
+        'ready.json': 'Content generation readiness status',
+        'bootstrap.json': 'Blog initialization settings',
+        'results.json': 'Content generation results',
+        'publish.json': 'WordPress publishing details',
+        'content.json': 'Generated content metadata',
+    }
+    
+    return descriptions.get(filename, 'Configuration file')
+
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)), debug=True)
