@@ -1,7 +1,28 @@
-[
-  "Content Marketing",
-  "Social Media Strategy",
-  "Email Marketing",
-  "SEO Techniques",
-  "Marketing Analytics"
-]
+{
+  "topics": [
+    "Content Marketing",
+    "Social Media Strategy",
+    "Email Marketing",
+    "SEO Techniques",
+    "Marketing Analytics",
+    "Video Marketing",
+    "Mobile Marketing",
+    "B2B Marketing",
+    "Influencer Marketing",
+    "Content Strategy"
+  ],
+  "focus": [
+    {
+      "topic": "Content Marketing",
+      "keywords": ["content strategy", "blog content", "content creation", "engagement", "content calendar"]
+    },
+    {
+      "topic": "SEO Techniques",
+      "keywords": ["search engine optimization", "keyword research", "backlinks", "on-page SEO", "technical SEO"]
+    },
+    {
+      "topic": "Social Media Strategy",
+      "keywords": ["social platforms", "social engagement", "social media content", "audience growth", "social analytics"]
+    }
+  ]
+}

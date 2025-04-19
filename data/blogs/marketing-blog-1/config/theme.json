@@ -1,5 +1,24 @@
 {
-  "name": "Digital Marketing",
-  "description": "A blog about Digital Marketing strategies and techniques",
-  "target_audience": "Marketing professionals, business owners, and entrepreneurs interested in Digital Marketing"
+  "theme": "Digital Marketing",
+  "description": "A blog about digital marketing strategies, trends, and best practices for businesses looking to grow their online presence and engagement.",
+  "tone": "Professional yet approachable",
+  "target_audience": [
+    "Marketing professionals",
+    "Small business owners",
+    "Digital entrepreneurs",
+    "Content creators"
+  ],
+  "style_guide": {
+    "paragraph_length": "3-5 sentences",
+    "heading_style": "Sentence case with key terms capitalized",
+    "bullet_points": "Encouraged for lists and key takeaways",
+    "language_complexity": "Moderate - explain industry jargon when used"
+  },
+  "content_types": [
+    "How-to guides",
+    "Trend analysis",
+    "Case studies",
+    "Strategy overviews",
+    "Tool comparisons"
+  ]
 }

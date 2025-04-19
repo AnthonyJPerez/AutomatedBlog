@@ -1,14 +1,9 @@
 {
-  "name": "Digital Marketing Insights",
+  "name": "Digital Marketing Blog",
   "theme": "Digital Marketing",
-  "created_at": "2025-04-19 05:52:00",
+  "created_at": "2025-04-19",
   "is_active": true,
-  "frequency": "biweekly",
-  "content_settings": {
-    "length": 1500,
-    "style": "conversational",
-    "include_featured_image": true
-  },
+  "frequency": "weekly",
   "topics": [
     "Content Marketing",
     "Social Media Strategy",
@@ -17,29 +12,8 @@
     "Marketing Analytics"
   ],
   "wordpress": {
-    "url": "https://example-marketing-blog.com",
+    "url": "https://example-blog.wordpress.com",
     "username": "admin",
-    "connected": false
-  },
-  "domain_suggestions": {
-    "enabled": true,
-    "max_price": 30,
-    "results": [
-      {
-        "domain": "digitalmarketinginsider.com",
-        "available": true,
-        "price": 12.99
-      },
-      {
-        "domain": "marketingstrategyhq.com",
-        "available": true,
-        "price": 14.99
-      },
-      {
-        "domain": "contentmarketingpro.net",
-        "available": true,
-        "price": 9.99
-      }
-    ]
+    "connected": true
   }
 }

@@ -1,0 +1,31 @@
+{
+  "timestamp": "2025-04-19T05:30:00.000Z",
+  "blog_id": "marketing-blog-1",
+  "results": [
+    {
+      "name": "digitalmarketingmastery.com",
+      "available": true,
+      "price": 12.99
+    },
+    {
+      "name": "contentstrategyhub.com",
+      "available": true,
+      "price": 14.99
+    },
+    {
+      "name": "marketingtrends2025.com",
+      "available": true,
+      "price": 11.99
+    },
+    {
+      "name": "engagementmarketing.net",
+      "available": true,
+      "price": 9.99
+    },
+    {
+      "name": "seocontentlab.com",
+      "available": false,
+      "price": null
+    }
+  ]
+}

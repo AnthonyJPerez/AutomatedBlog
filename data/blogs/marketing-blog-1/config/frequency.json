@@ -1,0 +1,10 @@
+{
+  "schedule": "weekly",
+  "day_of_week": "Monday",
+  "time_of_day": "08:00",
+  "timezone": "America/New_York",
+  "max_posts_per_month": 4,
+  "min_posts_per_month": 4,
+  "publish_immediately": true,
+  "max_concurrent_runs": 2
+}
