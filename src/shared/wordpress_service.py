@@ -316,6 +316,255 @@ class WordPressService:
             seo_metadata=seo_metadata
         )
     
+    def publish_to_multisite(self, wordpress_url, username, application_password, title, content, site_id, seo_metadata=None):
+        """
+        Publish a post to a specific site in a WordPress Multisite network.
+        
+        Args:
+            wordpress_url (str): The URL of the WordPress site
+            username (str): WordPress username
+            application_password (str): WordPress application password
+            title (str): The title of the post
+            content (str): The HTML content of the post
+            site_id (int): The site ID in the multisite network
+            seo_metadata (dict, optional): SEO metadata for the post
+            
+        Returns:
+            dict: Details of the published post including post ID and URL
+        """
+        self.logger.info(f"Publishing post '{title}' to WordPress Multisite, site ID: {site_id}")
+        
+        if not self.is_multisite:
+            self.logger.warning("WordPress is not configured as Multisite, using standard publish method")
+            return self.publish_post(wordpress_url, username, application_password, title, content, seo_metadata or {})
+        
+        # Ensure WordPress URL has the correct format
+        if not wordpress_url.endswith('/'):
+            wordpress_url += '/'
+            
+        if not wordpress_url.endswith('wp-json/'):
+            wordpress_url += 'wp-json/'
+            
+        # Create the endpoint URL for multisite API
+        # Note: Mercator plugin extends the WordPress REST API with the sites endpoint
+        endpoint = f"{wordpress_url}wp/v2/sites/{site_id}/posts"
+        
+        # Prepare post data (same as in publish_post)
+        post_data = {
+            'title': title,
+            'content': content,
+            'status': 'publish',
+            'slug': seo_metadata.get('slug', ''),
+            'excerpt': seo_metadata.get('meta_description', ''),
+            'categories': [1],  # Default category (usually "Uncategorized")
+            'meta': {
+                '_yoast_wpseo_metadesc': seo_metadata.get('meta_description', ''),
+                '_yoast_wpseo_focuskw': seo_metadata.get('keywords', [''])[0] if seo_metadata.get('keywords') else '',
+                '_yoast_wpseo_opengraph-title': seo_metadata.get('social_title', title),
+                '_yoast_wpseo_opengraph-description': seo_metadata.get('social_description', seo_metadata.get('meta_description', ''))
+            }
+        }
+        
+        # Handle tags same as in publish_post
+        if seo_metadata and seo_metadata.get('keywords'):
+            # Get existing tags first for this specific site
+            tags_endpoint = f"{wordpress_url}wp/v2/sites/{site_id}/tags"
+            existing_tags = self._make_request('GET', tags_endpoint, auth=(username, application_password))
+            
+            # Map existing tag names to IDs
+            tag_map = {tag['name'].lower(): tag['id'] for tag in existing_tags} if existing_tags else {}
+            
+            # Process keywords into tags
+            tag_ids = []
+            for keyword in seo_metadata['keywords'][:5]:  # Limit to 5 tags
+                keyword_lower = keyword.lower()
+                if keyword_lower in tag_map:
+                    # Use existing tag
+                    tag_ids.append(tag_map[keyword_lower])
+                else:
+                    # Create new tag
+                    tag_data = {'name': keyword}
+                    new_tag = self._make_request('POST', tags_endpoint, auth=(username, application_password), json=tag_data)
+                    if new_tag and 'id' in new_tag:
+                        tag_ids.append(new_tag['id'])
+            
+            # Add tags to post data
+            if tag_ids:
+                post_data['tags'] = tag_ids
+        
+        # Make the request to create the post
+        max_retries = 3
+        for attempt in range(max_retries):
+            try:
+                response = self._make_request('POST', endpoint, auth=(username, application_password), json=post_data)
+                
+                if response and 'id' in response:
+                    post_id = response['id']
+                    post_url = response['link']
+                    
+                    self.logger.info(f"Successfully published post with ID {post_id} at {post_url} to site {site_id}")
+                    
+                    return {
+                        'post_id': post_id,
+                        'post_url': post_url,
+                        'site_id': site_id,
+                        'status': 'published'
+                    }
+                else:
+                    raise Exception(f"Failed to publish post to multisite: {response}")
+                    
+            except Exception as e:
+                self.logger.error(f"Error publishing post to multisite (attempt {attempt+1}/{max_retries}): {str(e)}")
+                if attempt < max_retries - 1:
+                    time.sleep(2 ** attempt)  # Exponential backoff
+                else:
+                    raise Exception(f"Failed to publish post to multisite after {max_retries} attempts: {str(e)}")
+
+    def get_site_list(self):
+        """
+        Get a list of all sites in the WordPress Multisite network.
+        
+        Returns:
+            list: List of site information dictionaries with id, name, url, and domain
+        """
+        if not self.is_multisite:
+            self.logger.warning("WordPress is not configured as Multisite")
+            return [{'id': 1, 'name': 'Main Site', 'url': self.default_wordpress_url, 'is_main': True}]
+            
+        if not self.default_wordpress_url or not self.default_wordpress_username or not self.default_wordpress_password:
+            raise Exception("Default WordPress credentials are not available from Key Vault")
+            
+        # Ensure WordPress URL has the correct format
+        wordpress_url = self.default_wordpress_url
+        if not wordpress_url.endswith('/'):
+            wordpress_url += '/'
+            
+        if not wordpress_url.endswith('wp-json/'):
+            wordpress_url += 'wp-json/'
+            
+        # Create the endpoint URL for sites list using Mercator REST API extension
+        endpoint = f"{wordpress_url}wp/v2/sites"
+        
+        try:
+            sites = self._make_request('GET', endpoint, auth=(self.default_wordpress_username, self.default_wordpress_password))
+            
+            if sites and isinstance(sites, list):
+                # Transform site data into a simplified format
+                site_list = []
+                network_id = int(self.network_id) if self.network_id else 1
+                
+                for site in sites:
+                    site_list.append({
+                        'id': site['id'],
+                        'name': site['name'],
+                        'url': site['url'],
+                        'domain': site.get('domain', ''),
+                        'path': site.get('path', '/'),
+                        'is_main': site['id'] == network_id
+                    })
+                    
+                return site_list
+            else:
+                self.logger.warning(f"Unexpected response format from sites endpoint: {sites}")
+                return []
+                
+        except Exception as e:
+            self.logger.error(f"Error retrieving site list: {str(e)}")
+            return []
+            
+    def get_mapped_domains(self, site_id):
+        """
+        Get all domains mapped to a specific site in the WordPress Multisite network.
+        
+        Args:
+            site_id (int): The site ID to get mapped domains for
+            
+        Returns:
+            list: List of mapped domain information including primary domain and aliases
+        """
+        if not self.is_multisite:
+            self.logger.warning("WordPress is not configured as Multisite")
+            return []
+            
+        if not self.default_wordpress_url or not self.default_wordpress_username or not self.default_wordpress_password:
+            raise Exception("Default WordPress credentials are not available from Key Vault")
+            
+        # Ensure WordPress URL has the correct format
+        wordpress_url = self.default_wordpress_url
+        if not wordpress_url.endswith('/'):
+            wordpress_url += '/'
+            
+        if not wordpress_url.endswith('wp-json/'):
+            wordpress_url += 'wp-json/'
+            
+        # Create the endpoint URL for domains using Mercator REST API extension
+        endpoint = f"{wordpress_url}wp/v2/sites/{site_id}/domains"
+        
+        try:
+            domains = self._make_request('GET', endpoint, auth=(self.default_wordpress_username, self.default_wordpress_password))
+            
+            if domains and isinstance(domains, list):
+                return domains
+            else:
+                self.logger.warning(f"Unexpected response format from domains endpoint: {domains}")
+                return []
+                
+        except Exception as e:
+            self.logger.error(f"Error retrieving mapped domains: {str(e)}")
+            return []
+            
+    def map_domain(self, site_id, domain):
+        """
+        Map a domain to a specific site in the WordPress Multisite network.
+        
+        Args:
+            site_id (int): The site ID to map the domain to
+            domain (str): The domain to map
+            
+        Returns:
+            dict: Result of the domain mapping operation
+        """
+        if not self.is_multisite:
+            raise Exception("WordPress is not configured as Multisite")
+            
+        if not self.default_wordpress_url or not self.default_wordpress_username or not self.default_wordpress_password:
+            raise Exception("Default WordPress credentials are not available from Key Vault")
+            
+        # Ensure WordPress URL has the correct format
+        wordpress_url = self.default_wordpress_url
+        if not wordpress_url.endswith('/'):
+            wordpress_url += '/'
+            
+        if not wordpress_url.endswith('wp-json/'):
+            wordpress_url += 'wp-json/'
+            
+        # Create the endpoint URL for domains using Mercator REST API extension
+        endpoint = f"{wordpress_url}wp/v2/sites/{site_id}/domains"
+        
+        # Prepare domain mapping data
+        domain_data = {
+            'domain': domain,
+            'active': True
+        }
+        
+        try:
+            result = self._make_request('POST', endpoint, auth=(self.default_wordpress_username, self.default_wordpress_password), json=domain_data)
+            
+            if result and 'id' in result:
+                self.logger.info(f"Successfully mapped domain {domain} to site {site_id}")
+                return {
+                    'success': True,
+                    'domain_id': result['id'],
+                    'domain': result['domain'],
+                    'site_id': site_id
+                }
+            else:
+                raise Exception(f"Failed to map domain: {result}")
+                
+        except Exception as e:
+            self.logger.error(f"Error mapping domain: {str(e)}")
+            raise Exception(f"Failed to map domain {domain} to site {site_id}: {str(e)}")
+    
     def _make_request(self, method, url, **kwargs):
         """Make HTTP request with error handling and logging"""
         try:

@@ -86,6 +86,34 @@
                             {% endif %}
                         </td>
                     </tr>
+                    <tr>
+                        <th>Multisite Enabled:</th>
+                        <td>
+                            {% if connection_info.is_multisite %}
+                                <span class="badge bg-success">Yes</span>
+                                {% if connection_info.multisite_message %}
+                                <p class="mt-2">{{ connection_info.multisite_message }}</p>
+                                {% endif %}
+                                <p class="mt-2">
+                                    <a href="{{ url_for('test_wordpress_multisite') }}" class="btn btn-sm btn-info">
+                                        <i class="fas fa-sitemap"></i> View Multisite Details
+                                    </a>
+                                    <a href="{{ url_for('wordpress_domain_mapping') }}" class="btn btn-sm btn-outline-primary">
+                                        <i class="fas fa-globe"></i> Manage Domain Mapping
+                                    </a>
+                                </p>
+                            {% else %}
+                                <span class="badge bg-secondary">No</span>
+                                <p class="small text-muted mt-2">WordPress Multisite is not enabled. You can configure Multisite in your WordPress installation.</p>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% if connection_info.is_multisite and connection_info.network_id %}
+                    <tr>
+                        <th>Network ID:</th>
+                        <td>{{ connection_info.network_id }}</td>
+                    </tr>
+                    {% endif %}
                     {% if connection_info.status == "connected" %}
                     <tr>
                         <th>Post ID:</th>
@@ -104,6 +132,51 @@
             </table>
         </div>
     </div>
+    
+    {% if connection_info.is_multisite and connection_info.site_list %}
+    <div class="card mt-4">
+        <div class="card-header">
+            <h5>WordPress Multisite Network</h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-striped table-hover">
+                    <thead>
+                        <tr>
+                            <th>Site ID</th>
+                            <th>Name</th>
+                            <th>URL</th>
+                            <th>Path</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for site in connection_info.site_list %}
+                        <tr>
+                            <td>{{ site.id }}</td>
+                            <td>{{ site.name }}</td>
+                            <td><a href="{{ site.url }}" target="_blank">{{ site.url }}</a></td>
+                            <td>{{ site.path or '/' }}</td>
+                            <td>
+                                {% if site.is_main %}
+                                <span class="badge bg-primary">Main Site</span>
+                                {% else %}
+                                <span class="badge bg-info">Network Site</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <div class="card-footer">
+            <a href="{{ url_for('test_wordpress_multisite') }}" class="btn btn-primary">
+                View Full Multisite Details
+            </a>
+        </div>
+    </div>
+    {% endif %}
 
     <div class="mt-4">
         <a href="{{ url_for('index') }}" class="btn btn-secondary">

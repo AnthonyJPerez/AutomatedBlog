@@ -1893,8 +1893,21 @@ def test_wordpress_connection():
             "message": "Checking WordPress connection status...",
             "url_from_keyvault": None,
             "username_from_keyvault": None,
-            "has_password": False
+            "has_password": False,
+            "is_multisite": wordpress_service.is_multisite,
+            "multisite_config": wordpress_service.multisite_config,
+            "network_id": wordpress_service.network_id
         }
+        
+        # Get site list if multisite is enabled
+        if wordpress_service.is_multisite:
+            try:
+                site_list = wordpress_service.get_site_list()
+                connection_info["site_list"] = site_list
+                connection_info["multisite_message"] = f"WordPress Multisite enabled with {len(site_list)} sites"
+            except Exception as e:
+                connection_info["site_list_error"] = str(e)
+                connection_info["multisite_message"] = f"Error retrieving site list: {str(e)}"
         
         # Check if we have WordPress URL from Key Vault
         if wordpress_service.default_wordpress_url:
@@ -1947,6 +1960,101 @@ def test_wordpress_connection():
     except Exception as e:
         logger.error(f"Error in test_wordpress_connection endpoint: {str(e)}")
         return jsonify({"status": "error", "message": f"WordPress connection test failed: {str(e)}"})
+
+@app.route('/test/wordpress-multisite')
+def test_wordpress_multisite():
+    """Test endpoint for WordPress Multisite configuration"""
+    try:
+        # Import the WordPressService
+        from src.shared.wordpress_service import WordPressService
+        
+        # Initialize the service
+        wordpress_service = WordPressService()
+        
+        # Check if WordPress is configured as Multisite
+        if not wordpress_service.is_multisite:
+            return render_template('error.html', error_message="WordPress is not configured as Multisite. Please enable Multisite in your WordPress configuration.")
+        
+        # Get multisite information
+        multisite_info = {
+            "is_multisite": wordpress_service.is_multisite,
+            "multisite_config": wordpress_service.multisite_config,
+            "network_id": wordpress_service.network_id,
+            "wordpress_url": wordpress_service.default_wordpress_url,
+            "status": "multisite_enabled"
+        }
+        
+        # Get site list
+        try:
+            site_list = wordpress_service.get_site_list()
+            multisite_info["site_list"] = site_list
+            multisite_info["site_count"] = len(site_list)
+        except Exception as e:
+            multisite_info["site_list_error"] = str(e)
+        
+        # For each site, try to get mapped domains
+        if multisite_info.get("site_list"):
+            for site in multisite_info["site_list"]:
+                try:
+                    site["mapped_domains"] = wordpress_service.get_mapped_domains(site["id"])
+                except Exception as e:
+                    site["domain_error"] = str(e)
+        
+        return render_template('wordpress_multisite.html', multisite_info=multisite_info)
+        
+    except Exception as e:
+        logger.error(f"Error in test_wordpress_multisite endpoint: {str(e)}")
+        return render_template('error.html', error_message=f"WordPress Multisite test failed: {str(e)}")
+
+@app.route('/wordpress-domain-mapping', methods=['GET', 'POST'])
+def wordpress_domain_mapping():
+    """Page to manage WordPress Multisite domain mapping"""
+    try:
+        # Import the WordPressService
+        from src.shared.wordpress_service import WordPressService
+        
+        # Initialize the service
+        wordpress_service = WordPressService()
+        error_message = None
+        success_message = None
+        
+        # Check if WordPress is configured as Multisite
+        if not wordpress_service.is_multisite:
+            return render_template('error.html', error_message="WordPress is not configured as Multisite. Domain mapping is only available for Multisite installations.")
+        
+        # Get site list
+        site_list = wordpress_service.get_site_list()
+        
+        # Handle domain mapping form submission
+        if request.method == 'POST':
+            site_id = request.form.get('site_id')
+            domain = request.form.get('domain')
+            
+            if not site_id or not domain:
+                error_message = "Site ID and domain are required"
+            else:
+                try:
+                    result = wordpress_service.map_domain(int(site_id), domain)
+                    success_message = f"Successfully mapped domain {domain} to site {site_id}"
+                except Exception as e:
+                    error_message = f"Error mapping domain: {str(e)}"
+        
+        # Get mapped domains for each site
+        for site in site_list:
+            try:
+                site['mapped_domains'] = wordpress_service.get_mapped_domains(site['id'])
+            except Exception as e:
+                site['domain_error'] = str(e)
+        
+        return render_template(
+            'wordpress_domain_mapping.html', 
+            site_list=site_list, 
+            error_message=error_message,
+            success_message=success_message
+        )
+    except Exception as e:
+        logger.error(f"Error in wordpress_domain_mapping endpoint: {str(e)}")
+        return render_template('error.html', error_message=f"Error accessing WordPress Multisite information: {str(e)}")
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)), debug=True)
