@@ -642,9 +642,38 @@ def view_content(blog_id, run_id):
         with open(content_path, 'r') as f:
             content = f.read()
         
-        # Extract title from content (assuming first line is a markdown heading)
-        lines = content.strip().split('\n')
-        title = lines[0].strip('# ') if lines and lines[0].startswith('# ') else run_id
+        # Extract metadata from frontmatter if present
+        featured_image = None
+        title = run_id
+        
+        # Check if content has frontmatter (starts with ---)
+        if content.startswith('---'):
+            try:
+                # Find the end of frontmatter
+                end_frontmatter_pos = content.find('---', 3)
+                if end_frontmatter_pos > 0:
+                    # Extract frontmatter content
+                    frontmatter = content[3:end_frontmatter_pos].strip()
+                    frontmatter_lines = frontmatter.split('\n')
+                    
+                    # Parse frontmatter lines
+                    for line in frontmatter_lines:
+                        if ':' in line:
+                            key, value = line.split(':', 1)
+                            key = key.strip()
+                            value = value.strip().strip('"\'')
+                            
+                            if key == 'title':
+                                title = value
+                            elif key == 'featured_image':
+                                featured_image = value
+            except Exception as e:
+                logger.warning(f"Error parsing frontmatter: {str(e)}")
+        
+        # If no title found in frontmatter, extract from content (assuming first line is a markdown heading)
+        if title == run_id:
+            lines = content.strip().split('\n')
+            title = lines[0].strip('# ') if lines and lines[0].startswith('# ') else run_id
         
         # Calculate word count and reading time
         word_count = len(content.split())
@@ -728,7 +757,8 @@ def view_content(blog_id, run_id):
                               results=results,
                               promote=promote,
                               status=status,
-                              post_url=post_url)
+                              post_url=post_url,
+                              featured_image=featured_image)
     
     except Exception as e:
         logger.error(f"Error loading content for {blog_id}/{run_id}: {str(e)}")

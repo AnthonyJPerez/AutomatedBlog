@@ -25,6 +25,12 @@
                 <span class="badge bg-secondary">{{ status }}</span>
                 {% endif %}
             </div>
+            
+            {% if featured_image %}
+            <div class="mb-3">
+                <img src="{{ featured_image }}" alt="Featured image for {{ title }}" class="img-fluid rounded shadow-sm" style="max-height: 200px;">
+            </div>
+            {% endif %}
         </div>
         <div class="col-md-3 text-end">
             {% if post_url %}
