@@ -97,6 +97,101 @@ class StorageService:
         except Exception as e:
             self.logger.error(f"Error creating directory {directory_path}: {str(e)}")
             return False
+            
+    def file_exists(self, file_path):
+        """
+        Check if a file exists.
+        
+        Args:
+            file_path (str): Path to the file to check
+            
+        Returns:
+            bool: True if the file exists, False otherwise
+        """
+        try:
+            return Path(file_path).is_file()
+        except Exception as e:
+            self.logger.error(f"Error checking if file exists {file_path}: {str(e)}")
+            return False
+            
+    def directory_exists(self, directory_path):
+        """
+        Check if a directory exists.
+        
+        Args:
+            directory_path (str): Path to the directory to check
+            
+        Returns:
+            bool: True if the directory exists, False otherwise
+        """
+        try:
+            return Path(directory_path).is_dir()
+        except Exception as e:
+            self.logger.error(f"Error checking if directory exists {directory_path}: {str(e)}")
+            return False
+            
+    def list_files(self, directory_path):
+        """
+        List all files in a directory.
+        
+        Args:
+            directory_path (str): Path to the directory to list files from
+            
+        Returns:
+            list: List of file paths, or empty list if error or no files
+        """
+        try:
+            if not self.directory_exists(directory_path):
+                return []
+                
+            return [str(p) for p in Path(directory_path).glob('*') if p.is_file()]
+        except Exception as e:
+            self.logger.error(f"Error listing files in directory {directory_path}: {str(e)}")
+            return []
+            
+    def delete_file(self, file_path):
+        """
+        Delete a file.
+        
+        Args:
+            file_path (str): Path to the file to delete
+            
+        Returns:
+            bool: True if the file was deleted, False otherwise
+        """
+        try:
+            if not self.file_exists(file_path):
+                return True  # File doesn't exist, so "deletion" is successful
+                
+            Path(file_path).unlink()
+            return True
+        except Exception as e:
+            self.logger.error(f"Error deleting file {file_path}: {str(e)}")
+            return False
+            
+    def save_local_json(self, file_path, data):
+        """
+        Save JSON data to a local file.
+        
+        Args:
+            file_path (str): Path to the JSON file
+            data: Data to save as JSON
+            
+        Returns:
+            bool: True if successful, False otherwise
+        """
+        try:
+            # Ensure the directory exists
+            directory = os.path.dirname(file_path)
+            if directory:
+                Path(directory).mkdir(parents=True, exist_ok=True)
+                
+            with open(file_path, 'w', encoding='utf-8') as f:
+                json.dump(data, f, indent=2)
+            return True
+        except Exception as e:
+            self.logger.error(f"Error saving JSON to {file_path}: {str(e)}")
+            return False
     
     def get_local_json(self, file_path):
         """

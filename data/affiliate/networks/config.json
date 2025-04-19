@@ -1,0 +1,30 @@
+{
+  "amazon": {
+    "enabled": false,
+    "tracking_id": "",
+    "api_key": "",
+    "api_secret": "",
+    "partner_tag": ""
+  },
+  "commission_junction": {
+    "enabled": false,
+    "website_id": "",
+    "api_key": ""
+  },
+  "shareasale": {
+    "enabled": false,
+    "affiliate_id": "",
+    "api_token": "",
+    "api_secret": ""
+  },
+  "impact_radius": {
+    "enabled": false,
+    "account_sid": "",
+    "auth_token": ""
+  },
+  "awin": {
+    "enabled": false,
+    "publisher_id": "",
+    "api_token": ""
+  }
+}
