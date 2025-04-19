@@ -383,6 +383,66 @@
                     </div>
                     {% endif %}
                     
+                    {% if results.image_generation %}
+                    <div class="mt-3">
+                        <h6>Image Generation</h6>
+                        <div class="card">
+                            <ul class="list-group list-group-flush">
+                                <li class="list-group-item d-flex justify-content-between">
+                                    <span>Status</span>
+                                    <span>
+                                        {% if results.image_generation.enabled %}
+                                        <span class="badge bg-success">Enabled</span>
+                                        {% else %}
+                                        <span class="badge bg-secondary">Disabled</span>
+                                        {% endif %}
+                                    </span>
+                                </li>
+                                
+                                {% if results.image_generation.enabled %}
+                                <li class="list-group-item d-flex justify-content-between">
+                                    <span>Style</span>
+                                    <span>{{ results.image_generation.style }}</span>
+                                </li>
+                                
+                                <li class="list-group-item d-flex justify-content-between">
+                                    <span>Featured Image</span>
+                                    <span>
+                                        {% if results.image_generation.featured_image %}
+                                        <span class="badge bg-success">Generated</span>
+                                        {% else %}
+                                        <span class="badge bg-danger">Failed</span>
+                                        {% endif %}
+                                    </span>
+                                </li>
+                                
+                                <li class="list-group-item d-flex justify-content-between">
+                                    <span>GPT-4o Descriptions</span>
+                                    <span>
+                                        {% if results.image_generation.used_gpt4o_descriptions %}
+                                        <span class="badge bg-primary">Yes</span>
+                                        {% else %}
+                                        <span class="badge bg-secondary">No</span>
+                                        {% endif %}
+                                    </span>
+                                </li>
+                                
+                                <li class="list-group-item d-flex justify-content-between">
+                                    <span>Section Images</span>
+                                    <span>
+                                        {% if results.image_generation.section_images %}
+                                        <span class="badge bg-primary">Enabled</span>
+                                        {% else %}
+                                        <span class="badge bg-secondary">Disabled</span>
+                                        {% endif %}
+                                    </span>
+                                </li>
+                                {% endif %}
+                            </ul>
+                        </div>
+                    </div>
+                    {% endif %}
+                    
                     {% if results.analytics %}
                     <div class="mt-3">
                         <h6>Analytics</h6>

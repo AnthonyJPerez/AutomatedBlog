@@ -410,7 +410,7 @@ class OpenAIService:
         Args:
             prompt (str): The text prompt to generate an image from
             size (str): Image size (1024x1024, 1792x1024, or 1024x1792)
-            style (str): Image style (natural or vivid)
+            style (str): Image style (natural, vivid, illustration, 3d-render, painting, minimalist)
             quality (str): Image quality (standard or hd)
             
         Returns:
@@ -423,19 +423,41 @@ class OpenAIService:
         try:
             # Validate parameters
             valid_sizes = ["1024x1024", "1792x1024", "1024x1792"]
-            valid_styles = ["natural", "vivid"]
+            # Map custom styles to DALL-E compatible styles
+            style_mapping = {
+                "natural": "natural",
+                "vivid": "vivid",
+                "illustration": "vivid",  # Use vivid for illustration
+                "3d-render": "vivid",     # Use vivid for 3D render 
+                "painting": "vivid",      # Use vivid for painting
+                "minimalist": "natural"   # Use natural for minimalist
+            }
             valid_qualities = ["standard", "hd"]
             
             if size not in valid_sizes:
                 size = "1024x1024"
-            if style not in valid_styles:
-                style = "natural"
+                
+            # Translate custom style to DALL-E style parameter
+            dall_e_style = "natural"
+            if style in style_mapping:
+                dall_e_style = style_mapping[style]
+            
             if quality not in valid_qualities:
                 quality = "standard"
             
-            # Enhance the prompt for better results
+            # Enhance the prompt for better results based on style
+            style_prompt = ""
+            if style == "illustration":
+                style_prompt = "Create an illustration in a clean, modern style. "
+            elif style == "3d-render":
+                style_prompt = "Create a 3D rendered image with realistic lighting and textures. "
+            elif style == "painting":
+                style_prompt = "Create an artistic painting with visible brushstrokes and rich colors. "
+            elif style == "minimalist":
+                style_prompt = "Create a minimalist image with clean lines, limited colors, and simple composition. "
+            
             enhanced_prompt = f"""
-            Create a high-quality, professional image for a blog post with the following description:
+            {style_prompt}Create a high-quality, professional image for a blog post with the following description:
             
             {prompt}
             
@@ -451,7 +473,7 @@ class OpenAIService:
                     n=1,
                     size=size,
                     quality=quality,
-                    style=style,
+                    style=dall_e_style,
                     response_format="b64_json"
                 )
                 b64_data = response.data[0].b64_json
