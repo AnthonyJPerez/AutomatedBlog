@@ -182,7 +182,62 @@
                                 </button>
                             </div>
                         </div>
-                        <button type="submit" class="btn btn-primary">Update Social Media Credentials</button>
+                        
+                        <h5 class="mt-4">Reddit Integration</h5>
+                        <div class="mb-3">
+                            <label for="reddit-client-id" class="form-label">Reddit Client ID</label>
+                            <div class="input-group">
+                                <input type="password" class="form-control" id="reddit-client-id">
+                                <button class="btn btn-outline-secondary toggle-password" type="button">
+                                    <i class="bi bi-eye"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="reddit-client-secret" class="form-label">Reddit Client Secret</label>
+                            <div class="input-group">
+                                <input type="password" class="form-control" id="reddit-client-secret">
+                                <button class="btn btn-outline-secondary toggle-password" type="button">
+                                    <i class="bi bi-eye"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="reddit-username" class="form-label">Reddit Username</label>
+                                    <input type="text" class="form-control" id="reddit-username">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="reddit-password" class="form-label">Reddit Password</label>
+                                    <div class="input-group">
+                                        <input type="password" class="form-control" id="reddit-password">
+                                        <button class="btn btn-outline-secondary toggle-password" type="button">
+                                            <i class="bi bi-eye"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <h5 class="mt-4">Medium Integration</h5>
+                        <div class="mb-3">
+                            <label for="medium-integration-token" class="form-label">Medium Integration Token</label>
+                            <div class="input-group">
+                                <input type="password" class="form-control" id="medium-integration-token">
+                                <button class="btn btn-outline-secondary toggle-password" type="button">
+                                    <i class="bi bi-eye"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="medium-author-id" class="form-label">Medium Author ID</label>
+                            <input type="text" class="form-control" id="medium-author-id">
+                        </div>
+                        
+                        <button type="submit" class="btn btn-primary mt-3">Update Social Media Credentials</button>
                     </form>
                 </div>
             </div>
@@ -252,6 +307,16 @@
             const linkedinApiKey = document.getElementById('linkedin-api-key').value;
             const facebookApiKey = document.getElementById('facebook-api-key').value;
             
+            // Reddit credentials
+            const redditClientId = document.getElementById('reddit-client-id').value;
+            const redditClientSecret = document.getElementById('reddit-client-secret').value;
+            const redditUsername = document.getElementById('reddit-username').value;
+            const redditPassword = document.getElementById('reddit-password').value;
+            
+            // Medium credentials
+            const mediumIntegrationToken = document.getElementById('medium-integration-token').value;
+            const mediumAuthorId = document.getElementById('medium-author-id').value;
+            
             fetch('/api/global/social-media-credentials', {
                 method: 'POST',
                 headers: {
@@ -260,7 +325,13 @@
                 body: JSON.stringify({
                     twitter_api_key: twitterApiKey,
                     linkedin_api_key: linkedinApiKey,
-                    facebook_api_key: facebookApiKey
+                    facebook_api_key: facebookApiKey,
+                    reddit_client_id: redditClientId,
+                    reddit_client_secret: redditClientSecret,
+                    reddit_username: redditUsername,
+                    reddit_password: redditPassword,
+                    medium_integration_token: mediumIntegrationToken,
+                    medium_author_id: mediumAuthorId
                 })
             })
             .then(response => response.json())

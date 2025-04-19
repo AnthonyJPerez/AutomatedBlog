@@ -1293,6 +1293,28 @@ def update_social_media_credentials():
         if "facebook_api_key" in data and data["facebook_api_key"]:
             global_config["credentials"]["facebook_api_key"] = data["facebook_api_key"]
             social_media_updated = True
+            
+        # Reddit credentials
+        if "reddit_client_id" in data and data["reddit_client_id"]:
+            global_config["credentials"]["reddit_client_id"] = data["reddit_client_id"]
+            social_media_updated = True
+        if "reddit_client_secret" in data and data["reddit_client_secret"]:
+            global_config["credentials"]["reddit_client_secret"] = data["reddit_client_secret"]
+            social_media_updated = True
+        if "reddit_username" in data and data["reddit_username"]:
+            global_config["credentials"]["reddit_username"] = data["reddit_username"]
+            social_media_updated = True
+        if "reddit_password" in data and data["reddit_password"]:
+            global_config["credentials"]["reddit_password"] = data["reddit_password"]
+            social_media_updated = True
+            
+        # Medium credentials
+        if "medium_integration_token" in data and data["medium_integration_token"]:
+            global_config["credentials"]["medium_integration_token"] = data["medium_integration_token"]
+            social_media_updated = True
+        if "medium_author_id" in data and data["medium_author_id"]:
+            global_config["credentials"]["medium_author_id"] = data["medium_author_id"]
+            social_media_updated = True
         
         # Save the updated config
         with open(global_config_path, 'w') as f:

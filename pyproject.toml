@@ -20,5 +20,6 @@ dependencies = [
     "python-dateutil>=2.9.0.post0",
     "pytrends>=4.9.2",
     "requests>=2.32.3",
+    "slack-sdk>=3.35.0",
     "trafilatura>=2.0.0",
 ]

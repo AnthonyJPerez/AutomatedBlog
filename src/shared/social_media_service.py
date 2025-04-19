@@ -30,6 +30,8 @@ class SocialMediaService:
         self._init_twitter()
         self._init_linkedin()
         self._init_facebook()
+        self._init_reddit()
+        self._init_medium()
         
         logger.info("Social Media service initialized.")
     
@@ -105,6 +107,54 @@ class SocialMediaService:
         except Exception as e:
             self.platforms["facebook"] = {"enabled": False}
             logger.warning(f"Failed to initialize Facebook: {str(e)}")
+            
+    def _init_reddit(self):
+        """Initialize Reddit configuration"""
+        try:
+            # Try to get Reddit credentials
+            client_id = self._get_secret("REDDIT-CLIENT-ID")
+            client_secret = self._get_secret("REDDIT-CLIENT-SECRET")
+            username = self._get_secret("REDDIT-USERNAME")
+            password = self._get_secret("REDDIT-PASSWORD")
+            user_agent = self._get_secret("REDDIT-USER-AGENT") or "ContentSyndicator/1.0"
+            
+            if client_id and client_secret and username and password:
+                self.platforms["reddit"] = {
+                    "enabled": True,
+                    "client_id": client_id,
+                    "client_secret": client_secret,
+                    "username": username,
+                    "password": password,
+                    "user_agent": user_agent
+                }
+                logger.info("Reddit configuration loaded.")
+            else:
+                self.platforms["reddit"] = {"enabled": False}
+                logger.warning("Reddit credentials incomplete, platform disabled.")
+        except Exception as e:
+            self.platforms["reddit"] = {"enabled": False}
+            logger.warning(f"Failed to initialize Reddit: {str(e)}")
+            
+    def _init_medium(self):
+        """Initialize Medium configuration"""
+        try:
+            # Try to get Medium credentials
+            integration_token = self._get_secret("MEDIUM-INTEGRATION-TOKEN")
+            author_id = self._get_secret("MEDIUM-AUTHOR-ID")
+            
+            if integration_token and author_id:
+                self.platforms["medium"] = {
+                    "enabled": True,
+                    "integration_token": integration_token,
+                    "author_id": author_id
+                }
+                logger.info("Medium configuration loaded.")
+            else:
+                self.platforms["medium"] = {"enabled": False}
+                logger.warning("Medium credentials incomplete, platform disabled.")
+        except Exception as e:
+            self.platforms["medium"] = {"enabled": False}
+            logger.warning(f"Failed to initialize Medium: {str(e)}")
     
     def _get_secret(self, secret_name):
         """
@@ -238,6 +288,126 @@ class SocialMediaService:
         except Exception as e:
             logger.error(f"Failed to post to Facebook: {str(e)}")
             return {"success": False, "platform": "facebook", "error": str(e)}
+            
+    def post_to_reddit(self, title, text=None, url=None, subreddit=""):
+        """
+        Post a message to Reddit.
+        
+        Args:
+            title (str): The post title
+            text (str, optional): Text for a self post
+            url (str, optional): URL for a link post
+            subreddit (str): Subreddit to post to
+            
+        Returns:
+            dict: Response from the API
+        """
+        if not self.platforms.get("reddit", {}).get("enabled", False):
+            logger.warning("Reddit is not configured or disabled.")
+            return {"success": False, "error": "Reddit is not configured"}
+        
+        if not subreddit:
+            logger.warning("No subreddit specified for Reddit post.")
+            return {"success": False, "error": "No subreddit specified"}
+            
+        if not (text or url):
+            logger.warning("Either text or URL must be provided for Reddit post.")
+            return {"success": False, "error": "Either text or URL must be provided"}
+        
+        try:
+            # In a production app, we would use PRAW (Python Reddit API Wrapper)
+            # For this demo, we'll simulate the posting
+            post_type = "link" if url else "self"
+            logger.info(f"Posting to Reddit (r/{subreddit}): {title} [{post_type}]")
+            
+            # Placeholder for actual Reddit API integration
+            # Example PRAW code:
+            # reddit = praw.Reddit(
+            #     client_id=self.platforms["reddit"]["client_id"],
+            #     client_secret=self.platforms["reddit"]["client_secret"],
+            #     username=self.platforms["reddit"]["username"],
+            #     password=self.platforms["reddit"]["password"],
+            #     user_agent=self.platforms["reddit"]["user_agent"]
+            # )
+            # subreddit = reddit.subreddit(subreddit)
+            # if url:
+            #     submission = subreddit.submit(title, url=url)
+            # else:
+            #     submission = subreddit.submit(title, selftext=text)
+            
+            return {
+                "success": True,
+                "platform": "reddit",
+                "subreddit": subreddit,
+                "post_id": "simulated_reddit_post_123",
+                "post_url": f"https://reddit.com/r/{subreddit}/comments/simulated_id/",
+                "timestamp": datetime.now().isoformat()
+            }
+        except Exception as e:
+            logger.error(f"Failed to post to Reddit: {str(e)}")
+            return {"success": False, "platform": "reddit", "error": str(e)}
+            
+    def post_to_medium(self, title, content, tags=None, publish_status="draft"):
+        """
+        Post an article to Medium.
+        
+        Args:
+            title (str): The article title
+            content (str): The article content in markdown or HTML format
+            tags (list, optional): List of tags for the article
+            publish_status (str): Either "draft", "unlisted", or "public"
+            
+        Returns:
+            dict: Response from the API
+        """
+        if not self.platforms.get("medium", {}).get("enabled", False):
+            logger.warning("Medium is not configured or disabled.")
+            return {"success": False, "error": "Medium is not configured"}
+        
+        if not tags:
+            tags = []
+            
+        if publish_status not in ["draft", "unlisted", "public"]:
+            publish_status = "draft"
+        
+        try:
+            # In a production app, we would use Medium API
+            # For this demo, we'll simulate the posting
+            logger.info(f"Posting to Medium: {title} ({publish_status}) with {len(tags)} tags")
+            
+            # Placeholder for actual Medium API integration
+            # Example code:
+            # headers = {
+            #     "Authorization": f"Bearer {self.platforms['medium']['integration_token']}",
+            #     "Content-Type": "application/json"
+            # }
+            # 
+            # data = {
+            #     "title": title,
+            #     "contentFormat": "markdown",
+            #     "content": content,
+            #     "tags": tags,
+            #     "publishStatus": publish_status
+            # }
+            # 
+            # response = requests.post(
+            #     f"https://api.medium.com/v1/users/{self.platforms['medium']['author_id']}/posts",
+            #     headers=headers,
+            #     json=data
+            # )
+            # response_data = response.json()
+            
+            return {
+                "success": True,
+                "platform": "medium",
+                "post_id": "simulated_medium_post_123",
+                "post_url": "https://medium.com/@user/simulated-post-123",
+                "status": publish_status,
+                "timestamp": datetime.now().isoformat()
+            }
+        except Exception as e:
+            logger.error(f"Failed to post to Medium: {str(e)}")
+            return {"success": False, "platform": "medium", "error": str(e)}
     
     def promote_content(self, blog_id, run_id, content, publish_data):
         """
@@ -268,34 +438,71 @@ class SocialMediaService:
         excerpt = content.get("excerpt", "")
         url = publish_data.get("url", "")
         image_url = content.get("featured_image")
+        full_content = content.get("content", "")
+        tags = content.get("tags", [])
+        
+        # Try to detect a relevant subreddit from the blog configuration
+        # This would normally be stored in the blog config
+        subreddit = "blogging"  # Default fallback
+        
+        # Get subreddit from config if available
+        blog_config = publish_data.get("blog_config", {})
+        if blog_config and "integrations" in blog_config:
+            subreddit = blog_config.get("integrations", {}).get("reddit_subreddit", subreddit)
         
         # Format messages for each platform
         twitter_msg = f"{title}\n\n{excerpt[:100]}... {url}"
         linkedin_msg = f"{excerpt[:500]}... Read more at the link."
         facebook_msg = f"{title}\n\n{excerpt[:250]}... Click the link to read more!"
+        reddit_text = f"{excerpt[:500]}...\n\nRead the full article: {url}"
         
-        # Post to Twitter
-        twitter_result = self.post_to_twitter(twitter_msg, image_url)
-        results["platforms"]["twitter"] = twitter_result
+        # List to track platform results
+        platform_results = []
         
-        # Post to LinkedIn
-        linkedin_result = self.post_to_linkedin(title, linkedin_msg, url, image_url)
-        results["platforms"]["linkedin"] = linkedin_result
+        # Post to Twitter (if enabled)
+        if "twitter" in self.platforms and self.platforms["twitter"].get("enabled", False):
+            twitter_result = self.post_to_twitter(twitter_msg, image_url)
+            results["platforms"]["twitter"] = twitter_result
+            platform_results.append(twitter_result.get("success", False))
         
-        # Post to Facebook
-        facebook_result = self.post_to_facebook(facebook_msg, url, image_url)
-        results["platforms"]["facebook"] = facebook_result
+        # Post to LinkedIn (if enabled)
+        if "linkedin" in self.platforms and self.platforms["linkedin"].get("enabled", False):
+            linkedin_result = self.post_to_linkedin(title, linkedin_msg, url, image_url)
+            results["platforms"]["linkedin"] = linkedin_result
+            platform_results.append(linkedin_result.get("success", False))
         
-        # Determine overall success
-        all_success = all([
-            twitter_result.get("success", False),
-            linkedin_result.get("success", False),
-            facebook_result.get("success", False)
-        ])
+        # Post to Facebook (if enabled)
+        if "facebook" in self.platforms and self.platforms["facebook"].get("enabled", False):
+            facebook_result = self.post_to_facebook(facebook_msg, url, image_url)
+            results["platforms"]["facebook"] = facebook_result
+            platform_results.append(facebook_result.get("success", False))
         
-        results["success"] = all_success
+        # Post to Reddit (if enabled)
+        if "reddit" in self.platforms and self.platforms["reddit"].get("enabled", False):
+            reddit_result = self.post_to_reddit(title, reddit_text, None, subreddit)
+            results["platforms"]["reddit"] = reddit_result
+            platform_results.append(reddit_result.get("success", False))
         
-        logger.info(f"Content promotion completed for {blog_id}/{run_id} with success={all_success}")
+        # Post to Medium (if enabled)
+        if "medium" in self.platforms and self.platforms["medium"].get("enabled", False):
+            # Medium gets the full content in markdown format
+            medium_result = self.post_to_medium(
+                title, 
+                full_content, 
+                tags=tags, 
+                publish_status="public"  # Can be configurable
+            )
+            results["platforms"]["medium"] = medium_result
+            platform_results.append(medium_result.get("success", False))
+        
+        # Determine overall success (at least one platform worked)
+        if platform_results:
+            results["success"] = any(platform_results)
+        else:
+            results["success"] = False
+            results["message"] = "No social media platforms are enabled"
+        
+        logger.info(f"Content promotion completed for {blog_id}/{run_id} with success={results['success']}")
         return results
     
     def get_enabled_platforms(self):
@@ -335,11 +542,23 @@ class SocialMediaService:
                     # Update Facebook credentials if available
                     if "facebook_api_key" in credentials:
                         os.environ["FACEBOOK-ACCESS-TOKEN"] = credentials["facebook_api_key"]
+                        
+                    # Update Reddit credentials if available
+                    if "reddit_client_id" in credentials:
+                        os.environ["REDDIT-CLIENT-ID"] = credentials["reddit_client_id"]
+                    if "reddit_client_secret" in credentials:
+                        os.environ["REDDIT-CLIENT-SECRET"] = credentials["reddit_client_secret"]
+                        
+                    # Update Medium credentials if available
+                    if "medium_integration_token" in credentials:
+                        os.environ["MEDIUM-INTEGRATION-TOKEN"] = credentials["medium_integration_token"]
             
             # Reinitialize platforms with new credentials
             self._init_twitter()
             self._init_linkedin()
             self._init_facebook()
+            self._init_reddit()
+            self._init_medium()
             
             logger.info("Social media credentials reloaded successfully")
             return True
