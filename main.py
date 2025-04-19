@@ -4520,6 +4520,71 @@ def json_editor(blog_id, file_path):
         flash(f"Error reading file: {str(e)}", "danger")
         return redirect(url_for('json_editor_list', blog_id=blog_id))
 
+@app.route('/blog/<blog_id>/create_json_file/<filename>', methods=['GET', 'POST'])
+def create_json_file(blog_id, filename):
+    """Create a new JSON file for a blog"""
+    # Check if blog exists
+    blog_path = os.path.join("data/blogs", blog_id)
+    if not os.path.exists(blog_path):
+        flash("Blog not found.", "danger")
+        return redirect(url_for('index'))
+    
+    # Get blog information
+    blog = get_blog_by_id(blog_id)
+    if not blog:
+        flash("Blog information could not be loaded.", "danger")
+        return redirect(url_for('index'))
+    
+    # Ensure the config directory exists
+    config_dir = os.path.join(blog_path, "config")
+    storage_service.ensure_local_directory(config_dir)
+    
+    # Construct file path
+    file_path = os.path.join(config_dir, filename)
+    
+    # Security check: Only allow creating files in the config directory with .json extension
+    if not filename.endswith('.json') or '/' in filename or '\\' in filename:
+        flash("Invalid filename. Only .json files are allowed in the config directory.", "danger")
+        return redirect(url_for('blog_detail', blog_id=blog_id))
+    
+    # Check if file already exists
+    if os.path.exists(file_path):
+        flash(f"File {filename} already exists.", "warning")
+        return redirect(url_for('json_editor', blog_id=blog_id, file_path=f'config/{filename}'))
+    
+    # Handle form submission
+    if request.method == 'POST':
+        try:
+            json_content = request.form.get('json_content', '').strip()
+            
+            # Parse to ensure it's valid JSON
+            json_data = json.loads(json_content)
+            
+            # Save the new file
+            with open(file_path, 'w') as f:
+                json.dump(json_data, f, indent=2)
+            
+            flash(f"File {filename} created successfully!", "success")
+            return redirect(url_for('json_editor', blog_id=blog_id, file_path=f'config/{filename}'))
+        
+        except json.JSONDecodeError as e:
+            flash(f"Invalid JSON: {str(e)}", "danger")
+        except Exception as e:
+            flash(f"Error creating file: {str(e)}", "danger")
+    
+    # Generate default content based on file type
+    default_content = get_default_json_content(filename, blog)
+    
+    file_description = get_json_file_description(filename)
+    
+    return render_template('json_editor.html',
+                          blog=blog,
+                          blog_id=blog_id,
+                          file_path=f'config/{filename}',
+                          file_description=file_description,
+                          json_content=default_content,
+                          creating_new=True)
+
 def get_json_file_description(filename):
     """Get a human-readable description for a JSON file based on its filename"""
     descriptions = {
@@ -4535,6 +4600,106 @@ def get_json_file_description(filename):
     }
     
     return descriptions.get(filename, 'Configuration file')
+
+def get_default_json_content(filename, blog):
+    """Generate default JSON content for a new file based on its type"""
+    
+    theme = blog.get('theme', 'general')
+    blog_name = blog.get('name', 'My Blog')
+    blog_id = blog.get('id', '')
+    description = blog.get('description', f'A blog about {theme}')
+    
+    default_content = {}
+    
+    if filename == 'theme.json':
+        default_content = {
+            "description": description,
+            "audience": {
+                "target_demographic": "general",
+                "age_range": "25-45",
+                "interests": [theme, "information", "education"],
+                "education_level": "mixed"
+            },
+            "tone": {
+                "style": "informative",
+                "formality": "casual",
+                "humor": "moderate",
+                "technical_level": "beginner to intermediate"
+            },
+            "content_preferences": {
+                "article_length": "medium",
+                "include_examples": True,
+                "include_visuals": True,
+                "use_analogies": True,
+                "avoid_jargon": True
+            },
+            "seo_guidelines": {
+                "keyword_density": "moderate",
+                "target_readability": "high",
+                "meta_description_style": "informative with call to action",
+                "heading_structure": "clear hierarchy with main keyword"
+            }
+        }
+    
+    elif filename == 'topics.json':
+        default_content = [
+            theme,
+            f"{theme} tips",
+            f"{theme} for beginners",
+            f"advanced {theme}",
+            f"{theme} trends"
+        ]
+    
+    elif filename == 'frequency.json':
+        default_content = {
+            "schedule": "weekly",
+            "days_of_week": ["Monday"],
+            "time_of_day": "09:00",
+            "timezone": "UTC",
+            "maximum_per_month": 5,
+            "paused": False,
+            "last_run": None
+        }
+    
+    elif filename == 'ready.json':
+        default_content = {
+            "content_generation_ready": True,
+            "publishing_ready": False,
+            "social_media_ready": False,
+            "checks": {
+                "has_wordpress_credentials": False,
+                "has_topics": True,
+                "has_theme_config": True
+            }
+        }
+    
+    elif filename == 'bootstrap.json':
+        default_content = {
+            "created_at": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "blog_id": blog_id,
+            "blog_name": blog_name,
+            "theme": theme,
+            "description": description,
+            "status": "pending",
+            "setup_steps": [
+                {"name": "create_directory_structure", "status": "completed"},
+                {"name": "create_config_files", "status": "pending"},
+                {"name": "setup_wordpress", "status": "pending"},
+                {"name": "configure_social_media", "status": "pending"}
+            ]
+        }
+    
+    else:
+        # Generic empty JSON object
+        default_content = {
+            "created_at": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "blog_id": blog_id,
+            "blog_name": blog_name,
+            "description": "Configuration file"
+        }
+    
+    # Format the JSON with proper indentation
+    return json.dumps(default_content, indent=2)
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)), debug=True)

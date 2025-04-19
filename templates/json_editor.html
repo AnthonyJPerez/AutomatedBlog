@@ -30,7 +30,7 @@
 <div class="container mt-4">
     <div class="card">
         <div class="card-header d-flex justify-content-between align-items-center">
-            <h1 class="mb-0">Editing: {{ file_path }}</h1>
+            <h1 class="mb-0">{% if creating_new %}Creating: {% else %}Editing: {% endif %}{{ file_path }}</h1>
             <div>
                 <a href="{{ url_for('json_editor_list', blog_id=blog_id) }}" class="btn btn-secondary me-2">Back to File List</a>
                 <a href="{{ url_for('blog_detail', blog_id=blog_id) }}" class="btn btn-outline-secondary">Blog Dashboard</a>
@@ -43,6 +43,14 @@
                 <strong>File:</strong> {{ file_path }}<br>
                 <strong>Description:</strong> {{ file_description }}
             </div>
+            
+            {% if creating_new %}
+            <div class="alert alert-success mb-4">
+                <i class="fas fa-plus-circle me-2"></i>
+                <strong>Creating a new file</strong><br>
+                A default template for this file type has been generated. Feel free to modify it as needed before creating the file.
+            </div>
+            {% endif %}
             
             <form method="POST" id="jsonEditorForm">
                 <div class="form-group">
@@ -63,7 +71,11 @@
                 <div class="d-flex justify-content-between mt-4">
                     <a href="{{ url_for('json_editor_list', blog_id=blog_id) }}" class="btn btn-secondary">Cancel</a>
                     <button type="submit" class="btn btn-primary">
+                        {% if creating_new %}
+                        <i class="fas fa-plus-circle me-1"></i> Create File
+                        {% else %}
                         <i class="fas fa-save me-1"></i> Save Changes
+                        {% endif %}
                     </button>
                 </div>
             </form>
