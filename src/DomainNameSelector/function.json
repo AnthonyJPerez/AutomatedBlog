@@ -1,0 +1,19 @@
+{
+  "scriptFile": "__init__.py",
+  "bindings": [
+    {
+      "name": "bootstrapBlob",
+      "type": "blobTrigger",
+      "direction": "in",
+      "path": "bootstrap.json",
+      "connection": "AzureWebJobsStorage"
+    },
+    {
+      "name": "outputBlob",
+      "type": "blob",
+      "direction": "out",
+      "path": "generated/DomainNames.json",
+      "connection": "AzureWebJobsStorage"
+    }
+  ]
+}

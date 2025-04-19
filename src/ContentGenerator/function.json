@@ -1,0 +1,26 @@
+{
+  "scriptFile": "__init__.py",
+  "bindings": [
+    {
+      "name": "inputBlob",
+      "type": "blobTrigger",
+      "direction": "in",
+      "path": "generated/{runId}/research.json",
+      "connection": "AzureWebJobsStorage"
+    },
+    {
+      "name": "outputContent",
+      "type": "blob",
+      "direction": "out",
+      "path": "generated/{runId}/content.md",
+      "connection": "AzureWebJobsStorage"
+    },
+    {
+      "name": "outputRecommendations",
+      "type": "blob",
+      "direction": "out",
+      "path": "generated/{runId}/recommendations.json",
+      "connection": "AzureWebJobsStorage"
+    }
+  ]
+}

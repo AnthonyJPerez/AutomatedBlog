@@ -1,0 +1,18 @@
+{
+  "scriptFile": "__init__.py",
+  "bindings": [
+    {
+      "name": "mytimer",
+      "type": "timerTrigger",
+      "direction": "in",
+      "schedule": "0 0 * * * *"
+    },
+    {
+      "name": "outputBlob",
+      "type": "blob",
+      "direction": "out",
+      "path": "generated/{DateTime:yyyyMMdd_HHmmss}_{rand-guid}/.run",
+      "connection": "AzureWebJobsStorage"
+    }
+  ]
+}
