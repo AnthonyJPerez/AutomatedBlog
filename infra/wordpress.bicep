@@ -237,6 +237,92 @@ resource deploymentScript 'Microsoft.Resources/deploymentScripts@2020-10-01' = {
   ]
 }
 
+// Update Key Vault with WordPress credentials
+@description('Name of the Key Vault to store WordPress credentials')
+param keyVaultName string
+
+// Add a deployment script to update Key Vault with WordPress credentials
+resource updateKeyVaultWithWordPressCredentials 'Microsoft.Resources/deploymentScripts@2020-10-01' = {
+  name: '${siteName}-update-keyvault'
+  location: location
+  kind: 'AzureCLI'
+  identity: {
+    type: 'UserAssigned'
+    userAssignedIdentities: {
+      '${wordpressApp.identity.principalId}': {}
+    }
+  }
+  properties: {
+    azCliVersion: '2.30.0'
+    retentionInterval: 'P1D'
+    timeout: 'PT30M'
+    scriptContent: '''
+      #!/bin/bash
+      
+      # Wait for WordPress to be fully deployed
+      sleep 180
+      
+      # Generate WordPress application password for API access
+      WP_APP_PASSWORD=$(openssl rand -base64 20 | tr -dc 'a-zA-Z0-9' | fold -w 20 | head -n 1)
+      
+      # Create WordPress application password
+      az webapp ssh --resource-group $RESOURCE_GROUP --name $SITE_NAME --command "wp user application-password create $WP_ADMIN_USERNAME 'Content-API' --porcelain" > app_password.txt
+      
+      if [ -s app_password.txt ]; then
+        WP_APP_PASSWORD=$(cat app_password.txt)
+        echo "Successfully created WordPress application password"
+      else
+        echo "Failed to create WordPress application password, using generated one"
+      fi
+      
+      # Update Key Vault secrets with WordPress information
+      az keyvault secret set --vault-name $KEY_VAULT_NAME --name 'WordPressUrl' --value "https://$SITE_NAME.azurewebsites.net"
+      az keyvault secret set --vault-name $KEY_VAULT_NAME --name 'WordPressAdminUsername' --value "$WP_ADMIN_USERNAME"
+      az keyvault secret set --vault-name $KEY_VAULT_NAME --name 'WordPressAppPassword' --value "$WP_APP_PASSWORD"
+      
+      # Store MySQL credentials
+      DB_CREDENTIALS="{\"host\":\"$MYSQL_SERVER.mysql.database.azure.com\",\"username\":\"$DB_ADMIN_USERNAME\",\"password\":\"$DB_ADMIN_PASSWORD\",\"database\":\"wordpress\"}"
+      az keyvault secret set --vault-name $KEY_VAULT_NAME --name 'WordPressDbCredentials' --value "$DB_CREDENTIALS"
+      
+      echo "WordPress credentials stored in Key Vault"
+    '''
+    environmentVariables: [
+      {
+        name: 'SITE_NAME'
+        value: siteName
+      }
+      {
+        name: 'RESOURCE_GROUP'
+        value: resourceGroup().name
+      }
+      {
+        name: 'KEY_VAULT_NAME'
+        value: keyVaultName
+      }
+      {
+        name: 'WP_ADMIN_USERNAME'
+        value: wpAdminUsername
+      }
+      {
+        name: 'MYSQL_SERVER'
+        value: mysqlServer.name
+      }
+      {
+        name: 'DB_ADMIN_USERNAME'
+        value: administratorLogin
+      }
+      {
+        name: 'DB_ADMIN_PASSWORD'
+        secureValue: administratorLoginPassword
+      }
+    ]
+  }
+  dependsOn: [
+    deploymentScript
+    wordpressApp
+  ]
+}
+
 // Outputs that can be used by other resources
 output wordpressUrl string = 'https://${wordpressApp.properties.defaultHostName}'
 output mysqlHostname string = '${mysqlServer.name}.mysql.database.azure.com'

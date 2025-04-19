@@ -107,6 +107,42 @@ resource wordPressAppPasswordPlaceholder 'Microsoft.KeyVault/vaults/secrets@2022
   }
 }
 
+resource wordPressUsernameSecret 'Microsoft.KeyVault/vaults/secrets@2022-07-01' = {
+  name: 'WordPressAdminUsername'
+  parent: keyVault
+  properties: {
+    contentType: 'text/plain'
+    value: 'admin'  // Default value, will be updated after WordPress deployment
+  }
+}
+
+resource wordPressUrlSecret 'Microsoft.KeyVault/vaults/secrets@2022-07-01' = {
+  name: 'WordPressUrl'
+  parent: keyVault
+  properties: {
+    contentType: 'text/plain'
+    value: 'https://YOUR_WORDPRESS_URL'  // Will be populated after WordPress deployment
+  }
+}
+
+resource wordPressApiSecret 'Microsoft.KeyVault/vaults/secrets@2022-07-01' = {
+  name: 'WordPressApiKey'
+  parent: keyVault
+  properties: {
+    contentType: 'text/plain'
+    value: 'REPLACE_WITH_WORDPRESS_API_KEY'  // Will be populated after WordPress deployment
+  }
+}
+
+resource wordPressDbCredentialsSecret 'Microsoft.KeyVault/vaults/secrets@2022-07-01' = {
+  name: 'WordPressDbCredentials'
+  parent: keyVault
+  properties: {
+    contentType: 'application/json'
+    value: '{"host":"mysql-server","username":"admin","password":"PASSWORD","database":"wordpress"}'  // Will be populated after WordPress deployment
+  }
+}
+
 resource ga4MeasurementIdPlaceholder 'Microsoft.KeyVault/vaults/secrets@2022-07-01' = {
   name: 'GA4MeasurementId'
   parent: keyVault

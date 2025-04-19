@@ -116,7 +116,11 @@ module wordpressModule 'wordpress.bicep' = if (deployWordPress) {
     wpAdminEmail: wpAdminEmail
     wpAdminUsername: wpAdminUsername
     wpAdminPassword: wpAdminPassword
+    keyVaultName: keyVaultName
   }
+  dependsOn: [
+    keyVaultModule
+  ]
 }
 
 // Outputs

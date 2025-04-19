@@ -14,22 +14,52 @@ class WordPressService:
     
     def __init__(self):
         self.logger = logging.getLogger('wordpress_service')
+        self.default_wordpress_url = None
+        self.default_wordpress_username = None
+        self.default_wordpress_password = None
         
         # Get Key Vault name from environment variable
         key_vault_name = os.environ.get("KEY_VAULT_NAME")
         
         if key_vault_name:
             # Use managed identity to access Key Vault
-            credential = DefaultAzureCredential()
-            key_vault_uri = f"https://{key_vault_name}.vault.azure.net/"
-            secret_client = SecretClient(vault_url=key_vault_uri, credential=credential)
-            
-            # Get secrets from Key Vault if needed
             try:
-                # Future use for any global WordPress settings
-                pass
+                credential = DefaultAzureCredential()
+                key_vault_uri = f"https://{key_vault_name}.vault.azure.net/"
+                self.secret_client = SecretClient(vault_url=key_vault_uri, credential=credential)
+                
+                # Get WordPress secrets from Key Vault
+                try:
+                    # Try to get default WordPress credentials
+                    self.default_wordpress_url = self._get_secret('WordPressUrl')
+                    self.default_wordpress_username = self._get_secret('WordPressAdminUsername')
+                    self.default_wordpress_password = self._get_secret('WordPressAppPassword')
+                    
+                    if self.default_wordpress_url and self.default_wordpress_username and self.default_wordpress_password:
+                        self.logger.info(f"Successfully loaded WordPress credentials from Key Vault for {self.default_wordpress_url}")
+                    else:
+                        self.logger.warning("Some WordPress credentials were not found in Key Vault")
+                        
+                except Exception as e:
+                    self.logger.warning(f"WordPress credentials not found in Key Vault: {str(e)}")
             except Exception as e:
-                self.logger.error(f"Error retrieving WordPress secrets from Key Vault: {str(e)}")
+                self.logger.error(f"Error initializing Key Vault client: {str(e)}")
+                self.secret_client = None
+        else:
+            self.logger.warning("No KEY_VAULT_NAME environment variable, WordPress credentials must be provided manually")
+            self.secret_client = None
+    
+    def _get_secret(self, secret_name):
+        """Retrieve a secret from Key Vault"""
+        if not self.secret_client:
+            return None
+            
+        try:
+            secret = self.secret_client.get_secret(secret_name)
+            return secret.value
+        except Exception as e:
+            self.logger.debug(f"Secret {secret_name} not found in Key Vault: {str(e)}")
+            return None
     
     def publish_post(self, wordpress_url, username, application_password, title, content, seo_metadata):
         """
@@ -206,6 +236,45 @@ class WordPressService:
         </div>
         """
         return ad_code
+    
+    def publish_to_default_wordpress(self, title, content, seo_metadata=None):
+        """
+        Publish a post to the default WordPress site using credentials from Key Vault.
+        
+        Args:
+            title (str): The title of the post
+            content (str): The HTML content of the post
+            seo_metadata (dict, optional): SEO metadata for the post
+            
+        Returns:
+            dict: Details of the published post including post ID and URL
+        
+        Raises:
+            Exception: If default WordPress credentials are not available or publishing fails
+        """
+        # Check if default WordPress credentials are available
+        if not self.default_wordpress_url or not self.default_wordpress_username or not self.default_wordpress_password:
+            error_msg = "Default WordPress credentials not available. Make sure KEY_VAULT_NAME is set and contains WordPress secrets."
+            self.logger.error(error_msg)
+            raise Exception(error_msg)
+        
+        # Set default SEO metadata if not provided
+        if not seo_metadata:
+            seo_metadata = {
+                'slug': '',
+                'meta_description': '',
+                'keywords': []
+            }
+        
+        # Publish to the default WordPress
+        return self.publish_post(
+            wordpress_url=self.default_wordpress_url,
+            username=self.default_wordpress_username,
+            application_password=self.default_wordpress_password,
+            title=title,
+            content=content,
+            seo_metadata=seo_metadata
+        )
     
     def _make_request(self, method, url, **kwargs):
         """Make HTTP request with error handling and logging"""

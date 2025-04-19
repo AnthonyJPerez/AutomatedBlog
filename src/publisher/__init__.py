@@ -50,14 +50,29 @@ def main(inputBlob: func.InputStream, outputBlob: func.Out[str]) -> None:
             )
         
         # Step 2: Publish content to WordPress
-        publish_result = wordpress_service.publish_post(
-            wordpress_url=blog_config.wordpress_url,
-            username=blog_config.wordpress_username,
-            application_password=blog_config.wordpress_app_password,
-            title=blog_content.title,
-            content=blog_content.content,
-            seo_metadata=blog_content.seo_metadata
-        )
+        # Try blog-specific credentials first
+        if blog_config.wordpress_url and blog_config.wordpress_username and blog_config.wordpress_app_password:
+            logger.info(f"Using blog-specific WordPress credentials for blog {blog_content.blog_id}")
+            publish_result = wordpress_service.publish_post(
+                wordpress_url=blog_config.wordpress_url,
+                username=blog_config.wordpress_username,
+                application_password=blog_config.wordpress_app_password,
+                title=blog_content.title,
+                content=blog_content.content,
+                seo_metadata=blog_content.seo_metadata
+            )
+        else:
+            # Fall back to default WordPress credentials from Key Vault
+            logger.info(f"Using default WordPress credentials from Key Vault for blog {blog_content.blog_id}")
+            try:
+                publish_result = wordpress_service.publish_to_default_wordpress(
+                    title=blog_content.title,
+                    content=blog_content.content,
+                    seo_metadata=blog_content.seo_metadata
+                )
+            except Exception as e:
+                logger.error(f"Error using default WordPress credentials: {str(e)}")
+                raise Exception(f"No WordPress credentials available. Either configure blog-specific credentials or set up default WordPress in Key Vault. Error: {str(e)}")
         
         # Create result object
         result = PublishResult(
