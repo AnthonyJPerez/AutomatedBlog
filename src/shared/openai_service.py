@@ -21,6 +21,15 @@ class OpenAIService:
         # Configure logger
         self.logger = logging.getLogger('OpenAIService')
         
+        # Set default models
+        self.draft_model = "gpt-3.5-turbo"
+        self.polish_model = "gpt-4o"  # Latest model as of April 2025
+        self.chat_model = "gpt-4o"    # Default chat model
+        
+        # Create client attribute (will be set if not using Azure)
+        self.client = None
+        self.use_azure = False
+        
         # Try to get API key from environment variable first
         api_key = os.environ.get("OPENAI_API_KEY")
         
@@ -731,3 +740,44 @@ class OpenAIService:
         except Exception as e:
             self.logger.error(f"Error saving base64 image: {str(e)}")
             return None
+            
+    def chat_completion(self, system_message, user_message, temperature=0.7, max_tokens=None):
+        """
+        Get a chat completion from the OpenAI API
+        
+        Args:
+            system_message: The system message to guide the AI
+            user_message: The user message or question
+            temperature: Control randomness (0.0-1.0)
+            max_tokens: Maximum tokens to generate, or None for model default
+            
+        Returns:
+            str: The generated response text
+        """
+        try:
+            messages = [
+                {"role": "system", "content": system_message},
+                {"role": "user", "content": user_message}
+            ]
+            
+            # Set up API call params
+            params = {
+                "model": self.chat_model,
+                "messages": messages,
+                "temperature": temperature
+            }
+            
+            # Add max_tokens if specified
+            if max_tokens is not None:
+                params["max_tokens"] = max_tokens
+            
+            # Check if we're using Azure OpenAI
+            if self.use_azure:
+                response = openai.ChatCompletion.create(**params)
+                return response.choices[0].message.content
+            else:
+                response = self.client.chat.completions.create(**params)
+                return response.choices[0].message.content
+        except Exception as e:
+            self.logger.error(f"Error in chat completion: {str(e)}")
+            return f"Error generating response: {str(e)}"

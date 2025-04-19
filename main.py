@@ -85,6 +85,68 @@ except Exception as e:
     logger.warning(f"Failed to initialize Translation service: {str(e)}")
     translation_service = None
     
+# Create API routes for translation
+@app.route('/api/translate', methods=['POST'])
+def translate_text_api():
+    """
+    API endpoint to translate text to a specified language
+    
+    Request JSON format:
+        {
+            "text": "Text to translate",
+            "target_language": "ISO 639-1 language code (e.g., 'es' for Spanish)",
+            "source_language": "Optional source language code"
+        }
+    """
+    if not translation_service:
+        return jsonify({
+            "success": False,
+            "message": "Translation service is not available"
+        }), 500
+        
+    try:
+        data = request.get_json()
+        
+        # Validate required parameters
+        if not data or 'text' not in data or 'target_language' not in data:
+            return jsonify({
+                "success": False,
+                "message": "Missing required parameters: text and target_language"
+            }), 400
+            
+        # Get parameters from request
+        text = data['text']
+        target_language = data['target_language']
+        source_language = data.get('source_language', None)
+        
+        # Validate target language
+        if target_language not in SUPPORTED_LANGUAGES:
+            return jsonify({
+                "success": False,
+                "message": f"Unsupported target language: {target_language}. Supported languages: {', '.join(SUPPORTED_LANGUAGES.keys())}"
+            }), 400
+            
+        # Translate the text
+        translated_text = translation_service.translate_text(
+            text=text,
+            target_language=target_language,
+            source_language=source_language
+        )
+        
+        # Return the translated text
+        return jsonify({
+            "success": True,
+            "translated_text": translated_text,
+            "source_language": source_language or translation_service.detect_language(text)[0],
+            "target_language": target_language
+        })
+    except Exception as e:
+        logger.error(f"Error in translation API: {str(e)}")
+        return jsonify({
+            "success": False,
+            "message": f"Translation error: {str(e)}"
+        }), 500
+    
 # Add language context processor
 @app.context_processor
 def inject_language_data():
