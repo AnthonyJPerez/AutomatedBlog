@@ -213,6 +213,20 @@
                                                 Medium
                                             </label>
                                         </div>
+                                        <div class="form-check">
+                                            <input class="form-check-input platform-check" type="checkbox" value="bluesky" id="platform-bluesky"
+                                                {% if blog.social_media and blog.social_media.platforms and 'bluesky' in blog.social_media.platforms %}checked{% endif %}>
+                                            <label class="form-check-label" for="platform-bluesky">
+                                                Bluesky
+                                            </label>
+                                        </div>
+                                        <div class="form-check">
+                                            <input class="form-check-input platform-check" type="checkbox" value="truthsocial" id="platform-truthsocial"
+                                                {% if blog.social_media and blog.social_media.platforms and 'truthsocial' in blog.social_media.platforms %}checked{% endif %}>
+                                            <label class="form-check-label" for="platform-truthsocial">
+                                                Truth Social
+                                            </label>
+                                        </div>
                                     </div>
                                     
                                     <div class="col-md-6">
@@ -231,6 +245,22 @@
                                                    value="{{ blog.social_media.medium_publication if blog.social_media and blog.social_media.medium_publication else '' }}" 
                                                    placeholder="Optional - leave blank for personal account">
                                             <div class="form-text">Publication ID if publishing to a Medium publication</div>
+                                        </div>
+                                        
+                                        <div class="mb-3">
+                                            <label for="bluesky-handle" class="form-label">Bluesky Handle</label>
+                                            <input type="text" class="form-control" id="bluesky-handle" 
+                                                   value="{{ blog.social_media.bluesky_handle if blog.social_media and blog.social_media.bluesky_handle else '' }}" 
+                                                   placeholder="e.g., @username.bsky.social">
+                                            <div class="form-text">Your Bluesky handle/username</div>
+                                        </div>
+                                        
+                                        <div class="mb-3">
+                                            <label for="truthsocial-handle" class="form-label">Truth Social Handle</label>
+                                            <input type="text" class="form-control" id="truthsocial-handle" 
+                                                   value="{{ blog.social_media.truthsocial_handle if blog.social_media and blog.social_media.truthsocial_handle else '' }}" 
+                                                   placeholder="e.g., @username">
+                                            <div class="form-text">Your Truth Social handle/username</div>
                                         </div>
                                     </div>
                                 </div>
@@ -361,6 +391,8 @@
                 // Get platform-specific settings
                 const redditSubreddit = document.getElementById('reddit-subreddit').value;
                 const mediumPublication = document.getElementById('medium-publication').value;
+                const blueskyHandle = document.getElementById('bluesky-handle').value;
+                const truthsocialHandle = document.getElementById('truthsocial-handle').value;
                 
                 // Prepare data for API call
                 const blogId = '{{ blog.id }}';
@@ -369,7 +401,9 @@
                         enabled: enabled,
                         platforms: platforms,
                         reddit_subreddit: redditSubreddit,
-                        medium_publication: mediumPublication
+                        medium_publication: mediumPublication,
+                        bluesky_handle: blueskyHandle,
+                        truthsocial_handle: truthsocialHandle
                     }
                 };
                 
