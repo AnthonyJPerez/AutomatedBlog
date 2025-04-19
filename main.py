@@ -43,7 +43,11 @@ def index():
                         'name': blog_config.get('name', 'Unnamed Blog'),
                         'theme': blog_config.get('theme', 'No theme'),
                         'created_at': blog_config.get('created_at', 'Unknown'),
-                        'is_active': blog_config.get('is_active', True)
+                        'is_active': blog_config.get('is_active', True),
+                        'frequency': blog_config.get('frequency', 'weekly'),
+                        'wordpress': blog_config.get('wordpress', {}),
+                        'wordpress_connected': 'wordpress' in blog_config and blog_config['wordpress'].get('connected', False),
+                        'wordpress_url': blog_config.get('wordpress', {}).get('url', '')
                     })
             except Exception as e:
                 logger.error(f"Error loading blog config for {blog_id}: {str(e)}")
@@ -510,20 +514,46 @@ def generate_content(blog_id):
 @app.route('/api/blogs')
 def get_blogs():
     """API endpoint to get all blogs"""
-    runs = []
+    blogs = []
     try:
-        run_folders = storage_service.list_blobs("generated", None)
-        for folder in run_folders:
-            if '/' in folder:  # Skip files in the root generated folder
-                run_id = folder.split('/')[0]
-                if run_id not in [run['id'] for run in runs]:
-                    runs.append({
-                        'id': run_id,
+        # Get blogs from data/blogs folder
+        blogs_path = os.path.join("data", "blogs")
+        if os.path.exists(blogs_path):
+            blog_folders = [f for f in os.listdir(blogs_path) if os.path.isdir(os.path.join(blogs_path, f))]
+            
+            for blog_id in blog_folders:
+                config_path = os.path.join(blogs_path, blog_id, "config.json")
+                
+                if os.path.exists(config_path):
+                    with open(config_path, 'r') as f:
+                        config = json.load(f)
+                    
+                    # Count content items
+                    content_count = 0
+                    runs_path = os.path.join(blogs_path, blog_id, "runs")
+                    if os.path.exists(runs_path):
+                        run_folders = [f for f in os.listdir(runs_path) if os.path.isdir(os.path.join(runs_path, f))]
+                        
+                        for run_id in run_folders:
+                            content_path = os.path.join(runs_path, run_id, "content.md")
+                            if os.path.exists(content_path):
+                                content_count += 1
+                    
+                    # Add blog to the list
+                    blogs.append({
+                        'id': blog_id,
+                        'name': config.get('name', 'Unnamed Blog'),
+                        'theme': config.get('theme', 'No theme'),
+                        'created_at': config.get('created_at', 'Unknown'),
+                        'is_active': config.get('is_active', True),
+                        'frequency': config.get('frequency', 'unknown'),
+                        'content_count': content_count,
+                        'wordpress_connected': 'wordpress' in config and config['wordpress'].get('connected', False)
                     })
     except Exception as e:
-        logger.error(f"Error getting run data: {str(e)}")
+        logger.error(f"Error getting blog data: {str(e)}")
     
-    return jsonify(runs)
+    return jsonify(blogs)
 
 @app.route('/api/research_topics', methods=['POST'])
 def research_topics():

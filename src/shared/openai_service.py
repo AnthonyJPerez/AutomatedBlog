@@ -343,3 +343,58 @@ class OpenAIService:
                 "social_description": f"Read our guide about {title}.",
                 "slug": slug
             }
+            
+    def generate_json(self, prompt, model=None, max_tokens=2000, temperature=0.5):
+        """
+        Generate JSON content based on the prompt.
+        
+        Args:
+            prompt (str): The prompt to generate JSON from
+            model (str, optional): The model to use, uses self.draft_model if not specified
+            max_tokens (int): Maximum tokens to generate
+            temperature (float): Creativity parameter (0.0-1.0)
+            
+        Returns:
+            str: JSON string response
+        """
+        if model is None:
+            model = self.draft_model
+            
+        try:
+            # Use structured output format (available in newer API versions)
+            if self.use_azure:
+                response = openai.chat.completions.create(
+                    engine=model,  # Azure deployment name
+                    messages=[{
+                        "role": "system",
+                        "content": "You are a structured data generator that produces valid JSON."
+                    }, {
+                        "role": "user",
+                        "content": prompt
+                    }],
+                    max_tokens=max_tokens,
+                    temperature=temperature,
+                    response_format={"type": "json_object"}
+                )
+            else:
+                # Direct OpenAI
+                response = openai.chat.completions.create(
+                    model=model,
+                    messages=[{
+                        "role": "system",
+                        "content": "You are a structured data generator that produces valid JSON."
+                    }, {
+                        "role": "user",
+                        "content": prompt
+                    }],
+                    max_tokens=max_tokens,
+                    temperature=temperature,
+                    response_format={"type": "json_object"}
+                )
+            
+            return response.choices[0].message.content.strip()
+            
+        except Exception as e:
+            self.logger.error(f"Error generating JSON: {str(e)}")
+            # Return empty JSON as fallback
+            return '{}'
