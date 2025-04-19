@@ -32,6 +32,15 @@ except Exception as e:
     logger.warning(f"Failed to initialize Social Media service: {str(e)}")
     social_media_service = None
 
+# Initialize web scraper services
+try:
+    from src.shared.web_scraper_service import web_scraper_service
+    from src.shared.web_scraper import WebScraper
+    logger.info("Web Scraper services initialized")
+except Exception as e:
+    logger.warning(f"Failed to initialize Web Scraper services: {str(e)}")
+    web_scraper_service = None
+
 @app.route('/')
 def index():
     """Main dashboard page"""
