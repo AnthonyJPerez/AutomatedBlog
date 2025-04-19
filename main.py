@@ -2708,6 +2708,44 @@ def rss_feed_api_v2():
         logger.error(f"Error fetching RSS feed: {str(e)}")
         return jsonify({"success": False, "message": f"Error: {str(e)}"}), 500
 
+# Documentation routes
+@app.route('/docs/<path:filename>')
+def serve_documentation(filename):
+    """
+    Serve documentation files
+    This route renders Markdown files from the docs directory as HTML
+    """
+    import markdown
+    try:
+        # Read the markdown file
+        file_path = os.path.join('docs', filename)
+        if not os.path.exists(file_path):
+            return render_template('404.html'), 404
+        
+        with open(file_path, 'r') as file:
+            content = file.read()
+        
+        # Convert markdown to HTML
+        html_content = markdown.markdown(
+            content,
+            extensions=['fenced_code', 'tables', 'codehilite']
+        )
+        
+        # Extract title from the first heading
+        title = "Documentation"
+        if content.startswith('# '):
+            title = content.split('\n')[0].replace('# ', '')
+        
+        return render_template('documentation_viewer.html', content=html_content, title=title)
+    except Exception as e:
+        logger.error(f"Error rendering documentation: {str(e)}")
+        return render_template('500.html'), 500
+
+@app.route('/docs')
+def documentation_index():
+    """Redirect to the main documentation page"""
+    return redirect('/docs/automated_blog_system.md')
+
 @app.errorhandler(404)
 def page_not_found(e):
     return render_template('404.html'), 404
