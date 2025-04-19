@@ -1,0 +1,846 @@
+{% extends "base.html" %}
+
+{% block title %}Backlink Monitoring - {{ blog.name if blog else "All Blogs" }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+  <div class="row mb-4">
+    <div class="col-12">
+      <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+          <li class="breadcrumb-item"><a href="/">Dashboard</a></li>
+          {% if blog %}
+          <li class="breadcrumb-item"><a href="/blog/{{ blog.id }}">{{ blog.name }}</a></li>
+          {% endif %}
+          <li class="breadcrumb-item active" aria-current="page">Backlink Monitoring</li>
+        </ol>
+      </nav>
+      <h1 class="h2 mb-0">
+        <i class="bi bi-link-45deg me-2"></i>
+        Backlink Monitoring {% if blog %}for {{ blog.name }}{% endif %}
+      </h1>
+      <p class="text-muted">Track who's linking to your content and discover new opportunities</p>
+    </div>
+  </div>
+
+  {% if not blog %}
+  <!-- Blog Selection -->
+  <div class="row mb-4">
+    <div class="col-12">
+      <div class="card">
+        <div class="card-header">
+          <h5 class="card-title mb-0">Select a Blog</h5>
+        </div>
+        <div class="card-body">
+          <div class="row">
+            {% for b in blogs %}
+            <div class="col-md-4 mb-3">
+              <div class="card h-100">
+                <div class="card-body">
+                  <h5 class="card-title">{{ b.name }}</h5>
+                  <p class="card-text text-muted small">{{ b.description }}</p>
+                  <a href="/backlinks/{{ b.id }}" class="btn btn-sm btn-primary">View Backlinks</a>
+                </div>
+              </div>
+            </div>
+            {% else %}
+            <div class="col-12">
+              <div class="alert alert-info">
+                No blogs found. <a href="/setup">Create a blog</a> to start tracking backlinks.
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% else %}
+  
+  <!-- Action Buttons -->
+  <div class="row mb-4">
+    <div class="col-12">
+      <button class="btn btn-primary" id="refreshBacklinks">
+        <i class="bi bi-arrow-repeat me-1"></i> Refresh Backlinks
+      </button>
+      <button class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#addCompetitorModal">
+        <i class="bi bi-plus-lg me-1"></i> Add Competitor
+      </button>
+      <a href="/backlinks/{{ blog.id }}/opportunities" class="btn btn-outline-success">
+        <i class="bi bi-lightbulb me-1"></i> Backlink Opportunities
+      </a>
+      <a href="/backlinks/{{ blog.id }}/export" class="btn btn-outline-secondary">
+        <i class="bi bi-download me-1"></i> Export Data
+      </a>
+    </div>
+  </div>
+  
+  <!-- Overview Cards -->
+  <div class="row mb-4">
+    <div class="col-xl-3 col-md-6 mb-4">
+      <div class="card h-100 border-left-primary">
+        <div class="card-body">
+          <div class="row align-items-center">
+            <div class="col mr-2">
+              <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">Total Backlinks</div>
+              <div class="h5 mb-0 font-weight-bold" id="totalBacklinks">{{ report.summary.total_backlinks if report and report.summary else 0 }}</div>
+            </div>
+            <div class="col-auto">
+              <i class="bi bi-link-45deg fa-2x text-gray-300"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="col-xl-3 col-md-6 mb-4">
+      <div class="card h-100 border-left-success">
+        <div class="card-body">
+          <div class="row align-items-center">
+            <div class="col mr-2">
+              <div class="text-xs font-weight-bold text-success text-uppercase mb-1">Referring Domains</div>
+              <div class="h5 mb-0 font-weight-bold" id="referringDomains">{{ report.summary.referring_domains if report and report.summary else 0 }}</div>
+            </div>
+            <div class="col-auto">
+              <i class="bi bi-globe fa-2x text-gray-300"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="col-xl-3 col-md-6 mb-4">
+      <div class="card h-100 border-left-info">
+        <div class="card-body">
+          <div class="row align-items-center">
+            <div class="col mr-2">
+              <div class="text-xs font-weight-bold text-info text-uppercase mb-1">New This Month</div>
+              <div class="h5 mb-0 font-weight-bold" id="newBacklinks">{{ changes.new_backlinks.count if changes and changes.new_backlinks else 0 }}</div>
+            </div>
+            <div class="col-auto">
+              <i class="bi bi-graph-up-arrow fa-2x text-gray-300"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="col-xl-3 col-md-6 mb-4">
+      <div class="card h-100 border-left-warning">
+        <div class="card-body">
+          <div class="row align-items-center">
+            <div class="col mr-2">
+              <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">Quality Score</div>
+              <div class="h5 mb-0 font-weight-bold" id="qualityScore">
+                {% if report and report.summary and report.summary.quality_distribution %}
+                  {% set total = report.summary.quality_distribution.high + report.summary.quality_distribution.medium + report.summary.quality_distribution.low %}
+                  {% if total > 0 %}
+                    {% set score = ((report.summary.quality_distribution.high * 100 + report.summary.quality_distribution.medium * 50) / total) | round %}
+                    {{ score }}/100
+                  {% else %}
+                    N/A
+                  {% endif %}
+                {% else %}
+                  N/A
+                {% endif %}
+              </div>
+            </div>
+            <div class="col-auto">
+              <i class="bi bi-star-fill fa-2x text-gray-300"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Main Content -->
+  <div class="row mb-4">
+    <!-- Top Backlinks -->
+    <div class="col-xl-8 col-lg-7">
+      <div class="card shadow mb-4">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <h6 class="m-0 font-weight-bold">Top Backlinks</h6>
+          <div class="dropdown no-arrow">
+            <button class="btn btn-link btn-sm dropdown-toggle" type="button" id="dropdownMenuButton" data-bs-toggle="dropdown" aria-expanded="false">
+              <i class="bi bi-three-dots-vertical"></i>
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="dropdownMenuButton">
+              <li><a class="dropdown-item" href="#" id="sortByQuality">Sort by Quality</a></li>
+              <li><a class="dropdown-item" href="#" id="sortByDate">Sort by Date</a></li>
+              <li><hr class="dropdown-divider"></li>
+              <li><a class="dropdown-item" href="/backlinks/{{ blog.id }}/export?type=top">Export Top Backlinks</a></li>
+            </ul>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="table-responsive">
+            <table class="table table-hover table-striped">
+              <thead>
+                <tr>
+                  <th>Source</th>
+                  <th>Domain</th>
+                  <th>Quality</th>
+                  <th>First Seen</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="topBacklinksTable">
+                {% if report and report.top_backlinks %}
+                  {% for backlink in report.top_backlinks %}
+                  <tr>
+                    <td>
+                      <a href="{{ backlink.source_url }}" target="_blank" class="text-truncate d-inline-block" style="max-width: 250px;">
+                        {{ backlink.source_url }}
+                      </a>
+                    </td>
+                    <td>{{ backlink.domain }}</td>
+                    <td>
+                      {% set quality_score = backlink.quality_score|default(0)|int %}
+                      {% if quality_score >= 70 %}
+                      <span class="badge bg-success">{{ quality_score }}</span>
+                      {% elif quality_score >= 40 %}
+                      <span class="badge bg-primary">{{ quality_score }}</span>
+                      {% else %}
+                      <span class="badge bg-secondary">{{ quality_score }}</span>
+                      {% endif %}
+                    </td>
+                    <td>{{ backlink.first_seen|default('Unknown') }}</td>
+                    <td>
+                      <button class="btn btn-sm btn-outline-primary view-backlink-btn" data-url="{{ backlink.source_url }}">
+                        <i class="bi bi-eye"></i>
+                      </button>
+                    </td>
+                  </tr>
+                  {% endfor %}
+                {% else %}
+                  <tr>
+                    <td colspan="5" class="text-center">No backlinks found. Click the "Refresh Backlinks" button to discover new backlinks.</td>
+                  </tr>
+                {% endif %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Quality Distribution & Trends -->
+    <div class="col-xl-4 col-lg-5">
+      <div class="card shadow mb-4">
+        <div class="card-header">
+          <h6 class="m-0 font-weight-bold">Backlink Quality</h6>
+        </div>
+        <div class="card-body">
+          <div class="chart-container">
+            <canvas id="qualityDistributionChart"></canvas>
+          </div>
+          <hr>
+          <h6 class="font-weight-bold mt-4">Quality Distribution</h6>
+          <div class="row">
+            <div class="col-4">
+              <div class="small mb-1">High Quality</div>
+              <div class="progress mb-3">
+                <div class="progress-bar bg-success" role="progressbar" style="width: {% if report and report.summary and report.summary.quality_distribution %}{{ (report.summary.quality_distribution.high / report.summary.total_backlinks * 100) if report.summary.total_backlinks > 0 else 0 }}{% else %}0{% endif %}%" 
+                     aria-valuenow="{{ report.summary.quality_distribution.high if report and report.summary and report.summary.quality_distribution else 0 }}" 
+                     aria-valuemin="0" 
+                     aria-valuemax="{{ report.summary.total_backlinks if report and report.summary and report.summary.total_backlinks else 0 }}">
+                  {{ report.summary.quality_distribution.high if report and report.summary and report.summary.quality_distribution else 0 }}
+                </div>
+              </div>
+            </div>
+            <div class="col-4">
+              <div class="small mb-1">Medium Quality</div>
+              <div class="progress mb-3">
+                <div class="progress-bar bg-primary" role="progressbar" style="width: {% if report and report.summary and report.summary.quality_distribution %}{{ (report.summary.quality_distribution.medium / report.summary.total_backlinks * 100) if report.summary.total_backlinks > 0 else 0 }}{% else %}0{% endif %}%" 
+                     aria-valuenow="{{ report.summary.quality_distribution.medium if report and report.summary and report.summary.quality_distribution else 0 }}" 
+                     aria-valuemin="0" 
+                     aria-valuemax="{{ report.summary.total_backlinks if report and report.summary and report.summary.total_backlinks else 0 }}">
+                  {{ report.summary.quality_distribution.medium if report and report.summary and report.summary.quality_distribution else 0 }}
+                </div>
+              </div>
+            </div>
+            <div class="col-4">
+              <div class="small mb-1">Low Quality</div>
+              <div class="progress mb-3">
+                <div class="progress-bar bg-secondary" role="progressbar" style="width: {% if report and report.summary and report.summary.quality_distribution %}{{ (report.summary.quality_distribution.low / report.summary.total_backlinks * 100) if report.summary.total_backlinks > 0 else 0 }}{% else %}0{% endif %}%" 
+                     aria-valuenow="{{ report.summary.quality_distribution.low if report and report.summary and report.summary.quality_distribution else 0 }}" 
+                     aria-valuemin="0" 
+                     aria-valuemax="{{ report.summary.total_backlinks if report and report.summary and report.summary.total_backlinks else 0 }}">
+                  {{ report.summary.quality_distribution.low if report and report.summary and report.summary.quality_distribution else 0 }}
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <h6 class="font-weight-bold mt-4">Growth Trends</h6>
+          {% if report and report.trends and report.trends.available %}
+            <div class="d-flex justify-content-between">
+              <div>
+                <div class="small text-muted">Growth Rate</div>
+                <div class="h5 mb-0 font-weight-bold text-gray-800">
+                  {% if report.trends.growth_rate >= 0 %}
+                  <span class="text-success"><i class="bi bi-arrow-up-short"></i> {{ (report.trends.growth_rate * 100)|round }}%</span>
+                  {% else %}
+                  <span class="text-danger"><i class="bi bi-arrow-down-short"></i> {{ (report.trends.growth_rate * 100 * -1)|round }}%</span>
+                  {% endif %}
+                </div>
+              </div>
+              <div>
+                <div class="small text-muted">New Rate</div>
+                <div class="h5 mb-0 font-weight-bold text-gray-800">
+                  {{ (report.trends.avg_new_rate * 100)|round }}%
+                </div>
+              </div>
+              <div>
+                <div class="small text-muted">Lost Rate</div>
+                <div class="h5 mb-0 font-weight-bold text-gray-800">
+                  {{ (report.trends.avg_lost_rate * 100)|round }}%
+                </div>
+              </div>
+            </div>
+          {% else %}
+            <div class="alert alert-info small">
+              Not enough data to show growth trends. Trends will appear after multiple backlink scans.
+            </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Recent Changes & Competitor Comparison -->
+  <div class="row mb-4">
+    <div class="col-xl-6 col-lg-12">
+      <div class="card shadow mb-4">
+        <div class="card-header">
+          <h6 class="m-0 font-weight-bold">Recent Changes</h6>
+        </div>
+        <div class="card-body">
+          <div class="nav nav-tabs" id="changesTab" role="tablist">
+            <button class="nav-link active" id="new-backlinks-tab" data-bs-toggle="tab" data-bs-target="#new-backlinks" type="button" role="tab" aria-controls="new-backlinks" aria-selected="true">
+              New Backlinks 
+              <span class="badge bg-success">{{ changes.new_backlinks.count if changes and changes.new_backlinks else 0 }}</span>
+            </button>
+            <button class="nav-link" id="lost-backlinks-tab" data-bs-toggle="tab" data-bs-target="#lost-backlinks" type="button" role="tab" aria-controls="lost-backlinks" aria-selected="false">
+              Lost Backlinks
+              <span class="badge bg-danger">{{ changes.lost_backlinks.count if changes and changes.lost_backlinks else 0 }}</span>
+            </button>
+          </div>
+          <div class="tab-content mt-3" id="changesTabContent">
+            <div class="tab-pane fade show active" id="new-backlinks" role="tabpanel" aria-labelledby="new-backlinks-tab">
+              {% if changes and changes.new_backlinks and changes.new_backlinks.count > 0 %}
+                <div class="table-responsive">
+                  <table class="table table-sm">
+                    <thead>
+                      <tr>
+                        <th>Domain</th>
+                        <th>First Seen</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {% for backlink in changes.new_backlinks.details %}
+                      <tr>
+                        <td>
+                          <a href="{{ backlink.source_url }}" target="_blank">{{ backlink.domain }}</a>
+                        </td>
+                        <td>{{ backlink.first_seen|default('Recently') }}</td>
+                      </tr>
+                      {% endfor %}
+                    </tbody>
+                  </table>
+                </div>
+              {% else %}
+                <div class="alert alert-info">No new backlinks detected in the most recent scan.</div>
+              {% endif %}
+            </div>
+            <div class="tab-pane fade" id="lost-backlinks" role="tabpanel" aria-labelledby="lost-backlinks-tab">
+              {% if changes and changes.lost_backlinks and changes.lost_backlinks.count > 0 %}
+                <div class="table-responsive">
+                  <table class="table table-sm">
+                    <thead>
+                      <tr>
+                        <th>Domain</th>
+                        <th>Last Seen</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {% for backlink in changes.lost_backlinks.details %}
+                      <tr>
+                        <td>
+                          <a href="{{ backlink.source_url }}" target="_blank">{{ backlink.domain }}</a>
+                        </td>
+                        <td>{{ backlink.last_seen|default('Unknown') }}</td>
+                      </tr>
+                      {% endfor %}
+                    </tbody>
+                  </table>
+                </div>
+              {% else %}
+                <div class="alert alert-success">No lost backlinks detected in the most recent scan.</div>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="col-xl-6 col-lg-12">
+      <div class="card shadow mb-4">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <h6 class="m-0 font-weight-bold">Competitor Comparison</h6>
+          <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#addCompetitorModal">
+            <i class="bi bi-plus-lg"></i> Add
+          </button>
+        </div>
+        <div class="card-body">
+          {% if competitors and competitors|length > 0 %}
+            <div class="table-responsive">
+              <table class="table table-sm">
+                <thead>
+                  <tr>
+                    <th>Competitor</th>
+                    <th>Backlinks</th>
+                    <th>Shared</th>
+                    <th>Unique</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for comp in competitor_comparison %}
+                  <tr>
+                    <td>{{ comp.competitor_domain }}</td>
+                    <td>{{ comp.total_backlinks }}</td>
+                    <td>{{ comp.shared_domains.count }}</td>
+                    <td>{{ comp.competitor_unique.count }}</td>
+                    <td>
+                      <button class="btn btn-sm btn-outline-primary view-opportunities-btn" data-competitor="{{ comp.competitor_domain }}">
+                        <i class="bi bi-lightbulb"></i>
+                      </button>
+                      <button class="btn btn-sm btn-outline-danger remove-competitor-btn" data-competitor="{{ comp.competitor_domain }}" data-url="{{ comp.competitor_url }}">
+                        <i class="bi bi-trash"></i>
+                      </button>
+                    </td>
+                  </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+            <a href="/backlinks/{{ blog.id }}/opportunities" class="btn btn-outline-success btn-sm mt-3">
+              <i class="bi bi-lightbulb me-1"></i> View All Opportunities
+            </a>
+          {% else %}
+            <div class="alert alert-info">
+              No competitors added yet. Add competitors to compare backlink profiles and discover new opportunities.
+            </div>
+            <button class="btn btn-primary mt-2" data-bs-toggle="modal" data-bs-target="#addCompetitorModal">
+              <i class="bi bi-plus-lg me-1"></i> Add Competitor
+            </button>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Add Competitor Modal -->
+  <div class="modal fade" id="addCompetitorModal" tabindex="-1" aria-labelledby="addCompetitorModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="addCompetitorModalLabel">Add Competitor</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <form id="addCompetitorForm">
+            <div class="mb-3">
+              <label for="competitorName" class="form-label">Competitor Name</label>
+              <input type="text" class="form-control" id="competitorName" required>
+            </div>
+            <div class="mb-3">
+              <label for="competitorUrl" class="form-label">Competitor URL</label>
+              <input type="url" class="form-control" id="competitorUrl" placeholder="https://example.com" required>
+              <div class="form-text">Enter the full URL including https://</div>
+            </div>
+          </form>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" class="btn btn-primary" id="saveCompetitorBtn">Add Competitor</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Backlink View Modal -->
+  <div class="modal fade" id="backlinkModal" tabindex="-1" aria-labelledby="backlinkModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="backlinkModalLabel">Backlink Details</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <strong>URL:</strong> <a href="#" id="backlinkUrl" target="_blank"></a>
+          </div>
+          <div class="mb-3">
+            <strong>Domain:</strong> <span id="backlinkDomain"></span>
+          </div>
+          <div class="mb-3">
+            <strong>Quality Score:</strong> <span id="backlinkQuality"></span>
+          </div>
+          <div class="mb-3">
+            <strong>First Seen:</strong> <span id="backlinkFirstSeen"></span>
+          </div>
+          <div class="mb-3">
+            <strong>Last Seen:</strong> <span id="backlinkLastSeen"></span>
+          </div>
+          <hr>
+          <div class="mb-3">
+            <label class="form-label"><strong>Preview:</strong></label>
+            <div class="card">
+              <div class="card-body">
+                <div id="backlinkPreview" class="p-3 bg-light overflow-auto" style="max-height: 300px;">
+                  Loading preview...
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+          <a href="#" class="btn btn-primary" id="visitBacklinkBtn" target="_blank">Visit Page</a>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.0/dist/chart.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  {% if blog %}
+  // Quality Distribution Chart
+  const qualityCtx = document.getElementById('qualityDistributionChart').getContext('2d');
+  {% if report and report.summary and report.summary.quality_distribution %}
+  const qualityData = {
+    labels: ['High Quality', 'Medium Quality', 'Low Quality'],
+    datasets: [{
+      data: [
+        {{ report.summary.quality_distribution.high }}, 
+        {{ report.summary.quality_distribution.medium }}, 
+        {{ report.summary.quality_distribution.low }}
+      ],
+      backgroundColor: ['#1cc88a', '#4e73df', '#858796'],
+      hoverBackgroundColor: ['#17a673', '#2e59d9', '#6e707e'],
+      hoverBorderColor: 'rgba(234, 236, 244, 1)',
+    }]
+  };
+  
+  const qualityChart = new Chart(qualityCtx, {
+    type: 'doughnut',
+    data: qualityData,
+    options: {
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          display: true,
+          position: 'bottom'
+        },
+        tooltip: {
+          backgroundColor: 'rgb(255, 255, 255)',
+          bodyColor: '#858796',
+          borderColor: '#dddfeb',
+          borderWidth: 1,
+          caretPadding: 10,
+          displayColors: false,
+          callbacks: {
+            label: function(context) {
+              const total = context.dataset.data.reduce((acc, val) => acc + val, 0);
+              const percentage = Math.round((context.raw / total * 100) * 10) / 10;
+              return `${context.raw} (${percentage}%)`;
+            }
+          }
+        }
+      },
+      cutout: '70%'
+    }
+  });
+  {% endif %}
+  
+  // Refresh Backlinks Button
+  document.getElementById('refreshBacklinks').addEventListener('click', function() {
+    this.disabled = true;
+    this.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Refreshing...';
+    
+    fetch(`/api/backlinks/{{ blog.id }}/refresh`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        blog_url: '{{ blog.wordpress_url }}'
+      })
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        window.location.reload();
+      } else {
+        alert('Error refreshing backlinks: ' + (data.error || 'Unknown error'));
+        this.disabled = false;
+        this.innerHTML = '<i class="bi bi-arrow-repeat me-1"></i> Refresh Backlinks';
+      }
+    })
+    .catch(error => {
+      console.error('Error:', error);
+      alert('Error refreshing backlinks: ' + error.message);
+      this.disabled = false;
+      this.innerHTML = '<i class="bi bi-arrow-repeat me-1"></i> Refresh Backlinks';
+    });
+  });
+  
+  // Add Competitor
+  document.getElementById('saveCompetitorBtn').addEventListener('click', function() {
+    const form = document.getElementById('addCompetitorForm');
+    if (!form.checkValidity()) {
+      form.reportValidity();
+      return;
+    }
+    
+    const name = document.getElementById('competitorName').value;
+    const url = document.getElementById('competitorUrl').value;
+    
+    this.disabled = true;
+    this.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Adding...';
+    
+    fetch(`/api/backlinks/{{ blog.id }}/competitors`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        name: name,
+        url: url
+      })
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        window.location.reload();
+      } else {
+        alert('Error adding competitor: ' + (data.error || 'Unknown error'));
+        this.disabled = false;
+        this.innerHTML = 'Add Competitor';
+      }
+    })
+    .catch(error => {
+      console.error('Error:', error);
+      alert('Error adding competitor: ' + error.message);
+      this.disabled = false;
+      this.innerHTML = 'Add Competitor';
+    });
+  });
+  
+  // Remove Competitor Button
+  document.querySelectorAll('.remove-competitor-btn').forEach(button => {
+    button.addEventListener('click', function() {
+      if (confirm(`Are you sure you want to remove ${this.dataset.competitor} from your competitors?`)) {
+        fetch(`/api/backlinks/{{ blog.id }}/competitors/${encodeURIComponent(this.dataset.url)}`, {
+          method: 'DELETE'
+        })
+        .then(response => response.json())
+        .then(data => {
+          if (data.success) {
+            window.location.reload();
+          } else {
+            alert('Error removing competitor: ' + (data.error || 'Unknown error'));
+          }
+        })
+        .catch(error => {
+          console.error('Error:', error);
+          alert('Error removing competitor: ' + error.message);
+        });
+      }
+    });
+  });
+  
+  // View Backlink Details
+  document.querySelectorAll('.view-backlink-btn').forEach(button => {
+    button.addEventListener('click', function() {
+      const url = this.dataset.url;
+      const modal = document.getElementById('backlinkModal');
+      
+      // Find backlink data
+      {% if report and report.top_backlinks %}
+      const backlinks = {{ report.top_backlinks|tojson }};
+      const backlink = backlinks.find(b => b.source_url === url);
+      
+      if (backlink) {
+        document.getElementById('backlinkUrl').href = backlink.source_url;
+        document.getElementById('backlinkUrl').textContent = backlink.source_url;
+        document.getElementById('backlinkDomain').textContent = backlink.domain;
+        document.getElementById('visitBacklinkBtn').href = backlink.source_url;
+        
+        let qualityBadge = '';
+        if (backlink.quality_score >= 70) {
+          qualityBadge = `<span class="badge bg-success">${backlink.quality_score}</span> High`;
+        } else if (backlink.quality_score >= 40) {
+          qualityBadge = `<span class="badge bg-primary">${backlink.quality_score}</span> Medium`;
+        } else {
+          qualityBadge = `<span class="badge bg-secondary">${backlink.quality_score}</span> Low`;
+        }
+        document.getElementById('backlinkQuality').innerHTML = qualityBadge;
+        
+        document.getElementById('backlinkFirstSeen').textContent = backlink.first_seen || 'Unknown';
+        document.getElementById('backlinkLastSeen').textContent = backlink.last_seen || 'Unknown';
+        
+        // Get preview (simulated)
+        document.getElementById('backlinkPreview').innerHTML = 'Loading preview...';
+        
+        // In a real implementation, this would make an API call to get a preview
+        setTimeout(() => {
+          document.getElementById('backlinkPreview').innerHTML = `
+            <div class="text-center text-muted">
+              <i class="bi bi-eye-slash fs-2"></i>
+              <p>Preview is not available in demo mode.</p>
+              <p>In production, this would show a preview of the linking page.</p>
+            </div>
+          `;
+        }, 1000);
+        
+        const bsModal = new bootstrap.Modal(modal);
+        bsModal.show();
+      }
+      {% endif %}
+    });
+  });
+  
+  // Sorting for backlinks table
+  document.getElementById('sortByQuality').addEventListener('click', function(e) {
+    e.preventDefault();
+    sortBacklinksTable('quality');
+  });
+  
+  document.getElementById('sortByDate').addEventListener('click', function(e) {
+    e.preventDefault();
+    sortBacklinksTable('date');
+  });
+  
+  function sortBacklinksTable(sortBy) {
+    {% if report and report.top_backlinks %}
+    const backlinks = {{ report.top_backlinks|tojson }};
+    let sortedBacklinks = [...backlinks];
+    
+    if (sortBy === 'quality') {
+      sortedBacklinks.sort((a, b) => (b.quality_score || 0) - (a.quality_score || 0));
+    } else if (sortBy === 'date') {
+      sortedBacklinks.sort((a, b) => {
+        const dateA = a.first_seen ? new Date(a.first_seen) : new Date(0);
+        const dateB = b.first_seen ? new Date(b.first_seen) : new Date(0);
+        return dateB - dateA;
+      });
+    }
+    
+    const tableBody = document.getElementById('topBacklinksTable');
+    tableBody.innerHTML = '';
+    
+    sortedBacklinks.forEach(backlink => {
+      const tr = document.createElement('tr');
+      
+      const sourceCell = document.createElement('td');
+      const sourceLink = document.createElement('a');
+      sourceLink.href = backlink.source_url;
+      sourceLink.target = '_blank';
+      sourceLink.className = 'text-truncate d-inline-block';
+      sourceLink.style.maxWidth = '250px';
+      sourceLink.textContent = backlink.source_url;
+      sourceCell.appendChild(sourceLink);
+      
+      const domainCell = document.createElement('td');
+      domainCell.textContent = backlink.domain;
+      
+      const qualityCell = document.createElement('td');
+      const qualityBadge = document.createElement('span');
+      const quality_score = backlink.quality_score || 0;
+      
+      if (quality_score >= 70) {
+        qualityBadge.className = 'badge bg-success';
+      } else if (quality_score >= 40) {
+        qualityBadge.className = 'badge bg-primary';
+      } else {
+        qualityBadge.className = 'badge bg-secondary';
+      }
+      qualityBadge.textContent = quality_score;
+      qualityCell.appendChild(qualityBadge);
+      
+      const dateCell = document.createElement('td');
+      dateCell.textContent = backlink.first_seen || 'Unknown';
+      
+      const actionCell = document.createElement('td');
+      const viewBtn = document.createElement('button');
+      viewBtn.className = 'btn btn-sm btn-outline-primary view-backlink-btn';
+      viewBtn.dataset.url = backlink.source_url;
+      viewBtn.innerHTML = '<i class="bi bi-eye"></i>';
+      viewBtn.addEventListener('click', function() {
+        // Re-use the same event handling code from above
+        const url = this.dataset.url;
+        const modal = document.getElementById('backlinkModal');
+        const backlink = sortedBacklinks.find(b => b.source_url === url);
+        
+        if (backlink) {
+          document.getElementById('backlinkUrl').href = backlink.source_url;
+          document.getElementById('backlinkUrl').textContent = backlink.source_url;
+          document.getElementById('backlinkDomain').textContent = backlink.domain;
+          document.getElementById('visitBacklinkBtn').href = backlink.source_url;
+          
+          let qualityBadge = '';
+          if (backlink.quality_score >= 70) {
+            qualityBadge = `<span class="badge bg-success">${backlink.quality_score}</span> High`;
+          } else if (backlink.quality_score >= 40) {
+            qualityBadge = `<span class="badge bg-primary">${backlink.quality_score}</span> Medium`;
+          } else {
+            qualityBadge = `<span class="badge bg-secondary">${backlink.quality_score}</span> Low`;
+          }
+          document.getElementById('backlinkQuality').innerHTML = qualityBadge;
+          
+          document.getElementById('backlinkFirstSeen').textContent = backlink.first_seen || 'Unknown';
+          document.getElementById('backlinkLastSeen').textContent = backlink.last_seen || 'Unknown';
+          
+          // Get preview (simulated)
+          document.getElementById('backlinkPreview').innerHTML = 'Loading preview...';
+          
+          setTimeout(() => {
+            document.getElementById('backlinkPreview').innerHTML = `
+              <div class="text-center text-muted">
+                <i class="bi bi-eye-slash fs-2"></i>
+                <p>Preview is not available in demo mode.</p>
+                <p>In production, this would show a preview of the linking page.</p>
+              </div>
+            `;
+          }, 1000);
+          
+          const bsModal = new bootstrap.Modal(modal);
+          bsModal.show();
+        }
+      });
+      actionCell.appendChild(viewBtn);
+      
+      tr.appendChild(sourceCell);
+      tr.appendChild(domainCell);
+      tr.appendChild(qualityCell);
+      tr.appendChild(dateCell);
+      tr.appendChild(actionCell);
+      
+      tableBody.appendChild(tr);
+    });
+    {% endif %}
+  }
+  {% endif %}
+});
+</script>
+{% endblock %}
