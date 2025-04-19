@@ -18,6 +18,11 @@ class WordPressService:
         self.default_wordpress_username = None
         self.default_wordpress_password = None
         
+        # Multisite configuration
+        self.is_multisite = False
+        self.multisite_config = None
+        self.network_id = None
+        
         # Get Key Vault name from environment variable
         key_vault_name = os.environ.get("KEY_VAULT_NAME")
         
@@ -35,8 +40,27 @@ class WordPressService:
                     self.default_wordpress_username = self._get_secret('WordPressAdminUsername')
                     self.default_wordpress_password = self._get_secret('WordPressAppPassword')
                     
+                    # Check for Multisite information
+                    is_multisite_str = self._get_secret('WordPressIsMultisite')
+                    if is_multisite_str and is_multisite_str.lower() == 'true':
+                        self.is_multisite = True
+                        
+                        # Get network ID
+                        self.network_id = self._get_secret('WordPressNetworkId')
+                        
+                        # Get detailed multisite configuration
+                        multisite_config_json = self._get_secret('WordPressMultisiteConfig')
+                        if multisite_config_json:
+                            try:
+                                self.multisite_config = json.loads(multisite_config_json)
+                                self.logger.info("Successfully loaded WordPress Multisite configuration")
+                            except Exception as e:
+                                self.logger.warning(f"Error parsing Multisite configuration: {str(e)}")
+                    
                     if self.default_wordpress_url and self.default_wordpress_username and self.default_wordpress_password:
                         self.logger.info(f"Successfully loaded WordPress credentials from Key Vault for {self.default_wordpress_url}")
+                        if self.is_multisite:
+                            self.logger.info("WordPress Multisite is enabled")
                     else:
                         self.logger.warning("Some WordPress credentials were not found in Key Vault")
                         
@@ -237,14 +261,16 @@ class WordPressService:
         """
         return ad_code
     
-    def publish_to_default_wordpress(self, title, content, seo_metadata=None):
+    def publish_to_default_wordpress(self, title, content, seo_metadata=None, site_id=None):
         """
         Publish a post to the default WordPress site using credentials from Key Vault.
+        In multisite mode, optionally specify a site_id to publish to a specific site.
         
         Args:
             title (str): The title of the post
             content (str): The HTML content of the post
             seo_metadata (dict, optional): SEO metadata for the post
+            site_id (int, optional): The site ID to publish to in a multisite network
             
         Returns:
             dict: Details of the published post including post ID and URL
@@ -266,7 +292,21 @@ class WordPressService:
                 'keywords': []
             }
         
-        # Publish to the default WordPress
+        # Handle multisite publication
+        if self.is_multisite and site_id:
+            self.logger.info(f"Publishing to WordPress Multisite, site ID: {site_id}")
+            return self.publish_to_multisite(
+                wordpress_url=self.default_wordpress_url,
+                username=self.default_wordpress_username,
+                application_password=self.default_wordpress_password,
+                title=title,
+                content=content,
+                site_id=site_id,
+                seo_metadata=seo_metadata
+            )
+        
+        # Default single site publication
+        self.logger.info("Publishing to default WordPress site")
         return self.publish_post(
             wordpress_url=self.default_wordpress_url,
             username=self.default_wordpress_username,

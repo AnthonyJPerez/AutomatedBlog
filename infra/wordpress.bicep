@@ -219,7 +219,27 @@ resource deploymentScript 'Microsoft.Resources/deploymentScripts@2020-10-01' = {
       # Configure WP Super Cache settings
       az webapp ssh --resource-group $RESOURCE_GROUP --name $SITE_NAME --command "wp super-cache enable"
       
-      echo "WordPress plugins setup completed"
+      # Enable WordPress Multisite
+      echo "Enabling WordPress Multisite..."
+      # Add WP_ALLOW_MULTISITE to wp-config.php
+      az webapp ssh --resource-group $RESOURCE_GROUP --name $SITE_NAME --command "wp config set WP_ALLOW_MULTISITE true --raw=true"
+      
+      # Configure multisite
+      az webapp ssh --resource-group $RESOURCE_GROUP --name $SITE_NAME --command "wp core multisite-convert --subdomains=false --title='Blog Network' --base='/'"
+      
+      # Enable subdirectory URLs by default
+      az webapp ssh --resource-group $RESOURCE_GROUP --name $SITE_NAME --command "wp config set SUBDOMAIN_INSTALL false --raw=true"
+      
+      # Add required multisite constants to wp-config.php
+      az webapp ssh --resource-group $RESOURCE_GROUP --name $SITE_NAME --command "wp config set DOMAIN_CURRENT_SITE '\$_SERVER[\"HTTP_HOST\"]' --raw=true"
+      az webapp ssh --resource-group $RESOURCE_GROUP --name $SITE_NAME --command "wp config set PATH_CURRENT_SITE '/' --raw=true"
+      az webapp ssh --resource-group $RESOURCE_GROUP --name $SITE_NAME --command "wp config set SITE_ID_CURRENT_SITE 1 --raw=true"
+      az webapp ssh --resource-group $RESOURCE_GROUP --name $SITE_NAME --command "wp config set BLOG_ID_CURRENT_SITE 1 --raw=true"
+      
+      # Install domain mapping plugin for custom domains
+      az webapp ssh --resource-group $RESOURCE_GROUP --name $SITE_NAME --command "wp plugin install mercator --activate --network"
+      
+      echo "WordPress Multisite installation and plugins setup completed"
     '''
     environmentVariables: [
       {
@@ -284,7 +304,20 @@ resource updateKeyVaultWithWordPressCredentials 'Microsoft.Resources/deploymentS
       DB_CREDENTIALS="{\"host\":\"$MYSQL_SERVER.mysql.database.azure.com\",\"username\":\"$DB_ADMIN_USERNAME\",\"password\":\"$DB_ADMIN_PASSWORD\",\"database\":\"wordpress\"}"
       az keyvault secret set --vault-name $KEY_VAULT_NAME --name 'WordPressDbCredentials' --value "$DB_CREDENTIALS"
       
-      echo "WordPress credentials stored in Key Vault"
+      # Store WordPress Multisite information
+      az keyvault secret set --vault-name $KEY_VAULT_NAME --name 'WordPressIsMultisite' --value "true"
+      
+      # Get the site ID of the main network
+      NETWORK_ID=$(az webapp ssh --resource-group $RESOURCE_GROUP --name $SITE_NAME --command "wp site list --field=blog_id --skip-plugins --skip-themes" | head -n 1)
+      if [ -n "$NETWORK_ID" ]; then
+        az keyvault secret set --vault-name $KEY_VAULT_NAME --name 'WordPressNetworkId' --value "$NETWORK_ID"
+      fi
+      
+      # Store basic information about the Multisite configuration 
+      MULTISITE_CONFIG="{\"is_multisite\":true,\"subdirectory_install\":true,\"network_id\":$NETWORK_ID,\"domain_mapping_plugin\":\"mercator\"}"
+      az keyvault secret set --vault-name $KEY_VAULT_NAME --name 'WordPressMultisiteConfig' --value "$MULTISITE_CONFIG"
+      
+      echo "WordPress credentials and Multisite information stored in Key Vault"
     '''
     environmentVariables: [
       {
