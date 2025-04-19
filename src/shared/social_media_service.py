@@ -306,3 +306,43 @@ class SocialMediaService:
             list: Names of enabled platforms
         """
         return [name for name, config in self.platforms.items() if config.get("enabled", False)]
+        
+    def reload_credentials(self):
+        """
+        Reload credentials from environment variables or global config file.
+        Used when credentials are updated programmatically.
+        
+        Returns:
+            bool: True if successful, False otherwise
+        """
+        try:
+            # Check if global config file exists
+            if os.path.exists("data/global_config.json"):
+                with open("data/global_config.json", 'r') as f:
+                    global_config = json.load(f)
+                    
+                if "credentials" in global_config:
+                    credentials = global_config["credentials"]
+                    
+                    # Update Twitter credentials if available
+                    if "twitter_api_key" in credentials:
+                        os.environ["TWITTER-API-KEY"] = credentials["twitter_api_key"]
+                    
+                    # Update LinkedIn credentials if available
+                    if "linkedin_api_key" in credentials:
+                        os.environ["LINKEDIN-ACCESS-TOKEN"] = credentials["linkedin_api_key"]
+                    
+                    # Update Facebook credentials if available
+                    if "facebook_api_key" in credentials:
+                        os.environ["FACEBOOK-ACCESS-TOKEN"] = credentials["facebook_api_key"]
+            
+            # Reinitialize platforms with new credentials
+            self._init_twitter()
+            self._init_linkedin()
+            self._init_facebook()
+            
+            logger.info("Social media credentials reloaded successfully")
+            return True
+        except Exception as e:
+            logger.error(f"Failed to reload social media credentials: {str(e)}")
+            return False

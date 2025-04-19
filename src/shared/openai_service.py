@@ -38,6 +38,20 @@ class OpenAIService:
                     api_key = secret_client.get_secret("OpenAIApiKey").value
                 except Exception as e:
                     self.logger.error(f"Error retrieving OpenAI API key from Key Vault: {str(e)}")
+            
+            # If still no API key, check global config.json
+            if not api_key:
+                try:
+                    if os.path.exists("data/global_config.json"):
+                        with open("data/global_config.json", 'r') as f:
+                            global_config = json.load(f)
+                            if "credentials" in global_config and "openai_api_key" in global_config["credentials"]:
+                                api_key = global_config["credentials"]["openai_api_key"]
+                except Exception as e:
+                    self.logger.error(f"Error reading global config file: {str(e)}")
+        
+        # Store the API key
+        self.api_key = api_key
         
         # Check if using Azure OpenAI or direct OpenAI
         self.use_azure = os.environ.get("OPENAI_API_TYPE") == "azure"
@@ -57,6 +71,35 @@ class OpenAIService:
         self.polish_model = os.environ.get("OPENAI_POLISH_MODEL", "gpt-4o")  # Using the newest model by default
         
         self.logger.info(f"OpenAI service initialized. Using Azure: {self.use_azure}")
+    
+    def set_api_key(self, api_key):
+        """
+        Set or update the OpenAI API key.
+        
+        Args:
+            api_key (str): The API key to use
+            
+        Returns:
+            bool: True if successful, False otherwise
+        """
+        if not api_key:
+            self.logger.warning("Empty API key provided, ignoring update")
+            return False
+            
+        try:
+            # Update the stored key
+            self.api_key = api_key
+            
+            # Update the openai library with the new key
+            if self.use_azure:
+                openai.api_key = api_key
+            else:
+                openai.api_key = api_key
+                
+            return True
+        except Exception as e:
+            self.logger.error(f"Error updating API key: {str(e)}")
+            return False
     
     def _get_completion(self, prompt, model, max_tokens=2000, temperature=0.7):
         """

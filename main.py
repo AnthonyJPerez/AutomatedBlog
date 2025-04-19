@@ -1145,6 +1145,109 @@ def update_blog_credentials(blog_id):
         logger.error(f"Error updating credentials for blog {blog_id}: {str(e)}")
         return jsonify({"error": str(e)}), 500
 
+@app.route('/api/global/credentials', methods=['POST'])
+def update_global_credentials():
+    """API endpoint to update global credentials"""
+    try:
+        data = request.json
+        
+        # Load global config file
+        global_config_path = "data/global_config.json"
+        
+        # Create the config file if it doesn't exist
+        if not os.path.exists(global_config_path):
+            # Make sure the directory exists
+            os.makedirs(os.path.dirname(global_config_path), exist_ok=True)
+            
+            # Initialize with empty configuration
+            global_config = {
+                "credentials": {}
+            }
+        else:
+            # Load existing configuration
+            with open(global_config_path, 'r') as f:
+                global_config = json.load(f)
+                
+            # Initialize credentials section if it doesn't exist
+            if "credentials" not in global_config:
+                global_config["credentials"] = {}
+        
+        # Update credentials
+        if "openai_api_key" in data and data["openai_api_key"]:
+            global_config["credentials"]["openai_api_key"] = data["openai_api_key"]
+        
+        # Save the updated config
+        with open(global_config_path, 'w') as f:
+            json.dump(global_config, f, indent=2)
+        
+        # Reinitialize services with new credentials
+        if "openai_api_key" in data and data["openai_api_key"]:
+            # Update OpenAI service
+            openai_service.set_api_key(data["openai_api_key"])
+        
+        return jsonify({"success": True, "message": "Global credentials updated successfully"})
+    except Exception as e:
+        logger.error(f"Error updating global credentials: {str(e)}")
+        return jsonify({"success": False, "message": f"Error: {str(e)}"}), 500
+
+@app.route('/api/global/social-media-credentials', methods=['POST'])
+def update_social_media_credentials():
+    """API endpoint to update global social media credentials"""
+    try:
+        data = request.json
+        
+        # Load global config file
+        global_config_path = "data/global_config.json"
+        
+        # Create the config file if it doesn't exist
+        if not os.path.exists(global_config_path):
+            # Make sure the directory exists
+            os.makedirs(os.path.dirname(global_config_path), exist_ok=True)
+            
+            # Initialize with empty configuration
+            global_config = {
+                "credentials": {}
+            }
+        else:
+            # Load existing configuration
+            with open(global_config_path, 'r') as f:
+                global_config = json.load(f)
+                
+            # Initialize credentials section if it doesn't exist
+            if "credentials" not in global_config:
+                global_config["credentials"] = {}
+        
+        # Update social media credentials
+        social_media_updated = False
+        
+        # Twitter
+        if "twitter_api_key" in data and data["twitter_api_key"]:
+            global_config["credentials"]["twitter_api_key"] = data["twitter_api_key"]
+            social_media_updated = True
+        
+        # LinkedIn
+        if "linkedin_api_key" in data and data["linkedin_api_key"]:
+            global_config["credentials"]["linkedin_api_key"] = data["linkedin_api_key"]
+            social_media_updated = True
+        
+        # Facebook
+        if "facebook_api_key" in data and data["facebook_api_key"]:
+            global_config["credentials"]["facebook_api_key"] = data["facebook_api_key"]
+            social_media_updated = True
+        
+        # Save the updated config
+        with open(global_config_path, 'w') as f:
+            json.dump(global_config, f, indent=2)
+        
+        # Reinitialize social media service if credentials were updated
+        if social_media_updated:
+            social_media_service.reload_credentials()
+        
+        return jsonify({"success": True, "message": "Social media credentials updated successfully"})
+    except Exception as e:
+        logger.error(f"Error updating social media credentials: {str(e)}")
+        return jsonify({"success": False, "message": f"Error: {str(e)}"}), 500
+
 @app.errorhandler(404)
 def page_not_found(e):
     return render_template('404.html'), 404

@@ -1,106 +1,204 @@
-/* Custom styles for Blog Automation Platform */
+/* Custom styles for the Blog Automation Platform */
 
-/* Add some padding to the top of the body to account for the fixed navbar */
-body {
-    padding-top: 10px;
-}
-
-/* Custom card styling */
+/* Dashboard cards */
 .card {
-    border-radius: 0.5rem;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-    margin-bottom: 1.5rem;
+    transition: transform 0.2s ease-in-out;
 }
 
-.card-header {
-    border-radius: 0.5rem 0.5rem 0 0 !important;
-    font-weight: 500;
+.card:hover {
+    transform: translateY(-3px);
 }
 
-/* Custom styling for buttons */
-.btn {
-    border-radius: 0.3rem;
-    font-weight: 500;
+/* Content card enhancements */
+.content-card {
+    border-left: 4px solid transparent;
 }
 
-/* Improve badge styling */
-.badge {
-    font-weight: 500;
-    padding: 0.4rem 0.6rem;
+.content-card.published {
+    border-left-color: var(--bs-success);
 }
 
-/* Custom styles for the dashboard stats */
-.stats-card {
-    transition: all 0.3s ease;
+.content-card.generated {
+    border-left-color: var(--bs-primary);
 }
 
-.stats-card:hover {
-    transform: translateY(-5px);
+.content-card.failed {
+    border-left-color: var(--bs-danger);
 }
 
-/* Improve table readability */
-.table th {
-    border-top: none;
-    font-weight: 600;
-}
-
-/* Custom styling for the blog configuration status indicators */
-.config-status {
-    width: 15px;
-    height: 15px;
+/* Blog stats indicators */
+.blog-status-indicator {
+    width: 10px;
+    height: 10px;
     border-radius: 50%;
     display: inline-block;
-    margin-right: 10px;
+    margin-right: 5px;
 }
 
-.config-status.active {
+.blog-status-indicator.active {
     background-color: var(--bs-success);
 }
 
-.config-status.pending {
-    background-color: var(--bs-warning);
-}
-
-.config-status.missing {
+.blog-status-indicator.inactive {
     background-color: var(--bs-danger);
 }
 
-/* Custom scrollbar for code blocks and long text areas */
-pre, textarea {
-    scrollbar-width: thin;
-    scrollbar-color: var(--bs-gray-600) var(--bs-gray-800);
+/* Blog setup form sections */
+.setup-section {
+    border-left: 3px solid var(--bs-primary);
+    padding-left: 15px;
+    margin-bottom: 30px;
 }
 
-pre::-webkit-scrollbar, textarea::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
-}
-
-pre::-webkit-scrollbar-track, textarea::-webkit-scrollbar-track {
-    background: var(--bs-gray-800);
-}
-
-pre::-webkit-scrollbar-thumb, textarea::-webkit-scrollbar-thumb {
-    background-color: var(--bs-gray-600);
+/* Usage dashboard */
+.usage-card {
     border-radius: 10px;
+    overflow: hidden;
 }
 
-/* Transitions for all elements */
-.btn, .card, .list-group-item, .nav-link {
-    transition: all 0.2s ease-in-out;
+.usage-dashboard .progress {
+    border-radius: 10px;
+    height: 20px;
 }
 
-/* Hero banner for the welcome section */
-.hero-banner {
-    background: linear-gradient(135deg, var(--bs-primary) 0%, var(--bs-dark) 100%);
+.usage-dashboard .progress-bar {
+    border-radius: 10px;
+    transition: width 0.5s ease-in-out;
+}
+
+/* Markdown editor */
+.markdown-editor-container {
+    display: flex;
+    height: 600px;
+    border: 1px solid var(--bs-border-color);
+    border-radius: 5px;
+    overflow: hidden;
+}
+
+.markdown-editor {
+    width: 50%;
+    padding: 15px;
+    border-right: 1px solid var(--bs-border-color);
+    resize: none;
+    font-family: monospace;
+    font-size: 14px;
+    line-height: 1.5;
+}
+
+.markdown-preview {
+    width: 50%;
+    padding: 15px;
+    overflow: auto;
+}
+
+/* Social media badges */
+.badge-twitter {
+    background-color: #1DA1F2;
     color: white;
-    padding: 3rem 0;
-    border-radius: 0.5rem;
-    margin-bottom: 2rem;
 }
 
-/* Better focus states for accessibility */
-:focus {
-    outline: 3px solid var(--bs-primary);
-    outline-offset: 2px;
+.badge-linkedin {
+    background-color: #0077B5;
+    color: white;
+}
+
+.badge-facebook {
+    background-color: #4267B2;
+    color: white;
+}
+
+/* Custom toggle switch for options */
+.toggle-switch {
+    position: relative;
+    display: inline-block;
+    width: 60px;
+    height: 34px;
+}
+
+.toggle-switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.toggle-slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #ccc;
+    transition: .4s;
+    border-radius: 34px;
+}
+
+.toggle-slider:before {
+    position: absolute;
+    content: "";
+    height: 26px;
+    width: 26px;
+    left: 4px;
+    bottom: 4px;
+    background-color: white;
+    transition: .4s;
+    border-radius: 50%;
+}
+
+input:checked + .toggle-slider {
+    background-color: var(--bs-primary);
+}
+
+input:checked + .toggle-slider:before {
+    transform: translateX(26px);
+}
+
+/* Card group styles */
+.api-card-group .card {
+    margin-bottom: 20px;
+}
+
+/* Modal enhancements */
+.modal-header {
+    border-bottom: 3px solid var(--bs-primary);
+}
+
+/* Password visibility toggles */
+.toggle-password {
+    cursor: pointer;
+}
+
+/* Accordion customizations */
+.accordion-button:not(.collapsed) {
+    background-color: rgba(var(--bs-primary-rgb), 0.1);
+    color: var(--bs-primary);
+}
+
+/* Animation for loading states */
+@keyframes pulse {
+    0% { opacity: 1; }
+    50% { opacity: 0.5; }
+    100% { opacity: 1; }
+}
+
+.loading {
+    animation: pulse 1.5s infinite;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .markdown-editor-container {
+        flex-direction: column;
+        height: auto;
+    }
+    
+    .markdown-editor, .markdown-preview {
+        width: 100%;
+        height: 300px;
+    }
+    
+    .markdown-editor {
+        border-right: none;
+        border-bottom: 1px solid var(--bs-border-color);
+    }
 }
