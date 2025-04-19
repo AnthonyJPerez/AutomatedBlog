@@ -1,0 +1,8 @@
+- name: Home
+  href: README.md
+- name: Documentation
+  href: docs/
+  homepage: docs/automated_blog_system.md
+- name: API Documentation
+  href: api/
+  homepage: api/index.md
