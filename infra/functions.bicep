@@ -1,77 +1,73 @@
-@description('The name of the function app')
+// Functions template for blog automation infrastructure
+@description('Name of the Azure Function App')
 param functionAppName string
 
-@description('The name of the storage account')
+@description('Name of the App Service Plan')
+param appServicePlanName string
+
+@description('Azure region for the function app')
+param location string
+
+@description('Tags for the function app')
+param tags object
+
+@description('Name of the storage account for function app')
 param storageAccountName string
 
-@description('The instrumentation key for Application Insights')
+@description('Instrumentation key for Application Insights')
 param appInsightsInstrumentationKey string
 
-@description('The name of the key vault')
+@description('Name of the Key Vault')
 param keyVaultName string
 
-@description('Location for all resources')
-param location string = resourceGroup().location
-
-// Get reference to the storage account
-resource storageAccount 'Microsoft.Storage/storageAccounts@2022-09-01' existing = {
+// Get reference to storage account
+resource storageAccount 'Microsoft.Storage/storageAccounts@2021-09-01' existing = {
   name: storageAccountName
 }
 
-// Get reference to the key vault
-resource keyVault 'Microsoft.KeyVault/vaults@2022-07-01' existing = {
-  name: keyVaultName
-}
-
-// Create app service plan for function app
+// Create App Service Plan (consumption)
 resource appServicePlan 'Microsoft.Web/serverfarms@2022-03-01' = {
-  name: '${functionAppName}-plan'
+  name: appServicePlanName
   location: location
+  tags: tags
   sku: {
-    name: 'Y1' // Consumption plan
+    name: 'Y1'
     tier: 'Dynamic'
+  }
+  properties: {
+    reserved: true // Required for Linux
   }
 }
 
-// Create the function app
+// Create Function App
 resource functionApp 'Microsoft.Web/sites@2022-03-01' = {
   name: functionAppName
   location: location
-  kind: 'functionapp'
+  tags: tags
+  kind: 'functionapp,linux'
   identity: {
     type: 'SystemAssigned'
   }
   properties: {
     serverFarmId: appServicePlan.id
     siteConfig: {
+      linuxFxVersion: 'PYTHON|3.11'
       appSettings: [
-        {
-          name: 'AzureWebJobsStorage'
-          value: 'DefaultEndpointsProtocol=https;AccountName=${storageAccountName};EndpointSuffix=${environment().suffixes.storage};AccountKey=${storageAccount.listKeys().keys[0].value}'
-        }
-        {
-          name: 'WEBSITE_CONTENTAZUREFILECONNECTIONSTRING'
-          value: 'DefaultEndpointsProtocol=https;AccountName=${storageAccountName};EndpointSuffix=${environment().suffixes.storage};AccountKey=${storageAccount.listKeys().keys[0].value}'
-        }
-        {
-          name: 'WEBSITE_CONTENTSHARE'
-          value: toLower(functionAppName)
-        }
         {
           name: 'FUNCTIONS_EXTENSION_VERSION'
           value: '~4'
-        }
-        {
-          name: 'APPINSIGHTS_INSTRUMENTATIONKEY'
-          value: appInsightsInstrumentationKey
         }
         {
           name: 'FUNCTIONS_WORKER_RUNTIME'
           value: 'python'
         }
         {
-          name: 'PYTHON_VERSION'
-          value: '3.9'
+          name: 'AzureWebJobsStorage'
+          value: 'DefaultEndpointsProtocol=https;AccountName=${storageAccount.name};EndpointSuffix=${environment().suffixes.storage};AccountKey=${listKeys(storageAccount.id, storageAccount.apiVersion).keys[0].value}'
+        }
+        {
+          name: 'APPINSIGHTS_INSTRUMENTATIONKEY'
+          value: appInsightsInstrumentationKey
         }
         {
           name: 'KEY_VAULT_NAME'
@@ -81,34 +77,21 @@ resource functionApp 'Microsoft.Web/sites@2022-03-01' = {
           name: 'WEBSITE_RUN_FROM_PACKAGE'
           value: '1'
         }
+        {
+          name: 'STORAGE_ACCOUNT_NAME'
+          value: storageAccount.name
+        }
       ]
       ftpsState: 'Disabled'
       minTlsVersion: '1.2'
+      http20Enabled: true
     }
     httpsOnly: true
   }
 }
 
-// Grant the function app access to the key vault
-resource keyVaultAccessPolicy 'Microsoft.KeyVault/vaults/accessPolicies@2022-07-01' = {
-  name: 'add'
-  parent: keyVault
-  properties: {
-    accessPolicies: [
-      {
-        tenantId: subscription().tenantId
-        objectId: functionApp.identity.principalId
-        permissions: {
-          secrets: [
-            'get'
-            'list'
-          ]
-        }
-      }
-    ]
-  }
-}
-
 // Outputs
+output functionAppId string = functionApp.id
 output functionAppName string = functionApp.name
-output functionAppIdentityPrincipalId string = functionApp.identity.principalId
+output functionAppHostName string = functionApp.properties.defaultHostName
+output functionAppPrincipalId string = functionApp.identity.principalId
