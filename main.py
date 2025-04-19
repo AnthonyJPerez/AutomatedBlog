@@ -4,6 +4,7 @@ import logging
 import datetime
 import shutil
 import glob
+import traceback
 from flask import Flask, render_template, request, redirect, url_for, jsonify, flash
 from src.shared.storage_service import StorageService
 from src.shared.research_service import ResearchService
@@ -2411,6 +2412,7 @@ def get_blog_by_id(blog_id):
         dict: The blog configuration, or None if not found
     """
     try:
+        logger.info(f"Retrieving blog with ID: {blog_id}")
         blog_config_path = os.path.join("data/blogs", blog_id, "config.json")
         
         # Check if file exists
@@ -2425,9 +2427,23 @@ def get_blog_by_id(blog_id):
         # Add the blog ID to the config
         blog_config['id'] = blog_id
         
+        # Ensure required fields exist with defaults if missing
+        if 'topics' not in blog_config:
+            logger.info(f"Adding default topics field to blog {blog_id}")
+            blog_config['topics'] = []
+            
+        if 'audience' not in blog_config:
+            logger.info(f"Adding default audience field to blog {blog_id}")
+            blog_config['audience'] = 'general'
+            
+        if 'tone' not in blog_config:
+            logger.info(f"Adding default tone field to blog {blog_id}")
+            blog_config['tone'] = 'informative'
+        
+        logger.info(f"Successfully retrieved blog with ID: {blog_id}")
         return blog_config
     except Exception as e:
-        logger.error(f"Error getting blog by ID {blog_id}: {str(e)}")
+        logger.error(f"Error getting blog by ID {blog_id}: {str(e)}, traceback: {traceback.format_exc()}")
         return None
 
 if __name__ == "__main__":
