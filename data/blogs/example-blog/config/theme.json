@@ -1,0 +1,43 @@
+{
+  "name": "Digital Marketing Explorer",
+  "theme": "Digital Marketing",
+  "description": "A modern blog focused on cutting-edge digital marketing techniques, emerging trends, and practical case studies for businesses of all sizes. This blog provides in-depth analysis of what works in today's fast-changing marketing landscape.",
+  "tone": "Informative and analytical with a forward-thinking perspective",
+  "target_audience": [
+    "Marketing managers",
+    "Digital specialists",
+    "E-commerce business owners",
+    "Startup founders",
+    "Marketing technology enthusiasts",
+    "Brand strategists"
+  ],
+  "theme_prompt": "Create insightful content that explores the intersection of marketing strategy, technology, and consumer behavior. Focus on evidence-based approaches that have measurable business impact. Articles should analyze current and emerging digital marketing trends with a critical eye, providing both strategic perspective and practical implementation advice. Include relevant examples, case studies, or data points to support key assertions.",
+  "style_guide": {
+    "paragraph_length": "3-4 sentences for readability",
+    "heading_style": "Clear, actionable headings that incorporate SEO principles",
+    "visual_elements": "Data visualizations, comparison tables, and process flowcharts",
+    "language_complexity": "Industry-specific terminology with clear explanations for complex concepts",
+    "format": "Well-structured with clear sections, subheadings, and conclusion takeaways"
+  },
+  "content_types": [
+    "Industry trend analysis",
+    "Platform-specific strategy guides",
+    "Marketing technology reviews",
+    "Analytics deep dives",
+    "A/B testing case studies",
+    "Content marketing frameworks",
+    "Digital transformation roadmaps"
+  ],
+  "keywords": [
+    "digital marketing strategy",
+    "marketing automation",
+    "content optimization",
+    "SEO trends",
+    "social media algorithms",
+    "marketing analytics",
+    "customer journey mapping",
+    "conversion rate optimization",
+    "marketing technology stack",
+    "omnichannel marketing"
+  ]
+}
