@@ -51,75 +51,79 @@ except LookupError:
 
 class SourceTracker:
     """
-    Maintains a database of trusted sources for web scraping and research.
+    Maintains a file-based list of trusted sources for web scraping and research.
     Automatically updates as new sources are discovered during research.
     """
     
-    def __init__(self, db_path="data/sources.db"):
-        """Initialize the source tracker with a SQLite database."""
-        self.db_path = db_path
-        self._ensure_db_directory()
-        self._init_database()
-        logger.info(f"SourceTracker initialized with database at {db_path}")
+    def __init__(self, sources_file="data/sources.json", topics_file="data/topic_sources.json"):
+        """Initialize the source tracker with JSON files."""
+        self.sources_file = sources_file
+        self.topics_file = topics_file
+        self.sources = {}
+        self.topic_sources = {}
+        self._ensure_data_directory()
+        self._load_data()
+        logger.info(f"SourceTracker initialized with sources file at {sources_file}")
     
-    def _ensure_db_directory(self):
-        """Create directory for the database if it doesn't exist."""
-        os.makedirs(os.path.dirname(self.db_path), exist_ok=True)
+    def _ensure_data_directory(self):
+        """Create directory for the data files if it doesn't exist."""
+        os.makedirs(os.path.dirname(self.sources_file), exist_ok=True)
     
-    def _init_database(self):
-        """Initialize the sources database if it doesn't exist."""
+    def _load_data(self):
+        """Load sources and topic associations from files."""
+        # Load sources
+        if os.path.exists(self.sources_file):
+            try:
+                with open(self.sources_file, 'r') as f:
+                    self.sources = json.load(f)
+                logger.info(f"Loaded {len(self.sources)} sources from {self.sources_file}")
+            except Exception as e:
+                logger.error(f"Error loading sources from {self.sources_file}: {str(e)}")
+                self.sources = {}
+        
+        # If no sources file exists or it was empty, bootstrap with initial sources
+        if not self.sources:
+            logger.info("Bootstrapping source tracker with initial sources")
+            self._bootstrap_initial_sources()
+            self._save_sources()
+        
+        # Load topic-source associations
+        if os.path.exists(self.topics_file):
+            try:
+                with open(self.topics_file, 'r') as f:
+                    self.topic_sources = json.load(f)
+                logger.info(f"Loaded topic-source associations from {self.topics_file}")
+            except Exception as e:
+                logger.error(f"Error loading topic sources from {self.topics_file}: {str(e)}")
+                self.topic_sources = {}
+        else:
+            self.topic_sources = {}
+            self._save_topic_sources()
+    
+    def _save_sources(self):
+        """Save sources to file."""
         try:
-            conn = sqlite3.connect(self.db_path)
-            cursor = conn.cursor()
-            
-            # Create sources table if it doesn't exist
-            cursor.execute('''
-            CREATE TABLE IF NOT EXISTS sources (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                domain TEXT UNIQUE,
-                url TEXT,
-                title TEXT,
-                quality_score REAL DEFAULT 0.0,
-                category TEXT,
-                language TEXT DEFAULT 'en',
-                last_scraped TEXT,
-                times_used INTEGER DEFAULT 1,
-                first_discovered TEXT,
-                has_rss INTEGER DEFAULT 0,
-                rss_url TEXT,
-                notes TEXT
-            )
-            ''')
-            
-            # Create topics_sources bridge table for tracking which sources are good for which topics
-            cursor.execute('''
-            CREATE TABLE IF NOT EXISTS topics_sources (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                topic TEXT,
-                source_id INTEGER,
-                relevance_score REAL DEFAULT 0.0,
-                last_used TEXT,
-                UNIQUE(topic, source_id),
-                FOREIGN KEY (source_id) REFERENCES sources(id)
-            )
-            ''')
-            
-            # Bootstrap with initial sources if the table is empty
-            cursor.execute("SELECT COUNT(*) FROM sources")
-            count = cursor.fetchone()[0]
-            
-            if count == 0:
-                logger.info("Bootstrapping source database with initial sources")
-                self._bootstrap_initial_sources(cursor)
-            
-            conn.commit()
-            conn.close()
-            
+            with open(self.sources_file, 'w') as f:
+                json.dump(self.sources, f, indent=2)
+            logger.debug(f"Saved {len(self.sources)} sources to {self.sources_file}")
+            return True
         except Exception as e:
-            logger.error(f"Error initializing sources database: {str(e)}")
+            logger.error(f"Error saving sources to {self.sources_file}: {str(e)}")
+            return False
     
-    def _bootstrap_initial_sources(self, cursor):
-        """Populate the database with initial trusted sources."""
+    def _save_topic_sources(self):
+        """Save topic-source associations to file."""
+        try:
+            with open(self.topics_file, 'w') as f:
+                json.dump(self.topic_sources, f, indent=2)
+            logger.debug(f"Saved topic-source associations to {self.topics_file}")
+            return True
+        except Exception as e:
+            logger.error(f"Error saving topic sources to {self.topics_file}: {str(e)}")
+            return False
+    
+    def _bootstrap_initial_sources(self):
+        """Populate the sources with initial trusted sources."""
         initial_sources = [
             {
                 'domain': 'en.wikipedia.org',
@@ -127,7 +131,13 @@ class SourceTracker:
                 'title': 'Wikipedia',
                 'quality_score': 9.0,
                 'category': 'reference',
-                'notes': 'General encyclopedia, high factual accuracy'
+                'language': 'en',
+                'has_rss': False,
+                'rss_url': None,
+                'times_used': 1,
+                'notes': 'General encyclopedia, high factual accuracy',
+                'last_scraped': datetime.now().isoformat(),
+                'first_discovered': datetime.now().isoformat()
             },
             {
                 'domain': 'techcrunch.com',
@@ -135,8 +145,13 @@ class SourceTracker:
                 'title': 'TechCrunch',
                 'quality_score': 8.0,
                 'category': 'technology',
-                'has_rss': 1,
-                'rss_url': 'https://techcrunch.com/feed/'
+                'language': 'en',
+                'has_rss': True,
+                'rss_url': 'https://techcrunch.com/feed/',
+                'times_used': 1,
+                'notes': 'Technology news and analysis',
+                'last_scraped': datetime.now().isoformat(),
+                'first_discovered': datetime.now().isoformat()
             },
             {
                 'domain': 'hbr.org',
@@ -144,8 +159,13 @@ class SourceTracker:
                 'title': 'Harvard Business Review',
                 'quality_score': 8.5,
                 'category': 'business',
-                'has_rss': 1,
-                'rss_url': 'https://hbr.org/feed'
+                'language': 'en',
+                'has_rss': True,
+                'rss_url': 'https://hbr.org/feed',
+                'times_used': 1,
+                'notes': 'Business management research and ideas',
+                'last_scraped': datetime.now().isoformat(),
+                'first_discovered': datetime.now().isoformat()
             },
             {
                 'domain': 'nature.com',
@@ -153,8 +173,13 @@ class SourceTracker:
                 'title': 'Nature',
                 'quality_score': 9.5,
                 'category': 'science',
-                'has_rss': 1,
-                'rss_url': 'https://www.nature.com/nature.rss'
+                'language': 'en',
+                'has_rss': True,
+                'rss_url': 'https://www.nature.com/nature.rss',
+                'times_used': 1,
+                'notes': 'Leading international science journal',
+                'last_scraped': datetime.now().isoformat(),
+                'first_discovered': datetime.now().isoformat()
             },
             {
                 'domain': 'blog.google',
@@ -162,42 +187,23 @@ class SourceTracker:
                 'title': 'Google Blog',
                 'quality_score': 7.5,
                 'category': 'technology',
-                'has_rss': 1,
-                'rss_url': 'https://blog.google/rss/'
+                'language': 'en',
+                'has_rss': True,
+                'rss_url': 'https://blog.google/rss/',
+                'times_used': 1,
+                'notes': 'Official Google blog with product announcements',
+                'last_scraped': datetime.now().isoformat(),
+                'first_discovered': datetime.now().isoformat()
             }
         ]
         
-        now = datetime.now().isoformat()
+        # Add sources to our dictionary with domain as key
         for source in initial_sources:
-            source.setdefault('last_scraped', now)
-            source.setdefault('first_discovered', now)
-            source.setdefault('language', 'en')
-            source.setdefault('has_rss', 0)
-            source.setdefault('times_used', 1)
-            
-            cursor.execute('''
-            INSERT INTO sources 
-            (domain, url, title, quality_score, category, language, last_scraped, 
-             times_used, first_discovered, has_rss, rss_url, notes)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ''', (
-                source['domain'],
-                source['url'],
-                source['title'],
-                source['quality_score'],
-                source['category'],
-                source['language'],
-                source['last_scraped'],
-                source['times_used'],
-                source['first_discovered'],
-                source['has_rss'],
-                source.get('rss_url', None),
-                source.get('notes', None)
-            ))
+            self.sources[source['domain']] = source
     
     def add_source(self, url, title=None, category=None, quality_score=5.0, has_rss=False, rss_url=None):
         """
-        Add a new source to the database.
+        Add a new source to the sources file.
         
         Args:
             url (str): The URL of the source
@@ -220,52 +226,47 @@ class SourceTracker:
             
             now = datetime.now().isoformat()
             
-            conn = sqlite3.connect(self.db_path)
-            cursor = conn.cursor()
-            
-            # Check if the domain already exists
-            cursor.execute("SELECT id FROM sources WHERE domain = ?", (domain,))
-            existing = cursor.fetchone()
-            
-            if existing:
-                # Update the existing record
-                source_id = existing[0]
-                cursor.execute('''
-                UPDATE sources SET 
-                url = ?, title = ?, last_scraped = ?, times_used = times_used + 1
-                WHERE id = ?
-                ''', (url, title, now, source_id))
+            if domain in self.sources:
+                # Update existing source
+                source = self.sources[domain]
+                source['url'] = url
+                source['title'] = title
+                source['last_scraped'] = now
+                source['times_used'] = source.get('times_used', 0) + 1
                 
                 if category:
-                    cursor.execute("UPDATE sources SET category = ? WHERE id = ?", (category, source_id))
+                    source['category'] = category
                 
                 if quality_score:
-                    cursor.execute('''
-                    UPDATE sources SET quality_score = (quality_score + ?) / 2 WHERE id = ?
-                    ''', (quality_score, source_id))
+                    # Average with existing score if present
+                    current_score = source.get('quality_score', 5.0)
+                    source['quality_score'] = (current_score + quality_score) / 2
                 
                 if has_rss and rss_url:
-                    cursor.execute('''
-                    UPDATE sources SET has_rss = 1, rss_url = ? WHERE id = ?
-                    ''', (rss_url, source_id))
+                    source['has_rss'] = True
+                    source['rss_url'] = rss_url
                 
                 logger.info(f"Updated existing source: {domain} ({title})")
             else:
-                # Insert a new record
-                cursor.execute('''
-                INSERT INTO sources 
-                (domain, url, title, quality_score, category, last_scraped, times_used, 
-                first_discovered, has_rss, rss_url)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                ''', (
-                    domain, url, title, quality_score, category, now, 1, now,
-                    1 if has_rss else 0, rss_url
-                ))
-                source_id = cursor.lastrowid
+                # Create new source
+                self.sources[domain] = {
+                    'domain': domain,
+                    'url': url,
+                    'title': title,
+                    'quality_score': quality_score,
+                    'category': category,
+                    'language': 'en',
+                    'last_scraped': now,
+                    'times_used': 1,
+                    'first_discovered': now,
+                    'has_rss': has_rss,
+                    'rss_url': rss_url if has_rss else None,
+                    'notes': None
+                }
                 logger.info(f"Added new source: {domain} ({title})")
             
-            conn.commit()
-            conn.close()
+            # Save changes to file
+            self._save_sources()
             return True
             
         except Exception as e:
@@ -288,51 +289,40 @@ class SourceTracker:
             parsed_url = urlparse(url)
             domain = parsed_url.netloc
             
-            conn = sqlite3.connect(self.db_path)
-            cursor = conn.cursor()
-            
-            # Find source id
-            cursor.execute("SELECT id FROM sources WHERE domain = ?", (domain,))
-            result = cursor.fetchone()
-            
-            if not result:
+            if domain not in self.sources:
                 logger.warning(f"Cannot associate topic with unknown source: {domain}")
-                conn.close()
                 return False
             
-            source_id = result[0]
             now = datetime.now().isoformat()
             
-            # Check if association already exists
-            cursor.execute("SELECT id, relevance_score FROM topics_sources WHERE topic = ? AND source_id = ?", 
-                         (topic, source_id))
-            existing = cursor.fetchone()
+            # Initialize topic in topic_sources if not present
+            if topic not in self.topic_sources:
+                self.topic_sources[topic] = {}
             
-            if existing:
-                # Update the existing association
-                assoc_id = existing[0]
-                old_score = existing[1]
-                # Average the new score with the old score
-                updated_score = (old_score + relevance_score) / 2
+            # Check if association already exists
+            if domain in self.topic_sources[topic]:
+                # Update existing association
+                current_score = self.topic_sources[topic][domain]['relevance_score']
+                # Average the new score with the existing score
+                updated_score = (current_score + relevance_score) / 2
                 
-                cursor.execute('''
-                UPDATE topics_sources 
-                SET relevance_score = ?, last_used = ?
-                WHERE id = ?
-                ''', (updated_score, now, assoc_id))
+                self.topic_sources[topic][domain] = {
+                    'relevance_score': updated_score,
+                    'last_used': now
+                }
                 
                 logger.debug(f"Updated topic-source association: {topic} - {domain}")
             else:
-                # Create a new association
-                cursor.execute('''
-                INSERT INTO topics_sources (topic, source_id, relevance_score, last_used)
-                VALUES (?, ?, ?, ?)
-                ''', (topic, source_id, relevance_score, now))
+                # Create new association
+                self.topic_sources[topic][domain] = {
+                    'relevance_score': relevance_score,
+                    'last_used': now
+                }
                 
                 logger.debug(f"Created new topic-source association: {topic} - {domain}")
             
-            conn.commit()
-            conn.close()
+            # Save changes to file
+            self._save_topic_sources()
             return True
             
         except Exception as e:
@@ -352,57 +342,53 @@ class SourceTracker:
             list: List of source dictionaries with URL and metadata
         """
         try:
-            conn = sqlite3.connect(self.db_path)
-            cursor = conn.cursor()
+            results = []
             
-            # Query for sources associated with this topic
-            cursor.execute('''
-            SELECT s.url, s.title, s.domain, s.quality_score, s.category, 
-                   s.has_rss, s.rss_url, ts.relevance_score
-            FROM sources s
-            JOIN topics_sources ts ON s.id = ts.source_id
-            WHERE ts.topic = ? AND s.quality_score >= ?
-            ORDER BY ts.relevance_score DESC, s.quality_score DESC
-            LIMIT ?
-            ''', (topic, min_quality, limit))
+            # If we have associations for this topic, use them
+            if topic in self.topic_sources:
+                topic_sources = self.topic_sources[topic]
+                
+                # Build a list of sources with their relevance scores
+                relevant_sources = []
+                for domain, data in topic_sources.items():
+                    if domain in self.sources:
+                        source = self.sources[domain]
+                        
+                        # Check if the source meets minimum quality
+                        if source.get('quality_score', 0) >= min_quality:
+                            # Create a copy of the source and add relevance score
+                            source_copy = dict(source)
+                            source_copy['relevance_score'] = data.get('relevance_score', 5.0)
+                            relevant_sources.append(source_copy)
+                
+                # Sort by relevance score (descending)
+                relevant_sources.sort(key=lambda x: x.get('relevance_score', 0), reverse=True)
+                
+                # Add top sources to results
+                results.extend(relevant_sources[:limit])
             
-            topic_sources = cursor.fetchall()
-            
-            # If we don't have enough topic-specific sources, get high-quality sources
-            if len(topic_sources) < limit:
-                remaining = limit - len(topic_sources)
+            # If we don't have enough topic-specific sources, add high-quality general sources
+            if len(results) < limit:
+                remaining = limit - len(results)
                 
                 # Get domains we already have to avoid duplicates
-                existing_domains = [s[2] for s in topic_sources]
+                existing_domains = [s['domain'] for s in results]
                 
-                # Get additional high-quality general sources
-                cursor.execute('''
-                SELECT url, title, domain, quality_score, category, has_rss, rss_url, NULL as relevance_score
-                FROM sources 
-                WHERE domain NOT IN ({}) AND quality_score >= ?
-                ORDER BY quality_score DESC, times_used DESC
-                LIMIT ?
-                '''.format(','.join(['?'] * len(existing_domains))), 
-                (*existing_domains, min_quality, remaining))
+                # Get additional high-quality sources
+                general_sources = []
+                for domain, source in self.sources.items():
+                    if domain not in existing_domains and source.get('quality_score', 0) >= min_quality:
+                        # Add default relevance score
+                        source_copy = dict(source)
+                        source_copy['relevance_score'] = 0.0
+                        general_sources.append(source_copy)
                 
-                additional_sources = cursor.fetchall()
-                topic_sources.extend(additional_sources)
+                # Sort by quality score (descending)
+                general_sources.sort(key=lambda x: x.get('quality_score', 0), reverse=True)
+                
+                # Add top general sources to results
+                results.extend(general_sources[:remaining])
             
-            # Format the results
-            results = []
-            for source in topic_sources:
-                results.append({
-                    'url': source[0],
-                    'title': source[1],
-                    'domain': source[2],
-                    'quality_score': source[3],
-                    'category': source[4],
-                    'has_rss': bool(source[5]),
-                    'rss_url': source[6],
-                    'relevance_score': source[7] if source[7] is not None else 0.0
-                })
-            
-            conn.close()
             return results
             
         except Exception as e:
@@ -424,29 +410,19 @@ class SourceTracker:
             parsed_url = urlparse(url)
             domain = parsed_url.netloc
             
-            conn = sqlite3.connect(self.db_path)
-            cursor = conn.cursor()
-            
-            # Get current quality score
-            cursor.execute("SELECT id, quality_score FROM sources WHERE domain = ?", (domain,))
-            result = cursor.fetchone()
-            
-            if not result:
+            if domain not in self.sources:
                 logger.warning(f"Cannot update quality for unknown source: {domain}")
-                conn.close()
                 return False
             
-            source_id, current_score = result
+            # Get current quality score
+            current_score = self.sources[domain].get('quality_score', 5.0)
             
             # Update the quality score, keeping it within 0-10 range
             new_score = max(0, min(10, current_score + quality_delta))
+            self.sources[domain]['quality_score'] = new_score
             
-            cursor.execute('''
-            UPDATE sources SET quality_score = ? WHERE id = ?
-            ''', (new_score, source_id))
-            
-            conn.commit()
-            conn.close()
+            # Save changes to file
+            self._save_sources()
             
             logger.debug(f"Updated quality score for {domain}: {current_score} -> {new_score}")
             return True
@@ -467,39 +443,23 @@ class SourceTracker:
             list: List of source dictionaries
         """
         try:
-            conn = sqlite3.connect(self.db_path)
-            cursor = conn.cursor()
-            
-            query = '''
-            SELECT url, title, domain, quality_score, category, has_rss, rss_url, times_used 
-            FROM sources
-            '''
-            
-            params = []
-            if category:
-                query += " WHERE category = ?"
-                params.append(category)
-            
-            query += " ORDER BY times_used DESC, quality_score DESC LIMIT ?"
-            params.append(limit)
-            
-            cursor.execute(query, params)
-            
             results = []
-            for source in cursor.fetchall():
-                results.append({
-                    'url': source[0],
-                    'title': source[1],
-                    'domain': source[2],
-                    'quality_score': source[3],
-                    'category': source[4],
-                    'has_rss': bool(source[5]),
-                    'rss_url': source[6],
-                    'times_used': source[7]
-                })
             
-            conn.close()
-            return results
+            # Filter sources by category if specified
+            if category:
+                filtered_sources = [s for s in self.sources.values() if s.get('category') == category]
+            else:
+                filtered_sources = list(self.sources.values())
+            
+            # Sort by times_used and quality_score
+            sorted_sources = sorted(
+                filtered_sources, 
+                key=lambda x: (x.get('times_used', 0), x.get('quality_score', 0)), 
+                reverse=True
+            )
+            
+            # Return limited number of sources
+            return sorted_sources[:limit]
             
         except Exception as e:
             logger.error(f"Error getting trending sources: {str(e)}")

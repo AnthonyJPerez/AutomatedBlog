@@ -5,6 +5,29 @@ param environment string = 'dev'
 @description('Azure region for all resources')
 param location string = resourceGroup().location
 
+@description('Enable WordPress deployment')
+param deployWordPress bool = false
+
+@description('WordPress site name (must be globally unique)')
+param wordPressSiteName string = 'wp-${uniqueString(resourceGroup().id)}'
+
+@description('Database administrator login name')
+param dbAdminLogin string = 'wpdbadmin'
+
+@description('Database administrator password')
+@secure()
+param dbAdminPassword string = ''
+
+@description('WordPress admin email address')
+param wpAdminEmail string = ''
+
+@description('WordPress admin username')
+param wpAdminUsername string = 'admin'
+
+@description('WordPress admin password')
+@secure()
+param wpAdminPassword string = ''
+
 // Name prefix for resources
 var namePrefix = 'blogauto-${environment}'
 
@@ -26,6 +49,9 @@ var appInsightsName = '${namePrefix}-insights'
 
 // Key Vault settings
 var keyVaultName = '${namePrefix}-vault'
+
+// WordPress settings
+var wpAppServicePlanName = '${wordPressSiteName}-plan'
 
 // Deploy storage account
 module storageModule 'storage.bicep' = {
@@ -77,8 +103,25 @@ module functionApp 'functions.bicep' = {
   ]
 }
 
+// Deploy WordPress if enabled
+module wordpressModule 'wordpress.bicep' = if (deployWordPress) {
+  name: 'wordpressDeployment'
+  params: {
+    siteName: wordPressSiteName
+    appServicePlanName: wpAppServicePlanName
+    location: location
+    sku: environment == 'prod' ? 'P1v2' : 'B1'
+    administratorLogin: dbAdminLogin
+    administratorLoginPassword: dbAdminPassword
+    wpAdminEmail: wpAdminEmail
+    wpAdminUsername: wpAdminUsername
+    wpAdminPassword: wpAdminPassword
+  }
+}
+
 // Outputs
 output functionAppName string = functionApp.outputs.functionAppName
 output storageAccountName string = storageModule.outputs.storageAccountName
 output keyVaultName string = keyVaultName
 output functionAppHostName string = functionApp.outputs.functionAppHostName
+output wordpressUrl string = deployWordPress ? wordpressModule.outputs.wordpressUrl : ''

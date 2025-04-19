@@ -1,0 +1,243 @@
+@description('The name of the WordPress site')
+param siteName string
+
+@description('The name of the App Service Plan')
+param appServicePlanName string = '${siteName}-plan'
+
+@description('The location for all resources')
+param location string = resourceGroup().location
+
+@description('The SKU of App Service Plan')
+@allowed([
+  'B1'
+  'B2'
+  'B3'
+  'S1'
+  'S2'
+  'S3'
+  'P1v2'
+  'P2v2'
+  'P3v2'
+])
+param sku string = 'P1v2'
+
+@description('Database administrator login name')
+@minLength(1)
+param administratorLogin string
+
+@description('Database administrator password')
+@minLength(8)
+@secure()
+param administratorLoginPassword string
+
+@description('WordPress admin email address')
+param wpAdminEmail string
+
+@description('WordPress admin username')
+param wpAdminUsername string = 'admin'
+
+@description('WordPress admin password')
+@secure()
+param wpAdminPassword string
+
+var mysqlServerName = '${toLower(siteName)}-mysql'
+var databaseName = 'wordpress'
+
+// Create App Service Plan
+resource appServicePlan 'Microsoft.Web/serverfarms@2022-03-01' = {
+  name: appServicePlanName
+  location: location
+  sku: {
+    name: sku
+  }
+  properties: {
+    reserved: true // For Linux
+  }
+}
+
+// Create MySQL Server
+resource mysqlServer 'Microsoft.DBforMySQL/flexibleServers@2022-01-01' = {
+  name: mysqlServerName
+  location: location
+  sku: {
+    name: contains(sku, 'P') ? 'Standard_D2ds_v4' : 'Standard_B1ms'
+    tier: contains(sku, 'P') ? 'GeneralPurpose' : 'Burstable'
+  }
+  properties: {
+    version: '8.0.21'
+    administratorLogin: administratorLogin
+    administratorLoginPassword: administratorLoginPassword
+    storage: {
+      storageSizeGB: 20
+      autoGrow: 'Enabled'
+    }
+    backup: {
+      backupRetentionDays: 7
+      geoRedundantBackup: 'Disabled'
+    }
+    highAvailability: {
+      mode: 'Disabled'
+    }
+  }
+}
+
+// Create MySQL Database
+resource mysqlDatabase 'Microsoft.DBforMySQL/flexibleServers/databases@2022-01-01' = {
+  parent: mysqlServer
+  name: databaseName
+  properties: {
+    charset: 'utf8'
+    collation: 'utf8_general_ci'
+  }
+}
+
+// Create MySQL Firewall Rule to allow Azure services
+resource mysqlFirewallRule 'Microsoft.DBforMySQL/flexibleServers/firewallRules@2022-01-01' = {
+  parent: mysqlServer
+  name: 'AllowAzureServices'
+  properties: {
+    startIpAddress: '0.0.0.0'
+    endIpAddress: '0.0.0.0'
+  }
+}
+
+// Create WordPress Web App
+resource wordpressApp 'Microsoft.Web/sites@2022-03-01' = {
+  name: siteName
+  location: location
+  properties: {
+    serverFarmId: appServicePlan.id
+    siteConfig: {
+      linuxFxVersion: 'DOCKER|wordpress:latest'
+      appSettings: [
+        {
+          name: 'WEBSITES_ENABLE_APP_SERVICE_STORAGE'
+          value: 'true'
+        }
+        {
+          name: 'WORDPRESS_DB_HOST'
+          value: '${mysqlServer.name}.mysql.database.azure.com'
+        }
+        {
+          name: 'WORDPRESS_DB_USER'
+          value: administratorLogin
+        }
+        {
+          name: 'WORDPRESS_DB_PASSWORD'
+          value: administratorLoginPassword
+        }
+        {
+          name: 'WORDPRESS_DB_NAME'
+          value: databaseName
+        }
+        {
+          name: 'WORDPRESS_CONFIG_EXTRA'
+          value: 'define(\'WP_HOME\', \'https://${siteName}.azurewebsites.net\');define(\'WP_SITEURL\', \'https://${siteName}.azurewebsites.net\');'
+        }
+        {
+          name: 'WORDPRESS_ADMIN_EMAIL'
+          value: wpAdminEmail
+        }
+        {
+          name: 'WORDPRESS_ADMIN_USER'
+          value: wpAdminUsername
+        }
+        {
+          name: 'WORDPRESS_ADMIN_PASSWORD'
+          value: wpAdminPassword
+        }
+        // Add additional WordPress config for performance and security
+        {
+          name: 'WORDPRESS_CONFIG_EXTRA_PERFORMANCE'
+          value: 'define(\'WP_MEMORY_LIMIT\', \'256M\');define(\'WP_MAX_MEMORY_LIMIT\', \'512M\');'
+        }
+        {
+          name: 'WEBSITES_CONTAINER_START_TIME_LIMIT'
+          value: '600'
+        }
+      ]
+      alwaysOn: contains(sku, 'P') || contains(sku, 'S') ? true : false
+    }
+    httpsOnly: true
+  }
+}
+
+// Setup Managed Identity for WordPress App 
+resource wordpressIdentity 'Microsoft.Web/sites/config@2022-03-01' = {
+  parent: wordpressApp
+  name: 'web'
+  properties: {
+    managedServiceIdentityId: wordpressApp.identity.principalId
+  }
+  dependsOn: [
+    wordpressAppIdentity
+  ]
+}
+
+// Add Managed Identity to the WordPress App
+resource wordpressAppIdentity 'Microsoft.Web/sites/config@2022-03-01' = {
+  parent: wordpressApp
+  name: 'ManagedServiceIdentity'
+  properties: {
+    enabled: true
+  }
+}
+
+// Setup WordPress plugins deployment script (runs once after WordPress is deployed)
+resource deploymentScript 'Microsoft.Resources/deploymentScripts@2020-10-01' = {
+  name: '${siteName}-wp-plugins-setup'
+  location: location
+  kind: 'AzureCLI'
+  identity: {
+    type: 'UserAssigned'
+    userAssignedIdentities: {
+      '${wordpressApp.identity.principalId}': {}
+    }
+  }
+  properties: {
+    azCliVersion: '2.30.0'
+    retentionInterval: 'P1D'
+    timeout: 'PT30M'
+    scriptContent: '''
+      #!/bin/bash
+      # Wait for WordPress to be fully deployed
+      sleep 180
+      
+      # Install recommended plugins via WP-CLI
+      # Connect to the WordPress container and install plugins
+      az webapp ssh --resource-group $RESOURCE_GROUP --name $SITE_NAME --command "wp plugin install wordpress-seo jetpack contact-form-7 wordfence google-analytics-for-wordpress --activate"
+      
+      # Set up permalink structure for SEO
+      az webapp ssh --resource-group $RESOURCE_GROUP --name $SITE_NAME --command "wp rewrite structure '/%postname%/'"
+      
+      # Optimize WordPress settings
+      az webapp ssh --resource-group $RESOURCE_GROUP --name $SITE_NAME --command "wp option update blog_public 0" # Discourage search engines until site is ready
+      
+      # Install additional performance plugins
+      az webapp ssh --resource-group $RESOURCE_GROUP --name $SITE_NAME --command "wp plugin install wp-super-cache autoptimize --activate"
+      
+      # Configure WP Super Cache settings
+      az webapp ssh --resource-group $RESOURCE_GROUP --name $SITE_NAME --command "wp super-cache enable"
+      
+      echo "WordPress plugins setup completed"
+    '''
+    environmentVariables: [
+      {
+        name: 'SITE_NAME'
+        value: siteName
+      }
+      {
+        name: 'RESOURCE_GROUP'
+        value: resourceGroup().name
+      }
+    ]
+  }
+  dependsOn: [
+    wordpressApp
+  ]
+}
+
+// Outputs that can be used by other resources
+output wordpressUrl string = 'https://${wordpressApp.properties.defaultHostName}'
+output mysqlHostname string = '${mysqlServer.name}.mysql.database.azure.com'
+output serverPrincipalId string = wordpressApp.identity.principalId

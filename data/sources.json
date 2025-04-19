@@ -1,0 +1,72 @@
+{
+  "en.wikipedia.org": {
+    "domain": "en.wikipedia.org",
+    "url": "https://en.wikipedia.org/",
+    "title": "Wikipedia",
+    "quality_score": 9.0,
+    "category": "reference",
+    "language": "en",
+    "has_rss": false,
+    "rss_url": null,
+    "times_used": 1,
+    "notes": "General encyclopedia, high factual accuracy",
+    "last_scraped": "2025-04-19T09:43:12.970867",
+    "first_discovered": "2025-04-19T09:43:12.970874"
+  },
+  "techcrunch.com": {
+    "domain": "techcrunch.com",
+    "url": "https://techcrunch.com/",
+    "title": "TechCrunch",
+    "quality_score": 8.0,
+    "category": "technology",
+    "language": "en",
+    "has_rss": true,
+    "rss_url": "https://techcrunch.com/feed/",
+    "times_used": 1,
+    "notes": "Technology news and analysis",
+    "last_scraped": "2025-04-19T09:43:12.970877",
+    "first_discovered": "2025-04-19T09:43:12.970878"
+  },
+  "hbr.org": {
+    "domain": "hbr.org",
+    "url": "https://hbr.org/",
+    "title": "Harvard Business Review",
+    "quality_score": 8.5,
+    "category": "business",
+    "language": "en",
+    "has_rss": true,
+    "rss_url": "https://hbr.org/feed",
+    "times_used": 1,
+    "notes": "Business management research and ideas",
+    "last_scraped": "2025-04-19T09:43:12.970879",
+    "first_discovered": "2025-04-19T09:43:12.970880"
+  },
+  "nature.com": {
+    "domain": "nature.com",
+    "url": "https://www.nature.com/",
+    "title": "Nature",
+    "quality_score": 9.5,
+    "category": "science",
+    "language": "en",
+    "has_rss": true,
+    "rss_url": "https://www.nature.com/nature.rss",
+    "times_used": 1,
+    "notes": "Leading international science journal",
+    "last_scraped": "2025-04-19T09:43:12.970882",
+    "first_discovered": "2025-04-19T09:43:12.970883"
+  },
+  "blog.google": {
+    "domain": "blog.google",
+    "url": "https://blog.google/",
+    "title": "Google Blog",
+    "quality_score": 7.5,
+    "category": "technology",
+    "language": "en",
+    "has_rss": true,
+    "rss_url": "https://blog.google/rss/",
+    "times_used": 1,
+    "notes": "Official Google blog with product announcements",
+    "last_scraped": "2025-04-19T09:43:12.970884",
+    "first_discovered": "2025-04-19T09:43:12.970885"
+  }
+}
