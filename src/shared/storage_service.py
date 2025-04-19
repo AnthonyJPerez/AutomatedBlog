@@ -2,46 +2,80 @@ import os
 import json
 import logging
 import traceback
-from azure.storage.blob import BlobServiceClient, ContentSettings
-from azure.identity import DefaultAzureCredential
+import uuid
+from datetime import datetime
+from pathlib import Path
+
+# Try to import Azure Storage SDK but fallback gracefully if not available
+try:
+    from azure.storage.blob import BlobServiceClient, ContentSettings
+    from azure.identity import DefaultAzureCredential
+    azure_storage_available = True
+except ImportError:
+    azure_storage_available = False
 
 class StorageService:
     """
-    Service for interacting with Azure Blob Storage.
+    Service for interacting with Azure Blob Storage or local file system.
     Handles saving and retrieving configuration, tasks, content, and results.
     """
     
     def __init__(self):
         self.logger = logging.getLogger('storage_service')
         
-        # Get storage connection string from environment variable
-        self.connection_string = os.environ.get("AzureWebJobsStorage")
-        
         # Container names
         self.config_container = "configuration"
         self.blog_data_container = "blog-data"
         self.results_container = "results"
         
-        # Initialize blob service client
-        try:
-            if self.connection_string:
-                self.blob_service_client = BlobServiceClient.from_connection_string(self.connection_string)
-            else:
-                # Use managed identity if connection string not available
-                account_name = os.environ.get("STORAGE_ACCOUNT_NAME")
-                if account_name:
-                    account_url = f"https://{account_name}.blob.core.windows.net"
-                    credential = DefaultAzureCredential()
-                    self.blob_service_client = BlobServiceClient(account_url, credential=credential)
+        # Local storage paths for development mode
+        self.local_storage_dir = "data"
+        
+        # Flag to indicate if we're using local storage
+        self.using_local_storage = False
+        
+        # Initialize Azure Blob storage if available
+        self.blob_service_client = None
+        
+        if azure_storage_available:
+            # Get storage connection string from environment variable
+            self.connection_string = os.environ.get("AzureWebJobsStorage")
+            
+            # Initialize blob service client
+            try:
+                if self.connection_string:
+                    self.blob_service_client = BlobServiceClient.from_connection_string(self.connection_string)
                 else:
-                    self.logger.error("Storage account credentials not available")
-                    self.blob_service_client = None
-        except Exception as e:
-            self.logger.error(f"Error initializing storage service: {str(e)}")
-            self.blob_service_client = None
+                    # Use managed identity if connection string not available
+                    account_name = os.environ.get("STORAGE_ACCOUNT_NAME")
+                    if account_name:
+                        account_url = f"https://{account_name}.blob.core.windows.net"
+                        credential = DefaultAzureCredential()
+                        self.blob_service_client = BlobServiceClient(account_url, credential=credential)
+                    else:
+                        self.logger.warning("Azure Storage credentials not available, using local file system")
+                        self.using_local_storage = True
+            except Exception as e:
+                self.logger.warning(f"Error initializing Azure Storage: {str(e)}, using local file system")
+                self.using_local_storage = True
+        else:
+            self.logger.warning("Azure Storage SDK not available, using local file system")
+            self.using_local_storage = True
     
     def ensure_containers_exist(self):
         """Ensure that all required containers exist"""
+        if self.using_local_storage:
+            # Create local directories
+            try:
+                os.makedirs(os.path.join(self.local_storage_dir, self.config_container), exist_ok=True)
+                os.makedirs(os.path.join(self.local_storage_dir, self.blog_data_container), exist_ok=True)
+                os.makedirs(os.path.join(self.local_storage_dir, self.results_container), exist_ok=True)
+                self.logger.info("Local storage directories created")
+                return True
+            except Exception as e:
+                self.logger.error(f"Error creating local storage directories: {str(e)}")
+                return False
+        
         if not self.blob_service_client:
             self.logger.error("Blob service client not initialized")
             return False
@@ -68,7 +102,7 @@ class StorageService:
     
     def save_blob(self, container_name, blob_name, data, content_type="application/json"):
         """
-        Save data to a blob in Azure Storage.
+        Save data to a blob in Azure Storage or local file.
         
         Args:
             container_name (str): The name of the container
@@ -79,6 +113,27 @@ class StorageService:
         Returns:
             bool: True if successful, False otherwise
         """
+        # Convert data to JSON string if it's a dictionary
+        if isinstance(data, dict):
+            data = json.dumps(data, indent=2)
+        
+        if self.using_local_storage:
+            # Save to local file
+            try:
+                container_dir = os.path.join(self.local_storage_dir, container_name)
+                os.makedirs(container_dir, exist_ok=True)
+                file_path = os.path.join(container_dir, blob_name)
+                
+                with open(file_path, 'w', encoding='utf-8') as f:
+                    f.write(data)
+                
+                self.logger.info(f"Successfully saved local file: {file_path}")
+                return True
+            except Exception as e:
+                self.logger.error(f"Error saving local file {container_name}/{blob_name}: {str(e)}")
+                self.logger.debug(traceback.format_exc())
+                return False
+        
         if not self.blob_service_client:
             self.logger.error("Blob service client not initialized")
             return False
@@ -89,10 +144,6 @@ class StorageService:
             
             # Get blob client
             blob_client = container_client.get_blob_client(blob_name)
-            
-            # Convert data to JSON string if it's a dictionary
-            if isinstance(data, dict):
-                data = json.dumps(data, indent=2)
             
             # Set content settings
             content_settings = ContentSettings(content_type=content_type)
@@ -109,7 +160,7 @@ class StorageService:
     
     def get_blob(self, container_name, blob_name):
         """
-        Get data from a blob in Azure Storage.
+        Get data from a blob in Azure Storage or local file.
         
         Args:
             container_name (str): The name of the container
@@ -118,6 +169,22 @@ class StorageService:
         Returns:
             str: The blob data as a string, or None if not found
         """
+        if self.using_local_storage:
+            # Get from local file
+            try:
+                file_path = os.path.join(self.local_storage_dir, container_name, blob_name)
+                
+                if not os.path.exists(file_path):
+                    return None
+                
+                with open(file_path, 'r', encoding='utf-8') as f:
+                    data = f.read()
+                
+                return data
+            except Exception as e:
+                self.logger.error(f"Error getting local file {container_name}/{blob_name}: {str(e)}")
+                return None
+        
         if not self.blob_service_client:
             self.logger.error("Blob service client not initialized")
             return None
@@ -146,7 +213,7 @@ class StorageService:
     
     def list_blobs(self, container_name, prefix=None):
         """
-        List blobs in a container.
+        List blobs in a container or files in a local directory.
         
         Args:
             container_name (str): The name of the container
@@ -155,6 +222,25 @@ class StorageService:
         Returns:
             list: List of blob names, or empty list if error or none found
         """
+        if self.using_local_storage:
+            # List local files
+            try:
+                container_dir = os.path.join(self.local_storage_dir, container_name)
+                
+                if not os.path.exists(container_dir):
+                    return []
+                
+                files = os.listdir(container_dir)
+                
+                # Filter by prefix if provided
+                if prefix:
+                    files = [f for f in files if f.startswith(prefix)]
+                
+                return files
+            except Exception as e:
+                self.logger.error(f"Error listing local files in {container_name}: {str(e)}")
+                return []
+        
         if not self.blob_service_client:
             self.logger.error("Blob service client not initialized")
             return []
@@ -176,7 +262,7 @@ class StorageService:
     
     def delete_blob(self, container_name, blob_name):
         """
-        Delete a blob from Azure Storage.
+        Delete a blob from Azure Storage or local file.
         
         Args:
             container_name (str): The name of the container
@@ -185,6 +271,22 @@ class StorageService:
         Returns:
             bool: True if successful, False otherwise
         """
+        if self.using_local_storage:
+            # Delete local file
+            try:
+                file_path = os.path.join(self.local_storage_dir, container_name, blob_name)
+                
+                if not os.path.exists(file_path):
+                    return True
+                
+                os.remove(file_path)
+                
+                self.logger.info(f"Successfully deleted local file: {file_path}")
+                return True
+            except Exception as e:
+                self.logger.error(f"Error deleting local file {container_name}/{blob_name}: {str(e)}")
+                return False
+        
         if not self.blob_service_client:
             self.logger.error("Blob service client not initialized")
             return False
@@ -207,7 +309,7 @@ class StorageService:
     
     def save_blog_config(self, blog_config):
         """
-        Save a blog configuration to blob storage.
+        Save a blog configuration to storage.
         
         Args:
             blog_config (BlogConfig or dict): The blog configuration to save
@@ -225,7 +327,7 @@ class StorageService:
     
     def get_blog_config(self, blog_id):
         """
-        Get a blog configuration from blob storage.
+        Get a blog configuration from storage.
         
         Args:
             blog_id (str): The ID of the blog
@@ -245,9 +347,32 @@ class StorageService:
         
         return None
     
+    def get_all_blog_configs(self):
+        """
+        Get all blog configurations from storage.
+        
+        Returns:
+            list: List of blog configurations
+        """
+        # List all blog config files
+        blob_names = self.list_blobs(self.config_container, prefix="blog_")
+        
+        # Load each config
+        configs = []
+        for blob_name in blob_names:
+            data = self.get_blob(self.config_container, blob_name)
+            if data:
+                try:
+                    config = json.loads(data)
+                    configs.append(config)
+                except json.JSONDecodeError:
+                    self.logger.error(f"Error decoding JSON for blog config {blob_name}")
+        
+        return configs
+    
     def save_blog_task(self, task):
         """
-        Save a blog task to blob storage.
+        Save a blog task to storage.
         
         Args:
             task (BlogTask or dict): The blog task to save
@@ -265,7 +390,7 @@ class StorageService:
     
     def get_blog_task(self, task_id):
         """
-        Get a blog task from blob storage.
+        Get a blog task from storage.
         
         Args:
             task_id (str): The ID of the task
