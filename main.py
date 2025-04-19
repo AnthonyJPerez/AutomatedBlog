@@ -817,6 +817,7 @@ def research_topic_api():
     data = request.json
     topic = data.get('topic')
     num_sources = data.get('num_sources', 3)
+    blog_id = data.get('blog_id')
     
     if not topic:
         return jsonify({
@@ -825,9 +826,33 @@ def research_topic_api():
         }), 400
     
     try:
-        # Research the topic
+        # If blog context is provided, get the blog info
+        blog_context = None
+        if blog_id:
+            try:
+                # Get blog data to provide context
+                blog = get_blog_by_id(blog_id)
+                if blog:
+                    # Create a context dictionary with relevant blog information
+                    blog_context = {
+                        "theme": blog.get("theme"),
+                        "topics": blog.get("topics", []),
+                        "description": blog.get("description", ""),
+                        "tone": blog.get("tone", "informative"),
+                        "audience": blog.get("audience", "general")
+                    }
+                    logger.info(f"Researching topic '{topic}' within blog context: {blog.get('name')}")
+            except Exception as e:
+                logger.warning(f"Error getting blog context for ID {blog_id}: {str(e)}")
+                # Continue without context if blog info can't be loaded
+        
+        # Research the topic with optional blog context
         logger.info(f"Researching topic: {topic} with {num_sources} sources")
-        research_data = web_scraper_service.research_topic(topic, num_sources=num_sources)
+        research_data = web_scraper_service.research_topic(
+            topic, 
+            num_sources=num_sources,
+            context=blog_context
+        )
         
         # Add research timestamp
         research_data['research_date'] = datetime.datetime.now().isoformat()
@@ -864,14 +889,39 @@ def trending_topics_api_new():
             "message": "Web scraper service is not available"
         }), 500
     
-    # Get category and limit from request
+    # Get category, limit and blog_id from request
     category = request.args.get('category')
     limit = request.args.get('limit', 10, type=int)
+    blog_id = request.args.get('blog_id')
     
     try:
-        # Get trending topics
+        # If blog context is provided, get the blog info
+        blog_context = None
+        if blog_id:
+            try:
+                # Get blog data to provide context
+                blog = get_blog_by_id(blog_id)
+                if blog:
+                    # Create a context dictionary with relevant blog information
+                    blog_context = {
+                        "theme": blog.get("theme"),
+                        "topics": blog.get("topics", []),
+                        "description": blog.get("description", ""),
+                        "tone": blog.get("tone", "informative"),
+                        "audience": blog.get("audience", "general")
+                    }
+                    logger.info(f"Getting trending topics within blog context: {blog.get('name')}")
+            except Exception as e:
+                logger.warning(f"Error getting blog context for ID {blog_id}: {str(e)}")
+                # Continue without context if blog info can't be loaded
+        
+        # Get trending topics with optional blog context
         logger.info(f"Getting trending topics for category: {category} with limit: {limit}")
-        topics = web_scraper_service.get_trending_topics(category=category, limit=limit)
+        topics = web_scraper_service.get_trending_topics(
+            category=category, 
+            limit=limit,
+            context=blog_context
+        )
         
         return jsonify({
             "success": True,

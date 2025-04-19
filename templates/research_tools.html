@@ -624,6 +624,15 @@
             // Clear previous results
             document.getElementById('research-results').innerHTML = '<p class="text-muted">Researching topic, please wait...</p>';
             
+            // Check if a blog is selected for context
+            const blogContext = currentBlogId ? 
+                '<div class="alert alert-info"><i class="bi bi-info-circle"></i> Researching within the context of the selected blog.</div>' : 
+                '<div class="alert alert-warning"><i class="bi bi-exclamation-triangle"></i> No blog context selected. Research will be general.</div>';
+            
+            document.getElementById('research-results').innerHTML = 
+                `<p class="text-muted"><span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Researching topic "${topic}"...</p>
+                ${blogContext}`;
+                
             // Make API request
             fetch('/api/research-topic', {
                 method: 'POST',
@@ -632,7 +641,8 @@
                 },
                 body: JSON.stringify({
                     topic: topic,
-                    num_sources: parseInt(numSources)
+                    num_sources: parseInt(numSources),
+                    blog_id: currentBlogId || null
                 })
             })
             .then(response => response.json())
@@ -740,10 +750,22 @@
             // Clear previous results
             document.getElementById('topics-results').innerHTML = '<p class="text-muted">Loading trending topics...</p>';
             
+            // Check if a blog is selected for context
+            const blogContext = currentBlogId ? 
+                '<div class="alert alert-info mt-3"><i class="bi bi-info-circle"></i> Finding trending topics relevant to the selected blog.</div>' : 
+                '<div class="alert alert-warning mt-3"><i class="bi bi-exclamation-triangle"></i> No blog context selected. Results will be general trends.</div>';
+            
+            document.getElementById('topics-results').innerHTML = 
+                `<p class="text-muted"><span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Loading trending topics...</p>
+                ${blogContext}`;
+            
             // Make API request
             let url = `/api/trending-topics?limit=${limit}`;
             if (category) {
                 url += `&category=${category}`;
+            }
+            if (currentBlogId) {
+                url += `&blog_id=${currentBlogId}`;
             }
             
             fetch(url)
