@@ -762,10 +762,11 @@ def scrape_url():
             "message": "Web scraper service is not available"
         }), 500
     
-    # Get URL and scraping method from request
+    # Get URL, scraping method, and blog_id from request
     data = request.json
     url = data.get('url')
     method = data.get('method', 'general')
+    blog_id = data.get('blog_id')
     
     if not url:
         return jsonify({
@@ -774,28 +775,51 @@ def scrape_url():
         }), 400
     
     try:
-        # Get content from URL based on method
+        # Get blog context if specified
+        blog_context = None
+        if blog_id:
+            try:
+                blog_data = get_blog_by_id(blog_id)
+                if blog_data:
+                    blog_context = {
+                        'name': blog_data.get('name', ''),
+                        'theme': blog_data.get('theme', ''),
+                        'topics': blog_data.get('topics', []),
+                        'audience': blog_data.get('audience', ''),
+                        'tone': blog_data.get('tone', 'informative')
+                    }
+                    logger.info(f"Using blog context for URL scraping: {blog_context['name']}")
+            except Exception as e:
+                logger.warning(f"Could not get blog context for ID {blog_id}: {str(e)}")
+                # Continue without context
+        
+        # Get content from URL based on method and blog context
         logger.info(f"Scraping URL: {url} using method: {method}")
         
         if method == 'article':
-            content = web_scraper_service.extract_article(url)
-            
-            # Add article analysis
-            if content:
-                content['analysis'] = web_scraper_service.analyze_text(content.get('text', ''))
+            # Use newspaper3k for article extraction (with or without context)
+            if blog_context:
+                content = web_scraper_service.extract_with_newspaper_and_context(url, blog_context)
+                logger.info(f"Extracted article with blog context: {blog_context['name']}")
+            else:
+                content = web_scraper_service.extract_with_newspaper(url)
         else:
-            content = web_scraper_service.get_website_content(url)
-            
-            # Add general content analysis
-            if content:
-                content['analysis'] = web_scraper_service.analyze_text(content.get('content', ''))
+            # Use trafilatura for general content extraction (with or without context)
+            if blog_context:
+                content = web_scraper_service.extract_content_from_url_with_context(url, blog_context)
+                logger.info(f"Extracted content with blog context: {blog_context['name']}")
+            else:
+                content = web_scraper_service.extract_content_from_url(url)
         
         # Add extraction timestamp
-        content['extracted_at'] = datetime.datetime.now().isoformat()
+        if content:
+            content['extracted_at'] = datetime.datetime.now().isoformat()
         
         return jsonify({
             "success": True,
-            "data": content
+            "data": content,
+            "used_context_aware_method": blog_context is not None,
+            "blog_name": blog_context.get("name") if blog_context else None
         })
         
     except Exception as e:
@@ -836,6 +860,7 @@ def research_topic_api():
                 if blog:
                     # Create a context dictionary with relevant blog information
                     blog_context = {
+                        "name": blog.get("name", ""),
                         "theme": blog.get("theme"),
                         "topics": blog.get("topics", []),
                         "description": blog.get("description", ""),
@@ -871,7 +896,9 @@ def research_topic_api():
         
         return jsonify({
             "success": True,
-            "data": research_data
+            "data": research_data,
+            "used_context_aware_method": blog_context is not None,
+            "blog_name": blog_context.get("name") if blog_context else None
         })
         
     except Exception as e:
@@ -2066,7 +2093,7 @@ def rss_feed_api_v2():
         return jsonify({
             "success": True, 
             "data": feed_entries,
-            "used_blog_context": blog_context is not None,
+            "used_context_aware_method": blog_context is not None,
             "blog_name": blog_context.get('name') if blog_context else None
         })
     except Exception as e:
