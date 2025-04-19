@@ -5,7 +5,8 @@ import datetime
 import shutil
 import glob
 import traceback
-from flask import Flask, render_template, request, redirect, url_for, jsonify, flash, send_from_directory
+from flask import Flask, render_template, request, redirect, url_for, jsonify, flash, send_from_directory, g, session
+from src.shared.translation_service import TranslationService, SUPPORTED_LANGUAGES
 from src.shared.storage_service import StorageService
 from src.shared.research_service import ResearchService
 from src.shared.openai_service import OpenAIService
@@ -75,6 +76,35 @@ try:
 except Exception as e:
     logger.warning(f"Failed to initialize Web Scraper services: {str(e)}")
     web_scraper_service = None
+    
+# Initialize translation service
+try:
+    translation_service = TranslationService(openai_service=openai_service)
+    logger.info("Translation service initialized")
+except Exception as e:
+    logger.warning(f"Failed to initialize Translation service: {str(e)}")
+    translation_service = None
+    
+# Add language context processor
+@app.context_processor
+def inject_language_data():
+    """Inject language data into all templates"""
+    # Get language from session or detect from request headers
+    current_language = session.get('language', 'en')
+    
+    # If the lang parameter is in the URL, use that language
+    if request.args.get('lang') and request.args.get('lang') in SUPPORTED_LANGUAGES:
+        current_language = request.args.get('lang')
+        session['language'] = current_language
+    
+    # Get the current language name
+    current_language_name = SUPPORTED_LANGUAGES.get(current_language, 'English')
+    
+    return {
+        'current_language': current_language,
+        'current_language_name': current_language_name,
+        'languages': SUPPORTED_LANGUAGES
+    }
 
 @app.route('/')
 def index():

@@ -1,0 +1,16 @@
+<!-- Language switcher dropdown component -->
+<div class="dropdown">
+    <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" id="languageSwitcher" data-bs-toggle="dropdown" aria-expanded="false">
+        <i class="bi bi-translate me-1"></i>{{ current_language_name }}
+    </button>
+    <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="languageSwitcher">
+        {% for code, name in languages.items() %}
+            <li>
+                <a class="dropdown-item {% if current_language == code %}active{% endif %}" 
+                   href="{{ url_for(request.endpoint, **dict(request.view_args, **{'lang': code})) }}">
+                    {{ name }}
+                </a>
+            </li>
+        {% endfor %}
+    </ul>
+</div>

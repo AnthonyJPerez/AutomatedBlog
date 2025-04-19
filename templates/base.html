@@ -21,6 +21,10 @@
                 </button>
                 <div class="collapse navbar-collapse" id="navbarNav">
                     <ul class="navbar-nav ms-auto">
+                        <!-- Language Switcher -->
+                        <li class="nav-item me-2">
+                            {% include 'components/language_switcher.html' %}
+                        </li>
                         <li class="nav-item">
                             <a class="nav-link" href="{{ url_for('index') }}">Dashboard</a>
                         </li>
