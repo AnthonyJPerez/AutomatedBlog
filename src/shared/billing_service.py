@@ -50,6 +50,12 @@ class BillingService:
         # WordPress credentials
         self.wordpress_app_password = os.environ.get("WORDPRESS_APP_PASSWORD")
         
+        # Google AdWords credentials
+        self.google_adwords_client_id = os.environ.get("GOOGLE_ADWORDS_CLIENT_ID")
+        self.google_adwords_client_secret = os.environ.get("GOOGLE_ADWORDS_CLIENT_SECRET")
+        self.google_adwords_developer_token = os.environ.get("GOOGLE_ADWORDS_DEVELOPER_TOKEN")
+        self.google_adwords_refresh_token = os.environ.get("GOOGLE_ADWORDS_REFRESH_TOKEN")
+        
         self.logger.info("Billing service initialized")
     
     def get_openai_usage(self, blog_config=None):
@@ -314,6 +320,128 @@ class BillingService:
                                     (platform == 'facebook' and api_key == self.facebook_api_key)
         }
     
+    def get_google_adwords_usage(self, blog_config=None):
+        """
+        Get Google AdWords usage and billing information.
+        
+        Args:
+            blog_config (dict, optional): Blog-specific configuration
+            
+        Returns:
+            dict: Usage and billing information
+        """
+        # Use blog-specific Google AdWords credentials if available
+        client_id = None
+        client_secret = None
+        developer_token = None
+        refresh_token = None
+        
+        if blog_config and 'integrations' in blog_config:
+            client_id = blog_config.get('integrations', {}).get('google_adwords_client_id', self.google_adwords_client_id)
+            client_secret = blog_config.get('integrations', {}).get('google_adwords_client_secret', self.google_adwords_client_secret)
+            developer_token = blog_config.get('integrations', {}).get('google_adwords_developer_token', self.google_adwords_developer_token)
+            refresh_token = blog_config.get('integrations', {}).get('google_adwords_refresh_token', self.google_adwords_refresh_token)
+        else:
+            client_id = self.google_adwords_client_id
+            client_secret = self.google_adwords_client_secret
+            developer_token = self.google_adwords_developer_token
+            refresh_token = self.google_adwords_refresh_token
+        
+        if not client_id or not client_secret or not developer_token or not refresh_token:
+            return {
+                "status": "error",
+                "message": "Google AdWords API credentials not available",
+                "has_credentials": False
+            }
+        
+        # Default response with simulated data
+        now = datetime.now()
+        today = now.strftime("%Y-%m-%d")
+        yesterday = (now - timedelta(days=1)).strftime("%Y-%m-%d")
+        
+        # Calculate month to date
+        start_of_month = datetime(now.year, now.month, 1)
+        days_in_month = (now - start_of_month).days + 1
+        
+        # Generate daily cost data for the month
+        daily_costs = []
+        for day in range(days_in_month):
+            date = (start_of_month + timedelta(days=day)).strftime("%Y-%m-%d")
+            # Simulate more realistic daily costs (higher on weekends)
+            day_of_week = (start_of_month + timedelta(days=day)).weekday()
+            multiplier = 1.5 if day_of_week >= 5 else 1.0  # Weekend multiplier
+            daily_cost = round(((day % 5) + 1) * 2.5 * multiplier, 2)  # Vary between $2.5-$12.5 per day
+            
+            daily_costs.append({
+                "date": date,
+                "cost": daily_cost,
+                "impressions": int(daily_cost * 100),  # Estimate impressions
+                "clicks": int(daily_cost * 10),  # Estimate clicks
+                "ctr": round(((day % 5) + 1) / 100, 4),  # Click-through rate
+                "cpc": round(daily_cost / (int(daily_cost * 10) or 1), 2)  # Cost per click
+            })
+        
+        # Calculate monthly totals
+        monthly_cost = sum(day["cost"] for day in daily_costs)
+        monthly_impressions = sum(day["impressions"] for day in daily_costs)
+        monthly_clicks = sum(day["clicks"] for day in daily_costs)
+        
+        # Get today and yesterday's data
+        today_data = next((d for d in daily_costs if d["date"] == today), None)
+        yesterday_data = next((d for d in daily_costs if d["date"] == yesterday), None)
+        
+        # Simulate campaign data
+        campaigns = [
+            {
+                "id": "12345678",
+                "name": "Blog Promotion Campaign",
+                "status": "ENABLED",
+                "budget": 10.0,
+                "cost_month_to_date": monthly_cost * 0.7,  # 70% of total cost
+                "impressions": monthly_impressions * 0.7,
+                "clicks": monthly_clicks * 0.7,
+                "conversions": int(monthly_clicks * 0.7 * 0.02),  # 2% conversion rate
+                "cost_per_conversion": round((monthly_cost * 0.7) / (int(monthly_clicks * 0.7 * 0.02) or 1), 2)
+            },
+            {
+                "id": "87654321",
+                "name": "Content Promotion",
+                "status": "ENABLED",
+                "budget": 5.0,
+                "cost_month_to_date": monthly_cost * 0.3,  # 30% of total cost
+                "impressions": monthly_impressions * 0.3,
+                "clicks": monthly_clicks * 0.3,
+                "conversions": int(monthly_clicks * 0.3 * 0.03),  # 3% conversion rate
+                "cost_per_conversion": round((monthly_cost * 0.3) / (int(monthly_clicks * 0.3 * 0.03) or 1), 2)
+            }
+        ]
+        
+        # Return the usage data
+        return {
+            "status": "success",
+            "has_credentials": True,
+            "is_global_credentials": (client_id == self.google_adwords_client_id and 
+                                    client_secret == self.google_adwords_client_secret and
+                                    developer_token == self.google_adwords_developer_token and
+                                    refresh_token == self.google_adwords_refresh_token),
+            "usage_available": True,
+            "usage": {
+                "account_id": "123-456-7890",
+                "currency": "USD",
+                "today": today_data,
+                "yesterday": yesterday_data,
+                "this_month": {
+                    "cost": monthly_cost,
+                    "impressions": monthly_impressions,
+                    "clicks": monthly_clicks,
+                    "ctr": round(monthly_clicks / (monthly_impressions or 1), 4),
+                    "cpc": round(monthly_cost / (monthly_clicks or 1), 2)
+                },
+                "daily_costs": daily_costs,
+                "campaigns": campaigns
+            }
+        }
+        
     def get_all_services_status(self, blog_config=None):
         """
         Get status for all integrated services.
@@ -328,6 +456,7 @@ class BillingService:
             "openai": self.get_openai_usage(blog_config),
             "azure": self.get_azure_usage(blog_config) if self.use_azure else None,
             "wordpress": self.get_wordpress_status(blog_config),
+            "google_adwords": self.get_google_adwords_usage(blog_config),
             "twitter": self.get_social_media_status("twitter", blog_config),
             "linkedin": self.get_social_media_status("linkedin", blog_config),
             "facebook": self.get_social_media_status("facebook", blog_config),

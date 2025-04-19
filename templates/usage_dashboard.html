@@ -45,6 +45,17 @@
                             <span id="wordpress-credits" class="badge bg-info">$0.00</span>
                         </div>
                     </div>
+                    
+                    <div class="mb-4">
+                        <h6 class="text-muted">Google AdWords</h6>
+                        <div class="progress mb-2">
+                            <div id="adwords-usage-bar" class="progress-bar bg-danger" role="progressbar" style="width: 0%"></div>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span id="adwords-usage-text">0 / 0 campaigns</span>
+                            <span id="adwords-credits" class="badge bg-info">$0.00</span>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -85,6 +96,108 @@
                                 <div class="card-body text-center">
                                     <h3 id="total-published">0</h3>
                                     <p class="text-muted mb-0">Published Posts</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Cost Summary</h5>
+                </div>
+                <div class="card-body">
+                    <ul class="nav nav-tabs" id="costTabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" id="daily-tab" data-bs-toggle="tab" data-bs-target="#daily" type="button" role="tab" aria-controls="daily" aria-selected="true">Daily</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="monthly-tab" data-bs-toggle="tab" data-bs-target="#monthly" type="button" role="tab" aria-controls="monthly" aria-selected="false">Monthly</button>
+                        </li>
+                    </ul>
+                    <div class="tab-content pt-3" id="costTabContent">
+                        <div class="tab-pane fade show active" id="daily" role="tabpanel" aria-labelledby="daily-tab">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <h6>Today's Costs</h6>
+                                    <div class="table-responsive">
+                                        <table class="table table-sm">
+                                            <thead>
+                                                <tr>
+                                                    <th>Service</th>
+                                                    <th>Cost</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <tr>
+                                                    <td>OpenAI API</td>
+                                                    <td id="daily-openai-cost">$0.00</td>
+                                                </tr>
+                                                <tr>
+                                                    <td>Google AdWords</td>
+                                                    <td id="daily-adwords-cost">$0.00</td>
+                                                </tr>
+                                                <tr>
+                                                    <td>Image Generation</td>
+                                                    <td id="daily-image-cost">$0.00</td>
+                                                </tr>
+                                                <tr class="table-active">
+                                                    <td><strong>Total</strong></td>
+                                                    <td id="daily-total-cost"><strong>$0.00</strong></td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div id="daily-cost-chart-container" style="height: 250px;">
+                                        <canvas id="daily-cost-chart"></canvas>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="tab-pane fade" id="monthly" role="tabpanel" aria-labelledby="monthly-tab">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <h6>Month-to-Date Costs</h6>
+                                    <div class="table-responsive">
+                                        <table class="table table-sm">
+                                            <thead>
+                                                <tr>
+                                                    <th>Service</th>
+                                                    <th>Cost</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <tr>
+                                                    <td>OpenAI API</td>
+                                                    <td id="monthly-openai-cost">$0.00</td>
+                                                </tr>
+                                                <tr>
+                                                    <td>Google AdWords</td>
+                                                    <td id="monthly-adwords-cost">$0.00</td>
+                                                </tr>
+                                                <tr>
+                                                    <td>Image Generation</td>
+                                                    <td id="monthly-image-cost">$0.00</td>
+                                                </tr>
+                                                <tr class="table-active">
+                                                    <td><strong>Total</strong></td>
+                                                    <td id="monthly-total-cost"><strong>$0.00</strong></td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div id="monthly-cost-chart-container" style="height: 250px;">
+                                        <canvas id="monthly-cost-chart"></canvas>
+                                    </div>
                                 </div>
                             </div>
                         </div>
