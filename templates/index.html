@@ -85,7 +85,59 @@
     <div class="col-md-12">
         <div class="card">
             <div class="card-header">
-                <h4 class="mb-0">Content Generation Runs</h4>
+                <h4 class="mb-0">Your Blogs</h4>
+            </div>
+            <div class="card-body">
+                {% if blogs %}
+                <div class="row row-cols-1 row-cols-md-2 g-4">
+                    {% for blog in blogs %}
+                    <div class="col">
+                        <div class="card h-100">
+                            <div class="card-header bg-light">
+                                <h5 class="card-title mb-0">{{ blog.name }}</h5>
+                            </div>
+                            <div class="card-body">
+                                <h6 class="card-subtitle mb-2 text-muted">Theme: {{ blog.theme }}</h6>
+                                <p class="card-text">Created: {{ blog.created_at }}</p>
+                                <div class="d-flex mb-2">
+                                    {% if blog.is_active %}
+                                    <span class="badge bg-success me-2">Active</span>
+                                    {% else %}
+                                    <span class="badge bg-danger me-2">Inactive</span>
+                                    {% endif %}
+                                    <span class="badge bg-info">{{ blog.frequency }} posts</span>
+                                </div>
+                                {% if blog.wordpress_url %}
+                                <p class="card-text small"><i class="bi bi-wordpress"></i> {{ blog.wordpress_url }}</p>
+                                {% endif %}
+                            </div>
+                            <div class="card-footer">
+                                <a href="{{ url_for('blog_detail', blog_id=blog.id) }}" class="btn btn-primary">
+                                    <i class="bi bi-eye"></i> View Details
+                                </a>
+                                <a href="{{ url_for('generate_content', blog_id=blog.id) }}" class="btn btn-success">
+                                    <i class="bi bi-plus-circle"></i> Generate Content
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="alert alert-info">
+                    <p>No blogs found. <a href="{{ url_for('setup') }}">Set up your first blog</a> to start generating content.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header">
+                <h4 class="mb-0">Recent Content Generation Runs</h4>
             </div>
             <div class="card-body">
                 {% if runs %}
@@ -93,6 +145,7 @@
                     <table class="table table-striped">
                         <thead>
                             <tr>
+                                <th>Blog</th>
                                 <th>Run ID</th>
                                 <th>Timestamp</th>
                                 <th>Status</th>
@@ -102,6 +155,7 @@
                         <tbody>
                             {% for run in runs %}
                             <tr>
+                                <td>{{ run.blog_name|default('Unknown') }}</td>
                                 <td>{{ run.id }}</td>
                                 <td>{{ run.timestamp_str }}</td>
                                 <td>
@@ -120,7 +174,18 @@
                                     {% endif %}
                                 </td>
                                 <td>
-                                    <a href="{{ url_for('blog_detail', blog_id=run.id) }}" class="btn btn-sm btn-info">View</a>
+                                    {% if run.blog_id %}
+                                    <a href="{{ url_for('blog_detail', blog_id=run.blog_id) }}" class="btn btn-sm btn-outline-primary">
+                                        <i class="bi bi-journals"></i> View Blog
+                                    </a>
+                                    {% if run.content_available %}
+                                    <a href="{{ url_for('view_content', blog_id=run.blog_id, run_id=run.id) }}" class="btn btn-sm btn-info">
+                                        <i class="bi bi-file-text"></i> View Content
+                                    </a>
+                                    {% endif %}
+                                    {% else %}
+                                    <button class="btn btn-sm btn-outline-secondary" disabled>Not Available</button>
+                                    {% endif %}
                                 </td>
                             </tr>
                             {% endfor %}
@@ -129,7 +194,7 @@
                 </div>
                 {% else %}
                 <div class="alert alert-info">
-                    <p>No content generation runs found. <a href="{{ url_for('setup') }}">Set up your blog</a> to start generating content.</p>
+                    <p>No content generation runs found. Generate content for your blogs to see results here.</p>
                 </div>
                 {% endif %}
             </div>

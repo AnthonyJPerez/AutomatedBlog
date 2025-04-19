@@ -91,13 +91,17 @@ def index():
                         except Exception as e:
                             logger.warning(f"Could not parse timestamp from run_id {run_id}: {str(e)}")
                     
+                    # Check if content is available for the run
+                    content_available = os.path.exists(os.path.join(run_path, "content.md"))
+                    
                     runs.append({
                         'id': run_id,
                         'blog_id': blog_id,
                         'blog_name': blog['name'],
                         'status': status,
                         'timestamp': timestamp,
-                        'timestamp_str': timestamp.strftime('%Y-%m-%d %H:%M:%S') if timestamp else run_id
+                        'timestamp_str': timestamp.strftime('%Y-%m-%d %H:%M:%S') if timestamp else run_id,
+                        'content_available': content_available
                     })
         
         # Sort runs by timestamp (newest first)
