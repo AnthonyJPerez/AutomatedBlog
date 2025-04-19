@@ -1,0 +1,17 @@
+{
+  "status": "completed",
+  "timestamp": "2025-04-19 09:33:04",
+  "topic": "Expert Tips for Mastering marketing analytics in Your Digital Marketing Journey",
+  "theme": "Digital Marketing",
+  "content_length": 45,
+  "has_seo_recommendations": true,
+  "wordpress_publishing": "pending",
+  "image_generation": {
+    "enabled": true,
+    "count": 1,
+    "style": "natural",
+    "used_gpt4o_descriptions": false,
+    "featured_image": false,
+    "section_images": false
+  }
+}

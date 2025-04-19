@@ -1,0 +1,206 @@
+{
+  "theme": "Digital Marketing",
+  "timestamp": "2025-04-19 09:32:56",
+  "trending_topics": [
+    {
+      "keyword": "marketing analytics",
+      "title": "Expert Tips for Mastering marketing analytics in Your Digital Marketing Journey",
+      "trend_score": 95,
+      "trend_type": "suggestion",
+      "source": "system_generated",
+      "web_research": {
+        "related_keywords": [],
+        "summary": null,
+        "sources": [],
+        "sentiment": null,
+        "related_trends": [
+          {
+            "topic": "Creative Hobbies",
+            "score": 98.0,
+            "change": -11.5
+          },
+          {
+            "topic": "Fitness at Home",
+            "score": 92.8,
+            "change": -12.2
+          },
+          {
+            "topic": "Cybersecurity",
+            "score": 92.5,
+            "change": -13.4
+          },
+          {
+            "topic": "Nutrition",
+            "score": 87.0,
+            "change": -16.6
+          },
+          {
+            "topic": "Quantum Computing",
+            "score": 74.4,
+            "change": 17.2
+          }
+        ]
+      }
+    },
+    {
+      "keyword": "marketing automation",
+      "title": "Understanding marketing automation: A Deep Dive",
+      "trend_score": 93,
+      "trend_type": "suggestion",
+      "source": "system_generated",
+      "web_research": {
+        "related_keywords": [],
+        "summary": null,
+        "sources": [],
+        "sentiment": null,
+        "related_trends": [
+          {
+            "topic": "Financial Independence",
+            "score": 99.5,
+            "change": 12.3
+          },
+          {
+            "topic": "Preventive Care",
+            "score": 92.0,
+            "change": -16.8
+          },
+          {
+            "topic": "E-commerce",
+            "score": 90.9,
+            "change": 11.6
+          },
+          {
+            "topic": "Blockchain",
+            "score": 88.0,
+            "change": 2.3
+          },
+          {
+            "topic": "Travel Trends",
+            "score": 70.6,
+            "change": 14.8
+          }
+        ]
+      }
+    },
+    {
+      "keyword": "brand building",
+      "title": "The Future of brand building in Digital Marketing",
+      "trend_score": 88,
+      "trend_type": "suggestion",
+      "source": "system_generated",
+      "web_research": {
+        "related_keywords": [],
+        "summary": null,
+        "sources": [],
+        "sentiment": null,
+        "related_trends": [
+          {
+            "topic": "Gut Health",
+            "score": 94.0,
+            "change": 10.4
+          },
+          {
+            "topic": "Personal Development",
+            "score": 92.9,
+            "change": -12.6
+          },
+          {
+            "topic": "Edge Computing",
+            "score": 92.8,
+            "change": -17.1
+          },
+          {
+            "topic": "Creative Hobbies",
+            "score": 86.3,
+            "change": -13.9
+          },
+          {
+            "topic": "Robotics",
+            "score": 72.2,
+            "change": -5.1
+          }
+        ]
+      }
+    },
+    {
+      "keyword": "digital marketing",
+      "title": "Exploring the Connection Between digital marketing and Digital Marketing",
+      "trend_score": 88,
+      "trend_type": "suggestion",
+      "source": "system_generated",
+      "web_research": {
+        "related_keywords": [],
+        "summary": null,
+        "sources": [],
+        "sentiment": null,
+        "related_trends": [
+          {
+            "topic": "Cloud Computing",
+            "score": 96.9,
+            "change": -3.4
+          },
+          {
+            "topic": "Remote Work",
+            "score": 85.7,
+            "change": -4.3
+          },
+          {
+            "topic": "Culinary Arts",
+            "score": 77.7,
+            "change": 13.3
+          },
+          {
+            "topic": "Work-Life Balance",
+            "score": 71.8,
+            "change": -1.6
+          },
+          {
+            "topic": "Preventive Care",
+            "score": 70.3,
+            "change": -5.3
+          }
+        ]
+      }
+    },
+    {
+      "keyword": "seo",
+      "title": "The Ultimate Guide to seo",
+      "trend_score": 84,
+      "trend_type": "suggestion",
+      "source": "system_generated",
+      "web_research": {
+        "related_keywords": [],
+        "summary": null,
+        "sources": [],
+        "sentiment": null,
+        "related_trends": [
+          {
+            "topic": "Cloud Computing",
+            "score": 92.3,
+            "change": -8.5
+          },
+          {
+            "topic": "Personal Finance",
+            "score": 87.8,
+            "change": -9.7
+          },
+          {
+            "topic": "Customer Experience",
+            "score": 73.8,
+            "change": -7.4
+          },
+          {
+            "topic": "Gut Health",
+            "score": 73.1,
+            "change": 12.7
+          },
+          {
+            "topic": "Digital Transformation",
+            "score": 70.6,
+            "change": 4.3
+          }
+        ]
+      }
+    }
+  ]
+}
