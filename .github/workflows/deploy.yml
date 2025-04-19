@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
 
 env:
-  AZURE_FUNCTIONAPP_NAME: 'blogauto-${{ secrets.ENVIRONMENT || 'dev' }}-function'
+  AZURE_FUNCTIONAPP_NAME: ${{ format('blogauto-{0}-function', secrets.ENVIRONMENT || 'dev') }}
   AZURE_FUNCTIONAPP_PACKAGE_PATH: 'src'
   PYTHON_VERSION: '3.9'
 
@@ -35,7 +35,7 @@ jobs:
         echo "Function App Name: ${{ env.AZURE_FUNCTIONAPP_NAME }}"
         echo "Package Path: ${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}"
         echo "Python Version: ${{ env.PYTHON_VERSION }}"
-        echo "Environment: ${{ secrets.ENVIRONMENT || 'dev' }}"
+        echo "Environment: ${{ secrets.ENVIRONMENT != '' && secrets.ENVIRONMENT || 'dev' }}"
 
     - name: 'Deploy Bicep Infrastructure'
       uses: azure/login@v1
@@ -48,7 +48,7 @@ jobs:
         subscriptionId: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
         resourceGroupName: ${{ secrets.AZURE_RESOURCE_GROUP }}
         template: ./infra/main.bicep
-        parameters: projectName=${{ secrets.PROJECT_NAME }} environment=${{ secrets.ENVIRONMENT }}
+        parameters: projectName="${{ secrets.PROJECT_NAME }}" environment="${{ secrets.ENVIRONMENT != '' && secrets.ENVIRONMENT || 'dev' }}"
 
     # Wait for the Function App to be created
     - name: 'Wait for Function App to be ready'
