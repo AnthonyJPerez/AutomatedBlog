@@ -1,93 +1,155 @@
 {% extends 'base.html' %}
 
-{% block title %}Multi-Blog Automation - Dashboard{% endblock %}
+{% block title %}Dashboard - Blog Automation Platform{% endblock %}
 
 {% block content %}
-<h1 class="mb-4">Blog Automation Dashboard</h1>
-
 <div class="row mb-4">
     <div class="col-md-12">
         <div class="card">
             <div class="card-header d-flex justify-content-between align-items-center">
-                <h5 class="card-title mb-0">Your Blogs</h5>
-                <a href="{{ url_for('setup') }}" class="btn btn-primary">Create New Blog</a>
+                <h4 class="mb-0">Dashboard</h4>
+                <a href="{{ url_for('setup') }}" class="btn btn-primary">New Blog Setup</a>
             </div>
             <div class="card-body">
-                {% if blogs and blogs|length > 0 %}
-                    <div class="table-responsive">
-                        <table class="table table-hover">
-                            <thead>
-                                <tr>
-                                    <th>Blog Name</th>
-                                    <th>Theme</th>
-                                    <th>Publishing</th>
-                                    <th>Last Published</th>
-                                    <th>Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for blog in blogs %}
-                                <tr>
-                                    <td>{{ blog.blog_name }}</td>
-                                    <td>{{ blog.theme }}</td>
-                                    <td>{{ blog.publishing_frequency|capitalize }}</td>
-                                    <td>
-                                        {% if blog.last_published_date %}
-                                            {{ blog.last_published_date.split('T')[0] if 'T' in blog.last_published_date else blog.last_published_date }}
-                                        {% else %}
-                                            Never
-                                        {% endif %}
-                                    </td>
-                                    <td>
-                                        <a href="{{ url_for('blog_detail', blog_id=blog.blog_id) }}" class="btn btn-sm btn-outline-info">View</a>
-                                        <form method="POST" action="{{ url_for('generate_content', blog_id=blog.blog_id) }}" class="d-inline">
-                                            <button type="submit" class="btn btn-sm btn-outline-primary">Generate Content</button>
-                                        </form>
-                                    </td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                {% else %}
-                    <div class="alert alert-info mb-0">
-                        <p class="mb-0">You haven't created any blogs yet. <a href="{{ url_for('setup') }}">Create your first blog</a> to get started.</p>
-                    </div>
-                {% endif %}
+                <h5>Configuration Status</h5>
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Configuration File</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>topics.json</td>
+                                <td>
+                                    {% if config_files.topics_json %}
+                                    <span class="badge bg-success">Present</span>
+                                    {% else %}
+                                    <span class="badge bg-danger">Missing</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>theme.json</td>
+                                <td>
+                                    {% if config_files.theme_json %}
+                                    <span class="badge bg-success">Present</span>
+                                    {% else %}
+                                    <span class="badge bg-danger">Missing</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>frequency.json</td>
+                                <td>
+                                    {% if config_files.frequency_json %}
+                                    <span class="badge bg-success">Present</span>
+                                    {% else %}
+                                    <span class="badge bg-danger">Missing</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>ready.json</td>
+                                <td>
+                                    {% if config_files.ready_json %}
+                                    <span class="badge bg-success">Present</span>
+                                    {% else %}
+                                    <span class="badge bg-danger">Missing</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>bootstrap.json</td>
+                                <td>
+                                    {% if config_files.bootstrap_json %}
+                                    <span class="badge bg-success">Present</span>
+                                    {% else %}
+                                    <span class="badge bg-danger">Missing</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>bootstrap.done.json</td>
+                                <td>
+                                    {% if config_files.bootstrap_done_json %}
+                                    <span class="badge bg-success">Present</span>
+                                    {% else %}
+                                    <span class="badge bg-warning">Pending</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>DomainNames.json</td>
+                                <td>
+                                    {% if config_files.DomainNames_json %}
+                                    <span class="badge bg-success">Present</span>
+                                    {% else %}
+                                    <span class="badge bg-warning">Pending</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
     </div>
 </div>
 
 <div class="row">
-    <div class="col-md-6">
+    <div class="col-md-12">
         <div class="card">
             <div class="card-header">
-                <h5 class="card-title mb-0">Recent Content</h5>
+                <h4 class="mb-0">Content Generation Runs</h4>
             </div>
             <div class="card-body">
-                <p class="text-muted">Create blogs to see recent content generation activity here.</p>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-6">
-        <div class="card">
-            <div class="card-header">
-                <h5 class="card-title mb-0">System Status</h5>
-            </div>
-            <div class="card-body">
-                <div class="d-flex align-items-center mb-3">
-                    <div class="bg-success rounded-circle me-2" style="width: 10px; height: 10px;"></div>
-                    <span>OpenAI Service: Connected</span>
+                {% if runs %}
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Run ID</th>
+                                <th>Timestamp</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for run in runs %}
+                            <tr>
+                                <td>{{ run.id }}</td>
+                                <td>{{ run.timestamp_str }}</td>
+                                <td>
+                                    {% if run.status == 'completed' %}
+                                    <span class="badge bg-success">Completed</span>
+                                    {% elif run.status == 'published' %}
+                                    <span class="badge bg-info">Published</span>
+                                    {% elif run.status == 'content-generated' %}
+                                    <span class="badge bg-primary">Content Generated</span>
+                                    {% elif run.status == 'researched' %}
+                                    <span class="badge bg-secondary">Research Done</span>
+                                    {% elif run.status == 'started' %}
+                                    <span class="badge bg-warning">Started</span>
+                                    {% else %}
+                                    <span class="badge bg-danger">Unknown</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <a href="{{ url_for('blog_detail', blog_id=run.id) }}" class="btn btn-sm btn-info">View</a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
                 </div>
-                <div class="d-flex align-items-center mb-3">
-                    <div class="bg-success rounded-circle me-2" style="width: 10px; height: 10px;"></div>
-                    <span>Storage Service: Connected</span>
+                {% else %}
+                <div class="alert alert-info">
+                    <p>No content generation runs found. <a href="{{ url_for('setup') }}">Set up your blog</a> to start generating content.</p>
                 </div>
-                <div class="d-flex align-items-center">
-                    <div class="bg-success rounded-circle me-2" style="width: 10px; height: 10px;"></div>
-                    <span>Configuration Service: Connected</span>
-                </div>
+                {% endif %}
             </div>
         </div>
     </div>

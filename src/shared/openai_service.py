@@ -1,204 +1,334 @@
 import os
 import json
 import logging
-import time
-from openai import OpenAI
+import openai
+from azure.identity import DefaultAzureCredential
+from azure.keyvault.secrets import SecretClient
 
 class OpenAIService:
     """
-    Service for generating content using OpenAI.
-    Handles content generation, outline creation, and SEO metadata generation.
+    Service for generating content using OpenAI's models.
+    Supports both direct OpenAI API and Azure OpenAI Service.
     """
     
     def __init__(self):
-        self.logger = logging.getLogger('openai_service')
+        """Initialize the OpenAI service with API credentials."""
+        # Configure logger
+        self.logger = logging.getLogger('OpenAIService')
         
-        # Get OpenAI API key from environment variables
+        # Try to get API key from environment variable first
         api_key = os.environ.get("OPENAI_API_KEY")
         
+        # If not in environment, try to get from Key Vault
         if not api_key:
-            self.logger.error("OpenAI API key not found in environment variables")
+            key_vault_name = os.environ.get("KEY_VAULT_NAME")
+            if key_vault_name:
+                try:
+                    # Use managed identity to access Key Vault
+                    credential = DefaultAzureCredential()
+                    key_vault_uri = f"https://{key_vault_name}.vault.azure.net/"
+                    secret_client = SecretClient(vault_url=key_vault_uri, credential=credential)
+                    
+                    # Get OpenAI API key from Key Vault
+                    api_key = secret_client.get_secret("OpenAIApiKey").value
+                except Exception as e:
+                    self.logger.error(f"Error retrieving OpenAI API key from Key Vault: {str(e)}")
         
-        # Initialize OpenAI client
-        self.client = OpenAI(api_key=api_key)
+        # Check if using Azure OpenAI or direct OpenAI
+        self.use_azure = os.environ.get("OPENAI_API_TYPE") == "azure"
         
-        # the newest OpenAI model is "gpt-4o" which was released May 13, 2024.
-        # do not change this unless explicitly requested by the user
-        self.model = "gpt-4o"
+        if self.use_azure:
+            # Azure OpenAI setup
+            openai.api_type = "azure"
+            openai.api_base = os.environ.get("OPENAI_API_BASE")
+            openai.api_version = os.environ.get("OPENAI_API_VERSION", "2023-03-15-preview")
+            openai.api_key = api_key
+        else:
+            # Direct OpenAI setup
+            openai.api_key = api_key
+        
+        # Default models
+        self.draft_model = os.environ.get("OPENAI_DRAFT_MODEL", "gpt-3.5-turbo")
+        self.polish_model = os.environ.get("OPENAI_POLISH_MODEL", "gpt-4o")  # Using the newest model by default
+        
+        self.logger.info(f"OpenAI service initialized. Using Azure: {self.use_azure}")
     
-    def generate_outline(self, topic, theme, tone, target_audience):
+    def _get_completion(self, prompt, model, max_tokens=2000, temperature=0.7):
         """
-        Generate an outline for a blog post based on the given topic and parameters.
+        Get completion from OpenAI API.
         
         Args:
-            topic (str): The topic to generate an outline for
-            theme (str): The thematic focus of the blog
-            tone (str): The desired tone of the content
-            target_audience (str): The intended audience for the content
+            prompt (str): The text prompt to generate from
+            model (str): The model to use
+            max_tokens (int): Maximum number of tokens to generate
+            temperature (float): Creativity parameter (0.0-1.0)
             
         Returns:
-            list: A structured outline for the blog post
+            str: The generated text
         """
-        # Define the system message for the outline generation
-        system_message = (
-            "You are a professional content outline generator. "
-            "Create a detailed, well-structured outline for a blog post. "
-            "The outline should include an introduction, 3-5 main sections with subsections, and a conclusion. "
-            "Return the outline as a JSON object with this structure: "
-            "{'sections': [{'title': 'section title', 'subsections': ['subsection 1', 'subsection 2']}]}"
-        )
-        
-        # Define the user message with all the parameters
-        user_message = (
-            f"Generate a detailed outline for a blog post about '{topic}'. "
-            f"The blog's theme is '{theme}' and should be written in a '{tone}' tone. "
-            f"The target audience is '{target_audience}'. "
-            f"Make the outline engaging and comprehensive, covering all important aspects of the topic."
-        )
-        
-        # Make the API call with retries
-        max_retries = 3
-        for attempt in range(max_retries):
-            try:
-                response = self.client.chat.completions.create(
-                    model=self.model,
-                    messages=[
-                        {"role": "system", "content": system_message},
-                        {"role": "user", "content": user_message}
-                    ],
-                    response_format={"type": "json_object"},
-                    temperature=0.7
+        try:
+            if self.use_azure:
+                # Azure OpenAI requires deployment name as model
+                response = openai.ChatCompletion.create(
+                    engine=model,  # Azure deployment name
+                    messages=[{
+                        "role": "system",
+                        "content": "You are a professional content writer with expertise in SEO and blog writing."
+                    }, {
+                        "role": "user",
+                        "content": prompt
+                    }],
+                    max_tokens=max_tokens,
+                    temperature=temperature
                 )
+            else:
+                # Direct OpenAI
+                response = openai.ChatCompletion.create(
+                    model=model,
+                    messages=[{
+                        "role": "system",
+                        "content": "You are a professional content writer with expertise in SEO and blog writing."
+                    }, {
+                        "role": "user",
+                        "content": prompt
+                    }],
+                    max_tokens=max_tokens,
+                    temperature=temperature
+                )
+            
+            return response.choices[0].message.content.strip()
+        
+        except Exception as e:
+            self.logger.error(f"Error in OpenAI API call: {str(e)}")
+            raise
+    
+    def generate_outline(self, topic, theme, tone="professional", target_audience="general"):
+        """
+        Generate a content outline for a given topic.
+        
+        Args:
+            topic (str): The topic to create an outline for
+            theme (str): The blog theme for context
+            tone (str): The desired tone of content
+            target_audience (str): The target audience
+            
+        Returns:
+            dict: An outline structure with sections
+        """
+        prompt = f"""
+        Create a detailed outline for a blog post about "{topic}".
+        Theme/context: {theme}
+        Tone: {tone}
+        Target audience: {target_audience}
+        
+        Return the outline in the following JSON structure:
+        {{
+            "title": "Engaging title for the blog post",
+            "sections": [
+                {{
+                    "title": "Section title",
+                    "points": ["Key point 1", "Key point 2", ...]
+                }},
+                ...
+            ]
+        }}
+        
+        Include at least 5 sections, with an introduction and conclusion.
+        """
+        
+        try:
+            # Use the draft model for outlines
+            response = self._get_completion(prompt, self.draft_model, max_tokens=1000, temperature=0.7)
+            
+            # Parse the JSON response
+            try:
+                outline = json.loads(response)
+                return outline
+            except json.JSONDecodeError:
+                # If the response isn't valid JSON, extract what we can
+                self.logger.warning("OpenAI didn't return valid JSON for the outline. Attempting to parse manually.")
                 
-                # Parse the response
-                outline = json.loads(response.choices[0].message.content)
+                # Create a basic outline structure
+                outline = {
+                    "title": topic,
+                    "sections": [
+                        {"title": "Introduction", "points": []},
+                        {"title": "Main Content", "points": []},
+                        {"title": "Conclusion", "points": []}
+                    ]
+                }
+                
                 return outline
                 
-            except Exception as e:
-                self.logger.error(f"Error generating outline (attempt {attempt+1}/{max_retries}): {str(e)}")
-                if attempt < max_retries - 1:
-                    time.sleep(2 ** attempt)  # Exponential backoff
-                else:
-                    raise
+        except Exception as e:
+            self.logger.error(f"Error generating outline: {str(e)}")
+            # Return a basic outline structure as fallback
+            return {
+                "title": topic,
+                "sections": [
+                    {"title": "Introduction", "points": []},
+                    {"title": "Main Content", "points": []},
+                    {"title": "Conclusion", "points": []}
+                ]
+            }
     
-    def generate_content(self, topic, outline, theme, tone, target_audience, content_type="article"):
+    def generate_content(self, topic, outline, theme, tone="professional", target_audience="general", content_type="article"):
         """
-        Generate full blog content based on the outline and parameters.
+        Generate content based on an outline.
         
         Args:
-            topic (str): The main topic of the content
+            topic (str): The topic for the content
             outline (dict): The outline structure to follow
-            theme (str): The thematic focus of the blog
-            tone (str): The desired tone of the content
-            target_audience (str): The intended audience for the content
-            content_type (str): The type of content to generate (article, listicle, etc.)
+            theme (str): The blog theme for context
+            tone (str): The desired tone of content
+            target_audience (str): The target audience
+            content_type (str): Type of content to generate (article, draft, polish)
             
         Returns:
-            str: The generated blog content in HTML format
+            str: The generated content
         """
-        # Convert outline to a string representation
-        outline_str = json.dumps(outline, indent=2)
+        # Format the outline as text
+        outline_text = f"Title: {outline.get('title', topic)}\n\n"
         
-        # Define the system message for content generation
-        system_message = (
-            "You are a professional blog content writer. "
-            "Create high-quality, engaging blog content following the provided outline. "
-            "The content should be well-structured, include HTML formatting, and be optimized for web reading. "
-            "Use appropriate headings (h1, h2, h3), paragraphs, lists, and other HTML elements. "
-            "Do not include placeholders for images or other media. "
-            "Write complete, informative content that provides value to the reader."
-        )
+        for i, section in enumerate(outline.get('sections', [])):
+            outline_text += f"{i+1}. {section.get('title', 'Section')}\n"
+            
+            for point in section.get('points', []):
+                outline_text += f"   - {point}\n"
+            
+            outline_text += "\n"
         
-        # Define the user message with all the parameters
-        user_message = (
-            f"Write a complete {content_type} about '{topic}' following this outline:\n\n"
-            f"{outline_str}\n\n"
-            f"The blog's theme is '{theme}' and should be written in a '{tone}' tone. "
-            f"The target audience is '{target_audience}'. "
-            f"Make the content comprehensive, engaging, and valuable to the reader. "
-            f"Include proper HTML formatting with headings, paragraphs, and lists. "
-            f"The content should be ready to publish on a WordPress blog."
-        )
+        # Select the appropriate model based on content type
+        if content_type == "polish":
+            model = self.polish_model
+            max_tokens = 4000
+            temperature = 0.6
+            polish_guidance = """
+            Please polish and enhance the content to make it more engaging, 
+            well-structured, and SEO-friendly. Add necessary transitions,
+            improve language, and ensure it's high-quality content that 
+            would rank well in search engines.
+            """
+        else:  # draft or article
+            model = self.draft_model
+            max_tokens = 3000
+            temperature = 0.7
+            polish_guidance = ""
         
-        # Make the API call with retries
-        max_retries = 3
-        for attempt in range(max_retries):
-            try:
-                response = self.client.chat.completions.create(
-                    model=self.model,
-                    messages=[
-                        {"role": "system", "content": system_message},
-                        {"role": "user", "content": user_message}
-                    ],
-                    temperature=0.7,
-                    max_tokens=3000
-                )
-                
-                # Get the generated content
-                content = response.choices[0].message.content
-                return content
-                
-            except Exception as e:
-                self.logger.error(f"Error generating content (attempt {attempt+1}/{max_retries}): {str(e)}")
-                if attempt < max_retries - 1:
-                    time.sleep(2 ** attempt)  # Exponential backoff
-                else:
-                    raise
+        prompt = f"""
+        Write a comprehensive blog post about "{topic}".
+        
+        Theme/context: {theme}
+        Tone: {tone}
+        Target audience: {target_audience}
+        
+        Please follow this outline:
+        {outline_text}
+        
+        {polish_guidance}
+        
+        Format the article in Markdown with proper headings (#, ##, ###),
+        and include:
+        - Engaging introduction that hooks the reader
+        - Well-structured content following the outline
+        - SEO-optimized headings and subheadings
+        - Conclusion with key takeaways
+        - Proper transitions between sections
+        
+        The content should be authoritative, factual, and valuable to the reader.
+        """
+        
+        try:
+            content = self._get_completion(prompt, model, max_tokens=max_tokens, temperature=temperature)
+            return content
+            
+        except Exception as e:
+            self.logger.error(f"Error generating content: {str(e)}")
+            # Return a basic error message as content
+            return f"""
+            # {topic}
+            
+            *Content generation is temporarily unavailable. Please try again later.*
+            
+            ## About this topic
+            
+            {topic} is an important subject related to {theme}.
+            
+            *[This is a placeholder due to content generation error]*
+            """
     
     def generate_seo_metadata(self, title, content):
         """
-        Generate SEO metadata for the blog post.
+        Generate SEO metadata for a piece of content.
         
         Args:
-            title (str): The title of the blog post
-            content (str): The content of the blog post
+            title (str): The content title
+            content (str): The generated content
             
         Returns:
-            dict: SEO metadata including meta description, keywords, and social media descriptions
+            dict: SEO metadata including meta description, keywords, etc.
         """
-        # Define the system message for SEO metadata generation
-        system_message = (
-            "You are an SEO expert. Generate comprehensive SEO metadata for a blog post. "
-            "Return the metadata as a JSON object with the following structure: "
-            "{"
-            "'meta_description': 'A compelling 150-160 character description for search engines', "
-            "'keywords': ['keyword1', 'keyword2', ...], "
-            "'social_title': 'An engaging title for social media sharing', "
-            "'social_description': 'A compelling description for social media sharing', "
-            "'slug': 'url-friendly-slug-for-the-post'"
-            "}"
-        )
+        prompt = f"""
+        Generate SEO metadata for the following blog post.
         
-        # Define the user message with the title and a summary of the content
-        content_summary = content[:2000] + "..." if len(content) > 2000 else content
-        user_message = (
-            f"Generate SEO metadata for a blog post with the title: '{title}'. "
-            f"Here's a summary of the content:\n\n{content_summary}\n\n"
-            f"Provide a meta description (150-160 characters), relevant keywords, "
-            f"social media title and description, and a URL-friendly slug."
-        )
+        Title: {title}
         
-        # Make the API call with retries
-        max_retries = 3
-        for attempt in range(max_retries):
+        Content (first 500 characters):
+        {content[:500]}...
+        
+        Return the metadata in the following JSON structure:
+        {{
+            "meta_description": "Compelling meta description under 160 characters",
+            "keywords": ["keyword1", "keyword2", ...],
+            "social_title": "Engaging social media title",
+            "social_description": "Social media description under 100 characters",
+            "slug": "url-friendly-slug"
+        }}
+        
+        Ensure the meta description is compelling and under 160 characters.
+        Include 5-7 relevant keywords.
+        The slug should be URL-friendly (lowercase, hyphens instead of spaces).
+        """
+        
+        try:
+            # Use the draft model for metadata
+            response = self._get_completion(prompt, self.draft_model, max_tokens=800, temperature=0.5)
+            
+            # Parse the JSON response
             try:
-                response = self.client.chat.completions.create(
-                    model=self.model,
-                    messages=[
-                        {"role": "system", "content": system_message},
-                        {"role": "user", "content": user_message}
-                    ],
-                    response_format={"type": "json_object"},
-                    temperature=0.5
-                )
+                metadata = json.loads(response)
+                return metadata
+            except json.JSONDecodeError:
+                # If the response isn't valid JSON, extract what we can
+                self.logger.warning("OpenAI didn't return valid JSON for metadata. Using defaults.")
                 
-                # Parse the response
-                seo_metadata = json.loads(response.choices[0].message.content)
-                return seo_metadata
+                # Create basic metadata
+                slug = title.lower().replace(' ', '-').replace('?', '').replace('!', '')
+                for char in ',.;:@#$%^&*()+={}[]|\\<>/':
+                    slug = slug.replace(char, '')
                 
-            except Exception as e:
-                self.logger.error(f"Error generating SEO metadata (attempt {attempt+1}/{max_retries}): {str(e)}")
-                if attempt < max_retries - 1:
-                    time.sleep(2 ** attempt)  # Exponential backoff
-                else:
-                    raise
+                metadata = {
+                    "meta_description": f"Learn about {title} in this comprehensive guide.",
+                    "keywords": [title],
+                    "social_title": title,
+                    "social_description": f"Read our guide about {title}.",
+                    "slug": slug
+                }
+                
+                return metadata
+                
+        except Exception as e:
+            self.logger.error(f"Error generating SEO metadata: {str(e)}")
+            
+            # Create basic metadata as fallback
+            slug = title.lower().replace(' ', '-').replace('?', '').replace('!', '')
+            for char in ',.;:@#$%^&*()+={}[]|\\<>/':
+                slug = slug.replace(char, '')
+            
+            return {
+                "meta_description": f"Learn about {title} in this comprehensive guide.",
+                "keywords": [title],
+                "social_title": title,
+                "social_description": f"Read our guide about {title}.",
+                "slug": slug
+            }

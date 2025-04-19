@@ -1,411 +1,318 @@
 import os
-import json
 import logging
-import traceback
-import uuid
-from datetime import datetime
+import json
+import time
+import datetime
 from pathlib import Path
-
-# Try to import Azure Storage SDK but fallback gracefully if not available
-try:
-    from azure.storage.blob import BlobServiceClient, ContentSettings
-    from azure.identity import DefaultAzureCredential
-    azure_storage_available = True
-except ImportError:
-    azure_storage_available = False
+from azure.storage.blob import BlobServiceClient, BlobClient, ContainerClient, ContentSettings
+from azure.identity import DefaultAzureCredential
+from azure.core.exceptions import ResourceNotFoundError, ResourceExistsError
 
 class StorageService:
     """
-    Service for interacting with Azure Blob Storage or local file system.
-    Handles saving and retrieving configuration, tasks, content, and results.
+    Service for managing Azure Storage operations.
+    Handles reading and writing blog data in blob storage.
     """
     
     def __init__(self):
+        """Initialize the storage service with Azure Storage account credentials."""
+        # Configure logger
         self.logger = logging.getLogger('storage_service')
         
-        # Container names
-        self.config_container = "configuration"
-        self.blog_data_container = "blog-data"
-        self.results_container = "results"
+        # Try to get connection string from environment variable
+        self.connection_string = os.environ.get("AzureWebJobsStorage")
         
-        # Local storage paths for development mode
-        self.local_storage_dir = "data"
+        # If not in environment, try to construct from account name and key
+        if not self.connection_string:
+            account_name = os.environ.get("STORAGE_ACCOUNT_NAME")
+            account_key = os.environ.get("STORAGE_ACCOUNT_KEY")
+            
+            if account_name and account_key:
+                self.connection_string = f"DefaultEndpointsProtocol=https;AccountName={account_name};AccountKey={account_key};EndpointSuffix=core.windows.net"
         
-        # Flag to indicate if we're using local storage
-        self.using_local_storage = False
+        # If still no connection string, try to use Managed Identity
+        self.use_managed_identity = False
+        if not self.connection_string:
+            account_name = os.environ.get("STORAGE_ACCOUNT_NAME")
+            if account_name:
+                self.use_managed_identity = True
+                self.account_name = account_name
+                self.logger.info(f"Using Managed Identity for Azure Storage account: {account_name}")
         
-        # Initialize Azure Blob storage if available
+        # Initialize blob client if credentials are available
         self.blob_service_client = None
+        self.use_local_storage = False
         
-        if azure_storage_available:
-            # Get storage connection string from environment variable
-            self.connection_string = os.environ.get("AzureWebJobsStorage")
-            
-            # Initialize blob service client
+        if self.connection_string:
             try:
-                if self.connection_string:
-                    self.blob_service_client = BlobServiceClient.from_connection_string(self.connection_string)
-                else:
-                    # Use managed identity if connection string not available
-                    account_name = os.environ.get("STORAGE_ACCOUNT_NAME")
-                    if account_name:
-                        account_url = f"https://{account_name}.blob.core.windows.net"
-                        credential = DefaultAzureCredential()
-                        self.blob_service_client = BlobServiceClient(account_url, credential=credential)
-                    else:
-                        self.logger.warning("Azure Storage credentials not available, using local file system")
-                        self.using_local_storage = True
+                self.blob_service_client = BlobServiceClient.from_connection_string(self.connection_string)
+                self.logger.info("Successfully initialized Azure Storage with connection string")
             except Exception as e:
-                self.logger.warning(f"Error initializing Azure Storage: {str(e)}, using local file system")
-                self.using_local_storage = True
+                self.logger.error(f"Error initializing Azure Storage with connection string: {str(e)}")
+                self.use_local_storage = True
+        elif self.use_managed_identity:
+            try:
+                credential = DefaultAzureCredential()
+                account_url = f"https://{self.account_name}.blob.core.windows.net"
+                self.blob_service_client = BlobServiceClient(account_url=account_url, credential=credential)
+                self.logger.info("Successfully initialized Azure Storage with Managed Identity")
+            except Exception as e:
+                self.logger.error(f"Error initializing Azure Storage with Managed Identity: {str(e)}")
+                self.use_local_storage = True
         else:
-            self.logger.warning("Azure Storage SDK not available, using local file system")
-            self.using_local_storage = True
+            self.logger.warning("Azure Storage credentials not available, using local file system")
+            self.use_local_storage = True
+        
+        # Create local storage directories if using local storage
+        if self.use_local_storage:
+            self._create_local_storage_dirs()
     
-    def ensure_containers_exist(self):
-        """Ensure that all required containers exist"""
-        if self.using_local_storage:
-            # Create local directories
-            try:
-                os.makedirs(os.path.join(self.local_storage_dir, self.config_container), exist_ok=True)
-                os.makedirs(os.path.join(self.local_storage_dir, self.blog_data_container), exist_ok=True)
-                os.makedirs(os.path.join(self.local_storage_dir, self.results_container), exist_ok=True)
-                self.logger.info("Local storage directories created")
-                return True
-            except Exception as e:
-                self.logger.error(f"Error creating local storage directories: {str(e)}")
-                return False
-        
-        if not self.blob_service_client:
-            self.logger.error("Blob service client not initialized")
-            return False
-        
+    def _create_local_storage_dirs(self):
+        """Create local directories for blob storage emulation."""
         try:
-            containers = [self.config_container, self.blog_data_container, self.results_container]
+            # Create root dirs
+            Path('./data').mkdir(exist_ok=True)
+            Path('./data/generated').mkdir(exist_ok=True)
+            Path('./data/integrations').mkdir(exist_ok=True)
             
-            for container_name in containers:
-                # Check if container exists
-                container_client = self.blob_service_client.get_container_client(container_name)
-                
-                try:
-                    # Try to get container properties
-                    container_client.get_container_properties()
-                except Exception:
-                    # Container doesn't exist, create it
-                    self.logger.info(f"Creating container: {container_name}")
-                    container_client.create_container()
-            
-            return True
+            self.logger.info("Local storage directories created")
         except Exception as e:
-            self.logger.error(f"Error ensuring containers exist: {str(e)}")
-            return False
-    
-    def save_blob(self, container_name, blob_name, data, content_type="application/json"):
-        """
-        Save data to a blob in Azure Storage or local file.
-        
-        Args:
-            container_name (str): The name of the container
-            blob_name (str): The name of the blob
-            data (str/dict): The data to save (string or dictionary that will be converted to JSON)
-            content_type (str): The content type of the blob
-            
-        Returns:
-            bool: True if successful, False otherwise
-        """
-        # Convert data to JSON string if it's a dictionary
-        if isinstance(data, dict):
-            data = json.dumps(data, indent=2)
-        
-        if self.using_local_storage:
-            # Save to local file
-            try:
-                container_dir = os.path.join(self.local_storage_dir, container_name)
-                os.makedirs(container_dir, exist_ok=True)
-                file_path = os.path.join(container_dir, blob_name)
-                
-                with open(file_path, 'w', encoding='utf-8') as f:
-                    f.write(data)
-                
-                self.logger.info(f"Successfully saved local file: {file_path}")
-                return True
-            except Exception as e:
-                self.logger.error(f"Error saving local file {container_name}/{blob_name}: {str(e)}")
-                self.logger.debug(traceback.format_exc())
-                return False
-        
-        if not self.blob_service_client:
-            self.logger.error("Blob service client not initialized")
-            return False
-        
-        try:
-            # Get container client
-            container_client = self.blob_service_client.get_container_client(container_name)
-            
-            # Get blob client
-            blob_client = container_client.get_blob_client(blob_name)
-            
-            # Set content settings
-            content_settings = ContentSettings(content_type=content_type)
-            
-            # Upload blob
-            blob_client.upload_blob(data, overwrite=True, content_settings=content_settings)
-            
-            self.logger.info(f"Successfully saved blob: {container_name}/{blob_name}")
-            return True
-        except Exception as e:
-            self.logger.error(f"Error saving blob {container_name}/{blob_name}: {str(e)}")
-            self.logger.debug(traceback.format_exc())
-            return False
+            self.logger.error(f"Error creating local storage directories: {str(e)}")
     
     def get_blob(self, container_name, blob_name):
         """
-        Get data from a blob in Azure Storage or local file.
+        Get a blob from storage.
         
         Args:
-            container_name (str): The name of the container
-            blob_name (str): The name of the blob
+            container_name (str): Name of the container
+            blob_name (str): Name of the blob
             
         Returns:
-            str: The blob data as a string, or None if not found
+            str: Blob content as string, or None if not found
         """
-        if self.using_local_storage:
-            # Get from local file
-            try:
-                file_path = os.path.join(self.local_storage_dir, container_name, blob_name)
+        try:
+            if self.use_local_storage:
+                # Handle container and blob paths for local storage
+                if container_name:
+                    file_path = f"./data/{container_name}/{blob_name}"
+                else:
+                    file_path = f"./data/{blob_name}"
                 
-                if not os.path.exists(file_path):
+                # Ensure directory exists
+                os.makedirs(os.path.dirname(file_path), exist_ok=True)
+                
+                if os.path.exists(file_path):
+                    with open(file_path, 'r') as file:
+                        return file.read()
+                return None
+            else:
+                # Get the container client
+                if container_name:
+                    container_client = self.blob_service_client.get_container_client(container_name)
+                else:
+                    container_client = self.blob_service_client.get_container_client("")
+                
+                # Get the blob client
+                blob_client = container_client.get_blob_client(blob_name)
+                
+                # Check if blob exists
+                if not blob_client.exists():
                     return None
                 
-                with open(file_path, 'r', encoding='utf-8') as f:
-                    data = f.read()
-                
-                return data
-            except Exception as e:
-                self.logger.error(f"Error getting local file {container_name}/{blob_name}: {str(e)}")
-                return None
+                # Download the blob
+                download_stream = blob_client.download_blob()
+                return download_stream.readall().decode('utf-8')
         
-        if not self.blob_service_client:
-            self.logger.error("Blob service client not initialized")
+        except ResourceNotFoundError:
+            self.logger.warning(f"Blob not found: {container_name}/{blob_name}")
             return None
-        
-        try:
-            # Get container client
-            container_client = self.blob_service_client.get_container_client(container_name)
-            
-            # Get blob client
-            blob_client = container_client.get_blob_client(blob_name)
-            
-            # Download blob
-            blob_data = blob_client.download_blob()
-            
-            # Read data
-            data = blob_data.readall()
-            
-            # Convert from bytes to string
-            if isinstance(data, bytes):
-                data = data.decode('utf-8')
-            
-            return data
         except Exception as e:
             self.logger.error(f"Error getting blob {container_name}/{blob_name}: {str(e)}")
             return None
     
-    def list_blobs(self, container_name, prefix=None):
+    def set_blob(self, container_name, blob_name, content, content_type=None):
         """
-        List blobs in a container or files in a local directory.
+        Create or update a blob in storage.
         
         Args:
-            container_name (str): The name of the container
-            prefix (str): Optional prefix to filter blobs
-            
-        Returns:
-            list: List of blob names, or empty list if error or none found
-        """
-        if self.using_local_storage:
-            # List local files
-            try:
-                container_dir = os.path.join(self.local_storage_dir, container_name)
-                
-                if not os.path.exists(container_dir):
-                    return []
-                
-                files = os.listdir(container_dir)
-                
-                # Filter by prefix if provided
-                if prefix:
-                    files = [f for f in files if f.startswith(prefix)]
-                
-                return files
-            except Exception as e:
-                self.logger.error(f"Error listing local files in {container_name}: {str(e)}")
-                return []
-        
-        if not self.blob_service_client:
-            self.logger.error("Blob service client not initialized")
-            return []
-        
-        try:
-            # Get container client
-            container_client = self.blob_service_client.get_container_client(container_name)
-            
-            # List blobs
-            blob_list = container_client.list_blobs(name_starts_with=prefix)
-            
-            # Extract names
-            blob_names = [blob.name for blob in blob_list]
-            
-            return blob_names
-        except Exception as e:
-            self.logger.error(f"Error listing blobs in {container_name}: {str(e)}")
-            return []
-    
-    def delete_blob(self, container_name, blob_name):
-        """
-        Delete a blob from Azure Storage or local file.
-        
-        Args:
-            container_name (str): The name of the container
-            blob_name (str): The name of the blob
+            container_name (str): Name of the container
+            blob_name (str): Name of the blob
+            content (str): Content to store in the blob
+            content_type (str): Content type for the blob
             
         Returns:
             bool: True if successful, False otherwise
         """
-        if self.using_local_storage:
-            # Delete local file
-            try:
-                file_path = os.path.join(self.local_storage_dir, container_name, blob_name)
-                
-                if not os.path.exists(file_path):
-                    return True
-                
-                os.remove(file_path)
-                
-                self.logger.info(f"Successfully deleted local file: {file_path}")
-                return True
-            except Exception as e:
-                self.logger.error(f"Error deleting local file {container_name}/{blob_name}: {str(e)}")
-                return False
-        
-        if not self.blob_service_client:
-            self.logger.error("Blob service client not initialized")
-            return False
-        
         try:
-            # Get container client
-            container_client = self.blob_service_client.get_container_client(container_name)
+            if self.use_local_storage:
+                # Handle container and blob paths for local storage
+                if container_name:
+                    file_path = f"./data/{container_name}/{blob_name}"
+                else:
+                    file_path = f"./data/{blob_name}"
+                
+                # Ensure directory exists
+                os.makedirs(os.path.dirname(file_path), exist_ok=True)
+                
+                with open(file_path, 'w') as file:
+                    file.write(content)
+                return True
+            else:
+                # Get the container client
+                if container_name:
+                    container_client = self.blob_service_client.get_container_client(container_name)
+                else:
+                    container_client = self.blob_service_client.get_container_client("")
+                
+                # Ensure container exists
+                try:
+                    container_client.create_container()
+                except ResourceExistsError:
+                    pass
+                
+                # Set content settings if provided
+                content_settings = None
+                if content_type:
+                    content_settings = ContentSettings(content_type=content_type)
+                
+                # Upload the blob
+                blob_client = container_client.get_blob_client(blob_name)
+                blob_client.upload_blob(content, overwrite=True, content_settings=content_settings)
+                return True
+        
+        except Exception as e:
+            self.logger.error(f"Error setting blob {container_name}/{blob_name}: {str(e)}")
+            return False
+    
+    def delete_blob(self, container_name, blob_name):
+        """
+        Delete a blob from storage.
+        
+        Args:
+            container_name (str): Name of the container
+            blob_name (str): Name of the blob
             
-            # Get blob client
-            blob_client = container_client.get_blob_client(blob_name)
-            
-            # Delete blob
-            blob_client.delete_blob()
-            
-            self.logger.info(f"Successfully deleted blob: {container_name}/{blob_name}")
+        Returns:
+            bool: True if successful, False otherwise
+        """
+        try:
+            if self.use_local_storage:
+                # Handle container and blob paths for local storage
+                if container_name:
+                    file_path = f"./data/{container_name}/{blob_name}"
+                else:
+                    file_path = f"./data/{blob_name}"
+                
+                if os.path.exists(file_path):
+                    os.remove(file_path)
+                return True
+            else:
+                # Get the container client
+                if container_name:
+                    container_client = self.blob_service_client.get_container_client(container_name)
+                else:
+                    container_client = self.blob_service_client.get_container_client("")
+                
+                # Delete the blob
+                blob_client = container_client.get_blob_client(blob_name)
+                blob_client.delete_blob()
+                return True
+        
+        except ResourceNotFoundError:
+            # If the blob doesn't exist, consider it a success
             return True
         except Exception as e:
             self.logger.error(f"Error deleting blob {container_name}/{blob_name}: {str(e)}")
             return False
     
-    def save_blog_config(self, blog_config):
+    def blob_exists(self, container_name, blob_name):
         """
-        Save a blog configuration to storage.
+        Check if a blob exists in storage.
         
         Args:
-            blog_config (BlogConfig or dict): The blog configuration to save
+            container_name (str): Name of the container
+            blob_name (str): Name of the blob
             
         Returns:
-            bool: True if successful, False otherwise
+            bool: True if the blob exists, False otherwise
         """
-        if hasattr(blog_config, 'to_dict'):
-            config_data = blog_config.to_dict()
-        else:
-            config_data = blog_config
-            
-        blob_name = f"blog_{config_data['blog_id']}.json"
-        return self.save_blob(self.config_container, blob_name, config_data)
+        try:
+            if self.use_local_storage:
+                # Handle container and blob paths for local storage
+                if container_name:
+                    file_path = f"./data/{container_name}/{blob_name}"
+                else:
+                    file_path = f"./data/{blob_name}"
+                
+                return os.path.exists(file_path)
+            else:
+                # Get the container client
+                if container_name:
+                    container_client = self.blob_service_client.get_container_client(container_name)
+                else:
+                    container_client = self.blob_service_client.get_container_client("")
+                
+                # Check if blob exists
+                blob_client = container_client.get_blob_client(blob_name)
+                return blob_client.exists()
+        
+        except Exception as e:
+            self.logger.error(f"Error checking if blob exists {container_name}/{blob_name}: {str(e)}")
+            return False
     
-    def get_blog_config(self, blog_id):
+    def list_blobs(self, container_name, prefix=None):
         """
-        Get a blog configuration from storage.
+        List blobs in a container with an optional prefix.
         
         Args:
-            blog_id (str): The ID of the blog
+            container_name (str): Name of the container
+            prefix (str): Prefix to filter blobs
             
         Returns:
-            dict: The blog configuration, or None if not found
+            list: List of blob names
         """
-        blob_name = f"blog_{blog_id}.json"
-        data = self.get_blob(self.config_container, blob_name)
+        try:
+            if self.use_local_storage:
+                # Handle container path for local storage
+                if container_name:
+                    dir_path = f"./data/{container_name}"
+                else:
+                    dir_path = "./data"
+                
+                # Get all files in the directory and subdirectories
+                all_files = []
+                for root, dirs, files in os.walk(dir_path):
+                    for file in files:
+                        # Get relative path from dir_path
+                        file_path = os.path.join(root, file)
+                        rel_path = os.path.relpath(file_path, dir_path)
+                        
+                        # Check prefix if provided
+                        if prefix is None or rel_path.startswith(prefix):
+                            all_files.append(rel_path)
+                
+                return all_files
+            else:
+                # Get the container client
+                if container_name:
+                    container_client = self.blob_service_client.get_container_client(container_name)
+                else:
+                    container_client = self.blob_service_client.get_container_client("")
+                
+                # List blobs with prefix
+                blobs = container_client.list_blobs(name_starts_with=prefix)
+                return [blob.name for blob in blobs]
         
-        if data:
-            try:
-                return json.loads(data)
-            except json.JSONDecodeError:
-                self.logger.error(f"Error decoding JSON for blog config {blog_id}")
-                return None
-        
-        return None
+        except Exception as e:
+            self.logger.error(f"Error listing blobs in {container_name} with prefix {prefix}: {str(e)}")
+            return []
     
-    def get_all_blog_configs(self):
+    def get_run_id(self):
         """
-        Get all blog configurations from storage.
+        Generate a new run ID for a content generation run.
         
         Returns:
-            list: List of blog configurations
+            str: A unique run ID based on timestamp
         """
-        # List all blog config files
-        blob_names = self.list_blobs(self.config_container, prefix="blog_")
-        
-        # Load each config
-        configs = []
-        for blob_name in blob_names:
-            data = self.get_blob(self.config_container, blob_name)
-            if data:
-                try:
-                    config = json.loads(data)
-                    configs.append(config)
-                except json.JSONDecodeError:
-                    self.logger.error(f"Error decoding JSON for blog config {blob_name}")
-        
-        return configs
-    
-    def save_blog_task(self, task):
-        """
-        Save a blog task to storage.
-        
-        Args:
-            task (BlogTask or dict): The blog task to save
-            
-        Returns:
-            bool: True if successful, False otherwise
-        """
-        if hasattr(task, 'to_dict'):
-            task_data = task.to_dict()
-        else:
-            task_data = task
-            
-        blob_name = f"task_{task_data['id']}.json"
-        return self.save_blob(self.blog_data_container, blob_name, task_data)
-    
-    def get_blog_task(self, task_id):
-        """
-        Get a blog task from storage.
-        
-        Args:
-            task_id (str): The ID of the task
-            
-        Returns:
-            dict: The blog task, or None if not found
-        """
-        blob_name = f"task_{task_id}.json"
-        data = self.get_blob(self.blog_data_container, blob_name)
-        
-        if data:
-            try:
-                return json.loads(data)
-            except json.JSONDecodeError:
-                self.logger.error(f"Error decoding JSON for task {task_id}")
-                return None
-        
-        return None
+        timestamp = datetime.datetime.utcnow().strftime('%Y%m%d_%H%M%S')
+        return f"{timestamp}_{int(time.time() * 1000) % 1000:03d}"

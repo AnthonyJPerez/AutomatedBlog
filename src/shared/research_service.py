@@ -1,288 +1,247 @@
 import os
 import json
 import logging
-import time
 import random
+import time
 from datetime import datetime, timedelta
-
-# Try to import PyTrends but fallback gracefully if not available
-try:
-    from pytrends.request import TrendReq
-except ImportError:
-    logging.getLogger('research_service').error("PyTrends not available, using fallback data")
-    TrendReq = None
+from pytrends.request import TrendReq
+import requests
+from requests.adapters import HTTPAdapter
+from requests.packages.urllib3.util.retry import Retry
 
 class ResearchService:
     """
-    Service for conducting research on trending topics related to a blog theme.
-    Uses Google Trends (PyTrends) to identify popular topics for content generation.
+    Service for researching trending topics using Google Trends.
+    Provides methods to identify popular and trending topics related to a blog theme.
     """
     
     def __init__(self):
-        self.logger = logging.getLogger('research_service')
+        """Initialize the research service with API configuration."""
+        # Configure logger
+        self.logger = logging.getLogger('ResearchService')
         
-        # Initialize PyTrends client if available
-        self.pytrends = None
-        if TrendReq:
-            try:
-                self.pytrends = TrendReq(hl='en-US', tz=360, timeout=(10, 25))
-            except Exception as e:
-                self.logger.error(f"Error initializing PyTrends: {str(e)}")
+        # Set up retry strategy for HTTP requests
+        retry_strategy = Retry(
+            total=3,
+            backoff_factor=0.2,
+            status_forcelist=[429, 500, 502, 503, 504],
+            allowed_methods=["HEAD", "GET", "OPTIONS"]
+        )
+        adapter = HTTPAdapter(max_retries=retry_strategy)
+        self.session = requests.Session()
+        self.session.mount("https://", adapter)
+        self.session.mount("http://", adapter)
+        
+        # Initialize PyTrends with session and HL (language) parameter
+        try:
+            self.pytrends = TrendReq(hl='en-US', tz=0, timeout=(10, 25), retries=3, backoff_factor=0.2, requests_args={'verify': True})
+            self.pytrends_available = True
+        except Exception as e:
+            self.logger.error(f"Error initializing PyTrends: {str(e)}")
+            self.pytrends_available = False
+        
+        # Initialize cache for trend data (to avoid duplicate API calls)
+        self.trend_cache = {}
+        self.cache_expiry = 3600  # Cache data for 1 hour
     
-    def research_topics(self, theme, target_audience, region='US', timeframe='today 1-m'):
+    def research_topics(self, theme, target_audience="general", region="US", max_results=10):
         """
-        Research trending topics related to the given theme and target audience.
+        Research trending topics related to a given theme.
         
         Args:
-            theme (str): The thematic focus of the blog
-            target_audience (str): The intended audience for the content
-            region (str): The geographic region for trends (default: 'US')
-            timeframe (str): The time frame for trends (default: 'today 1-m')
+            theme (str): The blog theme to research
+            target_audience (str): Target audience for the content
+            region (str): Region code for trend data (default: US)
+            max_results (int): Maximum number of results to return
             
         Returns:
-            list: A list of trending topics with relevance scores and details
+            list: List of trending topics with scores and metadata
         """
-        self.logger.info(f"Researching topics for theme: {theme}, audience: {target_audience}, region: {region}")
-        
-        # Generate keyword combinations to research
-        keywords = self._generate_keywords(theme, target_audience)
+        # Check if results are in cache and not expired
+        cache_key = f"{theme}:{target_audience}:{region}"
+        if cache_key in self.trend_cache:
+            cache_time, cache_data = self.trend_cache[cache_key]
+            if time.time() - cache_time < self.cache_expiry:
+                self.logger.info(f"Returning cached trend data for {theme}")
+                return cache_data
         
         results = []
         
-        # If PyTrends is not available, generate fallback results
-        if not self.pytrends:
-            self.logger.warning("PyTrends not available, using fallback data")
-            for keyword_set in keywords[:3]:  # Limit to first 3 sets
-                for keyword in keyword_set:
-                    fallback_result = {
-                        'keyword': keyword,
-                        'title': self._generate_title_from_keyword(keyword),
-                        'trend_score': random.uniform(20, 50),  # Fallback trend score
-                        'related_top': [],
-                        'related_rising': [],
-                        'relevance_to_theme': self._calculate_relevance(keyword, theme),
-                        'relevance_to_audience': self._calculate_relevance(keyword, target_audience),
-                        'researched_at': datetime.utcnow().isoformat(),
-                        'is_fallback': True
-                    }
-                    results.append(fallback_result)
-            return self._process_results(results, theme, target_audience)
-        
-        # Research each keyword combination with retries if PyTrends is available
-        for keyword_set in keywords:
-            max_retries = 3
-            for attempt in range(max_retries):
-                try:
-                    # Get interest over time for the keyword set
-                    self.pytrends.build_payload(keyword_set, cat=0, timeframe=timeframe, geo=region)
-                    interest_over_time = self.pytrends.interest_over_time()
-                    
-                    # Get related queries for more topic ideas
-                    related_queries = self.pytrends.related_queries()
-                    
-                    # Process the results
-                    for keyword in keyword_set:
-                        # Skip if no data is available
-                        if interest_over_time.empty or keyword not in interest_over_time.columns:
-                            continue
-                        
-                        # Calculate trend score (average interest over the period)
-                        trend_score = interest_over_time[keyword].mean()
-                        
-                        # Get related queries for this keyword
-                        related_top = []
-                        related_rising = []
-                        
-                        if keyword in related_queries and related_queries[keyword]:
-                            if 'top' in related_queries[keyword] and not related_queries[keyword]['top'].empty:
-                                related_top = related_queries[keyword]['top']['query'].tolist()[:5]
-                            
-                            if 'rising' in related_queries[keyword] and not related_queries[keyword]['rising'].empty:
-                                related_rising = related_queries[keyword]['rising']['query'].tolist()[:5]
-                        
-                        # Create result entry
-                        result = {
-                            'keyword': keyword,
-                            'title': self._generate_title_from_keyword(keyword),
-                            'trend_score': float(trend_score),
-                            'related_top': related_top,
-                            'related_rising': related_rising,
-                            'relevance_to_theme': self._calculate_relevance(keyword, theme),
-                            'relevance_to_audience': self._calculate_relevance(keyword, target_audience),
-                            'researched_at': datetime.utcnow().isoformat()
-                        }
-                        
-                        results.append(result)
-                    
-                    # Successful research, break the retry loop
-                    break
-                    
-                except Exception as e:
-                    self.logger.error(f"Error researching keyword set {keyword_set} (attempt {attempt+1}/{max_retries}): {str(e)}")
-                    if attempt < max_retries - 1:
-                        time.sleep(2 ** attempt)  # Exponential backoff
-                    else:
-                        # If all retries fail, add a fallback result
-                        for keyword in keyword_set:
-                            fallback_result = {
-                                'keyword': keyword,
-                                'title': self._generate_title_from_keyword(keyword),
-                                'trend_score': random.uniform(20, 50),  # Fallback trend score
-                                'related_top': [],
-                                'related_rising': [],
-                                'relevance_to_theme': self._calculate_relevance(keyword, theme),
-                                'relevance_to_audience': self._calculate_relevance(keyword, target_audience),
-                                'researched_at': datetime.utcnow().isoformat(),
-                                'is_fallback': True
-                            }
-                            results.append(fallback_result)
+        # Use PyTrends if available
+        if self.pytrends_available:
+            try:
+                # Get related queries for the theme
+                self.pytrends.build_payload([theme], cat=0, timeframe='now 7-d', geo=region)
+                related_queries = self.pytrends.related_queries()
+                
+                if related_queries and theme in related_queries and related_queries[theme]['top'] is not None:
+                    # Add top related queries
+                    for query in related_queries[theme]['top'].head(max_results).itertuples():
+                        results.append({
+                            'keyword': query.query,
+                            'title': self._generate_title(query.query, theme),
+                            'trend_score': int(query.value),
+                            'trend_type': 'top',
+                            'source': 'google_trends'
+                        })
+                
+                if related_queries and theme in related_queries and related_queries[theme]['rising'] is not None:
+                    # Add rising related queries
+                    for query in related_queries[theme]['rising'].head(max_results).itertuples():
+                        results.append({
+                            'keyword': query.query,
+                            'title': self._generate_title(query.query, theme),
+                            'trend_score': int(min(query.value, 100)),  # Cap at 100
+                            'trend_type': 'rising',
+                            'source': 'google_trends'
+                        })
+                
+                # Get related topics
+                related_topics = self.pytrends.related_topics()
+                
+                if related_topics and theme in related_topics and related_topics[theme]['top'] is not None:
+                    # Add top related topics
+                    for topic in related_topics[theme]['top'].head(max_results).itertuples():
+                        results.append({
+                            'keyword': topic.topic_title,
+                            'title': self._generate_title(topic.topic_title, theme),
+                            'trend_score': int(topic.value),
+                            'trend_type': 'top',
+                            'source': 'google_trends'
+                        })
             
-            # Wait between keyword sets to avoid rate limiting
-            time.sleep(1)
+            except Exception as e:
+                self.logger.error(f"Error getting trend data from PyTrends: {str(e)}")
+                self.pytrends_available = False
         
-        return self._process_results(results, theme, target_audience)
-    
-    def _process_results(self, results, theme, target_audience):
-        """Process and sort research results"""
-        # If no results, return empty list
-        if not results:
-            return []
+        # If PyTrends is not available or didn't return enough results, use fallback
+        if not self.pytrends_available or len(results) < 5:
+            self.logger.warning(f"Using fallback trend generation for {theme}")
             
-        # Sort results by combined score (trend score + relevance)
+            fallback_results = self._generate_fallback_topics(theme, target_audience, max(5, max_results - len(results)))
+            results.extend(fallback_results)
+        
+        # Deduplicate results by keyword
+        seen_keywords = set()
+        unique_results = []
+        
         for result in results:
-            result['combined_score'] = (
-                result['trend_score'] * 0.4 + 
-                result['relevance_to_theme'] * 0.3 + 
-                result['relevance_to_audience'] * 0.3
-            )
+            keyword = result['keyword'].lower()
+            if keyword not in seen_keywords:
+                seen_keywords.add(keyword)
+                unique_results.append(result)
         
-        results.sort(key=lambda x: x['combined_score'], reverse=True)
+        # Sort by trend score (descending)
+        sorted_results = sorted(unique_results, key=lambda x: x.get('trend_score', 0), reverse=True)
         
-        # Take top results
-        top_results = results[:10]
+        # Limit to max_results
+        final_results = sorted_results[:max_results]
         
-        self.logger.info(f"Research completed. Found {len(top_results)} potential topics.")
-        return top_results
+        # Add to cache
+        self.trend_cache[cache_key] = (time.time(), final_results)
+        
+        return final_results
     
-    def select_best_topic(self, research_results, previous_topics=None):
+    def _generate_title(self, keyword, theme):
         """
-        Select the best topic from research results, avoiding previous topics.
+        Generate a blog post title from a keyword and theme.
         
         Args:
-            research_results (list): List of research results with topic details
-            previous_topics (list): List of previously used topics to avoid
+            keyword (str): The main keyword
+            theme (str): The blog theme
             
         Returns:
-            dict: The selected topic details
+            str: A generated blog post title
         """
-        if not research_results:
-            # Fallback topic if no research results are available
-            return {
-                'keyword': 'current trends',
-                'title': 'Current Trends in the Industry: What You Need to Know',
-                'trend_score': 50,
-                'combined_score': 50,
-                'is_fallback': True
-            }
-        
-        # Filter out previously used topics if provided
-        if previous_topics:
-            filtered_results = [r for r in research_results if r['title'] not in previous_topics]
-            
-            # If all topics have been used before, use the original list
-            if not filtered_results:
-                filtered_results = research_results
-        else:
-            filtered_results = research_results
-        
-        # Select the top-scoring topic
-        return filtered_results[0]
-    
-    def _generate_keywords(self, theme, target_audience):
-        """Generate keyword combinations to research based on theme and audience"""
-        # Extract main theme keywords
-        theme_keywords = [theme.lower()]
-        
-        # Add variations
-        if ' ' in theme:
-            theme_keywords.extend(theme.lower().split())
-        
-        # Extract audience keywords
-        audience_keywords = [target_audience.lower()]
-        
-        # Add variations
-        if ' ' in target_audience:
-            audience_parts = target_audience.lower().split()
-            audience_keywords.extend(audience_parts)
-        
-        # Generate combinations
-        combinations = []
-        
-        # Theme-only combinations
-        combinations.append(theme_keywords[:min(len(theme_keywords), 5)])
-        
-        # Theme + audience combinations
-        for t_keyword in theme_keywords[:2]:  # Limit to first 2 theme keywords
-            for a_keyword in audience_keywords[:2]:  # Limit to first 2 audience keywords
-                combo = [t_keyword, a_keyword]
-                
-                # Add some common qualifiers
-                qualifiers = ['best', 'top', 'how to', 'guide', 'tips']
-                for q in qualifiers[:1]:  # Limit to 1 qualifier to stay within limit
-                    if len(combo) < 5:  # PyTrends has a limit of 5 keywords
-                        combo.append(f"{q} {t_keyword}")
-                
-                combinations.append(combo[:5])  # Limit to 5 keywords
-        
-        return combinations
-    
-    def _calculate_relevance(self, keyword, reference):
-        """Calculate simple relevance score between keyword and reference"""
-        keyword_lower = keyword.lower()
-        reference_lower = reference.lower()
-        
-        # Direct match
-        if keyword_lower == reference_lower:
-            return 1.0
-        
-        # Partial match
-        if keyword_lower in reference_lower or reference_lower in keyword_lower:
-            return 0.8
-        
-        # Word-level match
-        keyword_words = set(keyword_lower.split())
-        reference_words = set(reference_lower.split())
-        common_words = keyword_words.intersection(reference_words)
-        
-        if common_words:
-            return 0.5 + (len(common_words) / max(len(keyword_words), len(reference_words)) * 0.5)
-        
-        # Default low relevance
-        return 0.2
-    
-    def _generate_title_from_keyword(self, keyword):
-        """Generate a blog post title from a keyword"""
-        # List of title templates
+        # Title templates
         templates = [
-            "The Ultimate Guide to {keyword}",
-            "{keyword}: Everything You Need to Know",
-            "How to Master {keyword} in {current_year}",
-            "Top 10 Strategies for {keyword} Success",
-            "{keyword}: Best Practices for Beginners",
-            "Why {keyword} Matters More Than Ever",
-            "The Future of {keyword}: Trends and Predictions",
-            "Essential {keyword} Tips You Can't Ignore",
-            "{keyword} 101: A Beginner's Guide",
-            "Mastering {keyword}: Expert Advice"
+            f"The Ultimate Guide to {keyword}",
+            f"{keyword}: What You Need to Know in {datetime.now().year}",
+            f"How {keyword} is Transforming {theme}",
+            f"Top 10 {keyword} Strategies for {theme} Enthusiasts",
+            f"Why {keyword} Matters for Your {theme} Success",
+            f"Exploring the Connection Between {keyword} and {theme}",
+            f"The Future of {keyword} in {theme}",
+            f"{keyword} 101: A Beginner's Guide",
+            f"Expert Tips for Mastering {keyword} in Your {theme} Journey",
+            f"Understanding {keyword}: A Deep Dive"
         ]
         
-        # Select a random template
-        template = random.choice(templates)
+        return random.choice(templates)
+    
+    def _generate_fallback_topics(self, theme, target_audience, count=5):
+        """
+        Generate fallback topic suggestions when API is unavailable.
         
-        # Format with the keyword and current year
-        title = template.format(
-            keyword=keyword.title(),
-            current_year=datetime.utcnow().year
-        )
+        Args:
+            theme (str): The blog theme
+            target_audience (str): Target audience for the content
+            count (int): Number of fallback topics to generate
+            
+        Returns:
+            list: List of generated topic suggestions
+        """
+        # Common topics by theme category
+        common_topics = {
+            "technology": [
+                "artificial intelligence", "machine learning", "blockchain", 
+                "cybersecurity", "cloud computing", "data science", 
+                "internet of things", "virtual reality", "augmented reality",
+                "digital transformation", "edge computing", "5g technology"
+            ],
+            "health": [
+                "wellness", "nutrition", "fitness", "mental health", 
+                "meditation", "yoga", "healthy eating", "weight loss",
+                "stress management", "sleep hygiene", "immune system",
+                "holistic health", "preventative care"
+            ],
+            "finance": [
+                "investing", "personal finance", "retirement planning", 
+                "cryptocurrency", "stock market", "budgeting", 
+                "passive income", "financial independence", "real estate investing",
+                "tax strategies", "debt management", "wealth building"
+            ],
+            "marketing": [
+                "content marketing", "social media marketing", "seo", 
+                "email marketing", "digital marketing", "influencer marketing", 
+                "brand building", "marketing automation", "conversion optimization",
+                "customer engagement", "marketing analytics", "growth hacking"
+            ],
+            "lifestyle": [
+                "minimalism", "productivity", "self-improvement", 
+                "work-life balance", "remote work", "travel", 
+                "home decor", "sustainability", "personal development",
+                "morning routines", "relationships", "career growth"
+            ]
+        }
         
-        return title
+        # Try to match theme to a category
+        theme_lower = theme.lower()
+        selected_category = None
+        
+        for category in common_topics:
+            if category in theme_lower:
+                selected_category = category
+                break
+        
+        # If no category match, use general topics
+        if not selected_category:
+            selected_category = random.choice(list(common_topics.keys()))
+        
+        topics = random.sample(common_topics[selected_category], min(count, len(common_topics[selected_category])))
+        
+        # Generate results
+        results = []
+        for i, topic in enumerate(topics):
+            # Random trend score between 60 and 95
+            trend_score = random.randint(60, 95)
+            
+            results.append({
+                'keyword': topic,
+                'title': self._generate_title(topic, theme),
+                'trend_score': trend_score,
+                'trend_type': 'suggestion',
+                'source': 'system_generated'
+            })
+        
+        return results
