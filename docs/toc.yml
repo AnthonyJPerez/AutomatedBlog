@@ -1,0 +1,14 @@
+- name: System Overview
+  href: automated_blog_system.md
+- name: Components
+  items:
+    - name: Content Generation
+      href: components/content_generation.md
+    - name: Research Service
+      href: components/research_service.md
+    - name: WordPress Integration
+      href: components/wordpress_integration.md
+    - name: Analytics Service
+      href: components/analytics_service.md
+    - name: Competitor Analysis
+      href: components/competitor_analysis.md

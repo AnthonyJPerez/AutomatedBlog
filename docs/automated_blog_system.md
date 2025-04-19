@@ -1,673 +1,239 @@
-# Automated Multi-Blog Content Pipeline Documentation
+# Automated Multi-Blog System Documentation
 
-## System Overview
+## System Architecture
 
-The Automated Multi-Blog Content Pipeline is a serverless, AI-powered platform designed for autonomous content generation and publishing across multiple blogs. This system leverages Azure Functions, advanced AI models, and comprehensive blog management to create a fully automated content lifecycle.
+The Automated Multi-Blog System is a serverless, AI-powered content generation and publishing platform designed for managing multiple blogs with minimal human intervention. The system leverages Azure Functions, OpenAI, and WordPress integration to provide a comprehensive solution for automated content creation and management.
+
+```mermaid
+flowchart TD
+    subgraph "Azure Functions"
+        CF[CreateRunFolder] --> |Triggers| RT[ResearchTopic]
+        RT --> |Research Data| CG[ContentGenerator]
+        CG --> |Generated Content| PUB[Publisher]
+        PUB --> |Publish Results| RL[ResultsLogger]
+        PUB --> |Published Content| SMP[SocialMediaPromoter]
+    end
+
+    subgraph "Storage"
+        BS[(Blob Storage)]
+    end
+
+    subgraph "External Services"
+        OAI[OpenAI API]
+        WP[WordPress API]
+        GA[Google Analytics]
+        SM[Social Media APIs]
+    end
+
+    CF -.-> BS
+    RT -.-> BS
+    RT --> OAI
+    CG --> OAI
+    CG -.-> BS
+    PUB --> WP
+    PUB -.-> BS
+    SMP --> SM
+    RL -.-> BS
+    
+    subgraph "Admin Dashboard"
+        AD[Web Interface]
+    end
+    
+    AD -.-> BS
+    AD --> GA
+```
+
+## Data Flow
+
+The system follows a sequential flow where each component performs a specific task and passes the results to the next component:
+
+```mermaid
+sequenceDiagram
+    participant Scheduler as Scheduler
+    participant Research as ResearchTopic
+    participant Content as ContentGenerator
+    participant SEO as SEOOptimizer
+    participant Publish as Publisher
+    participant Social as SocialMediaPromoter
+    
+    Scheduler->>Research: Trigger new content run
+    Research->>Research: Research trending topics
+    Research->>Content: Pass research data
+    Content->>Content: Generate content with AI
+    Content->>SEO: Pass draft content
+    SEO->>SEO: Optimize for search engines
+    SEO->>Publish: Pass optimized content
+    Publish->>Publish: Publish to WordPress
+    Publish->>Social: Pass publication details
+    Social->>Social: Post to configured platforms
+```
+
+## Configuration System
+
+The platform uses a configuration-driven approach where each blog has its own set of configuration files stored in a specific folder structure:
 
 ```mermaid
 graph TD
-    A[User Dashboard] --> B[Blog Configuration]
-    B --> C[Content Pipeline]
-    C --> D[WordPress Publishing]
-    C --> E[Analytics & Optimization]
+    A[Root] --> B[Blog1]
+    A --> C[Blog2]
+    A --> D[Blog3]
     
-    subgraph "Configuration"
-    B --> B1[Theme Setup]
-    B --> B2[Blog Settings]
-    B --> B3[Integration Credentials]
-    end
+    B --> B1[config.json]
+    B --> B2[theme.json]
+    B --> B3[topics.json]
+    B --> B4[Generated]
     
-    subgraph "Content Generation Pipeline"
-    C --> C1[Topic Research]
-    C1 --> C2[Content Creation]
-    C2 --> C3[SEO Optimization]
-    C3 --> C4[Image Generation]
-    end
+    B4 --> B41[Run1]
+    B4 --> B42[Run2]
     
-    subgraph "Distribution"
-    D --> D1[WordPress Single Site]
-    D --> D2[WordPress Multisite]
-    D --> D3[Social Media]
-    end
+    B41 --> B411[research.json]
+    B41 --> B412[content.md]
+    B41 --> B413[publish.json]
     
-    subgraph "Analytics"
-    E --> E1[Traffic Analysis]
-    E --> E2[Engagement Metrics]
-    E --> E3[Competitor Analysis]
-    E --> E4[Keyword Opportunities]
-    end
+    C --> C1[config.json]
+    C --> C2[theme.json]
+    C --> C3[topics.json]
+    C --> C4[Generated]
 ```
 
-## Architecture Components
+## Component State Machines
 
-The system is built on a serverless architecture using Azure Functions, with each component handling a specific part of the content lifecycle.
+Each component in the system can be represented as a state machine that processes data and transitions between states:
+
+```mermaid
+stateDiagram-v2
+    [*] --> Init
+    Init --> ResearchingTopics
+    ResearchingTopics --> GeneratingOutline
+    GeneratingOutline --> DraftingContent
+    DraftingContent --> OptimizingContent
+    OptimizingContent --> GeneratingImages
+    GeneratingImages --> Publishing
+    Publishing --> [*]
+```
+
+## Blog Creation Process
+
+The process of creating a new blog involves several steps:
 
 ```mermaid
 flowchart LR
-    classDef azureFunction fill:#0072C6,color:white,stroke:none;
-    classDef storage fill:#FFB900,color:black,stroke:none;
-    classDef ai fill:#19A275,color:white,stroke:none;
-    classDef wordpress fill:#21759B,color:white,stroke:none;
-    classDef analytics fill:#7FBA00,color:white,stroke:none;
-
-    Storage[Storage Service]:::storage
-    
-    WebApp[Web Dashboard]
-    
-    SetupFunction[Blog Setup Function]:::azureFunction
-    ResearchFunction[Topic Research Function]:::azureFunction
-    ContentFunction[Content Generator Function]:::azureFunction
-    PublishFunction[Publisher Function]:::azureFunction
-    ResultsFunction[Results Logger Function]:::azureFunction
-    SocialFunction[Social Media Promoter Function]:::azureFunction
-    
-    OpenAI[OpenAI Service]:::ai
-    CompetitorService[Competitor Analysis Service]:::ai
-    WebScraperService[Web Scraper Service]:::ai
-    
-    WordPressService[WordPress Service]:::wordpress
-    
-    AnalyticsService[Analytics Service]:::analytics
-    BillingService[Billing Service]:::analytics
-    
-    WebApp --> SetupFunction
-    WebApp --> ResearchFunction
-    WebApp --> ContentFunction
-    WebApp --> PublishFunction
-    
-    SetupFunction --> Storage
-    ResearchFunction --> WebScraperService
-    ResearchFunction --> CompetitorService
-    ResearchFunction --> Storage
-    ContentFunction --> OpenAI
-    ContentFunction --> Storage
-    PublishFunction --> WordPressService
-    PublishFunction --> Storage
-    PublishFunction --> SocialFunction
-    
-    SocialFunction --> Storage
-    ResultsFunction --> Storage
-    ResultsFunction --> AnalyticsService
-    
-    AnalyticsService --> BillingService
-    AnalyticsService --> CompetitorService
+    A[User Input] --> B[Theme Configuration]
+    B --> C[Domain Selection]
+    C --> D[Integration Setup]
+    D --> E[Initial Content Generation]
+    E --> F[WordPress Deployment]
+    F --> G[Analytics Integration]
 ```
 
-## System State Machine
+## Theme-Aware Content Generation
 
-The automated blog content pipeline follows a state machine pattern, where each piece of content progresses through various states from research to publishing and promotion.
-
-```mermaid
-stateDiagram-v2
-    [*] --> BlogSetup
-    
-    BlogSetup --> TopicResearch: Blog Configured
-    TopicResearch --> ContentGeneration: Topic Selected
-    ContentGeneration --> SEOOptimization: Draft Created
-    SEOOptimization --> ImageGeneration: SEO Applied
-    ImageGeneration --> PublishReady: Images Generated
-    
-    PublishReady --> Publishing: Approved
-    PublishReady --> ContentGeneration: Needs Revision
-    
-    Publishing --> Published: Success
-    Publishing --> PublishError: Failure
-    PublishError --> Publishing: Retry
-    
-    Published --> SocialPromotion: Scheduled
-    SocialPromotion --> Promoted: Shared
-    
-    Promoted --> Analytics: Tracking
-    Analytics --> [*]: Complete
-    
-    state BlogSetup {
-        [*] --> ConfigureTheme
-        ConfigureTheme --> ConfigureCredentials
-        ConfigureCredentials --> IntegrationSetup
-        IntegrationSetup --> [*]: Ready
-    }
-    
-    state TopicResearch {
-        [*] --> TrendAnalysis
-        TrendAnalysis --> CompetitorResearch
-        CompetitorResearch --> KeywordOpportunities
-        KeywordOpportunities --> [*]: Topic Selected
-    }
-    
-    state ContentGeneration {
-        [*] --> OutlineCreation
-        OutlineCreation --> DraftGeneration
-        DraftGeneration --> ContentPolishing
-        ContentPolishing --> [*]: Draft Ready
-    }
-    
-    state SEOOptimization {
-        [*] --> KeywordAnalysis
-        KeywordAnalysis --> MetadataGeneration
-        MetadataGeneration --> StructureOptimization
-        StructureOptimization --> [*]: SEO Ready
-    }
-```
-
-## Pipeline Components in Detail
-
-### 1. Blog Setup Process
-
-The blog setup process establishes the foundation for content generation by defining theme, audience, and integration points.
+The system uses theme-specific prompts and guidance to ensure content aligns with each blog's unique voice and style:
 
 ```mermaid
-sequenceDiagram
-    participant User
-    participant Dashboard
-    participant SetupFunction
-    participant StorageService
-    participant KeyVaultService
+graph TD
+    A[Blog Theme] --> B[Target Audience]
+    A --> C[Tone Guidelines]
+    A --> D[Style Parameters]
+    A --> E[Content Types]
+    A --> F[Relevant Keywords]
     
-    User->>Dashboard: Create new blog
-    Dashboard->>SetupFunction: Initialize blog
-    SetupFunction->>StorageService: Create blog folder structure
-    SetupFunction->>StorageService: Save config.json
-    SetupFunction->>StorageService: Save theme.json
-    
-    User->>Dashboard: Configure integration credentials
-    Dashboard->>SetupFunction: Store credentials
-    SetupFunction->>KeyVaultService: Securely store API keys
-    
-    SetupFunction->>StorageService: Create initial topics.json
-    SetupFunction-->>Dashboard: Blog setup complete
-    Dashboard-->>User: Display success message
-```
-
-### 2. Research Pipeline
-
-The research pipeline identifies trending topics and keyword opportunities from various sources and competitor analysis.
-
-```mermaid
-flowchart TB
-    classDef research fill:#FF9900,color:black,stroke:none;
-    classDef competitor fill:#3498DB,color:white,stroke:none;
-    classDef keyword fill:#2ECC71,color:white,stroke:none;
-    
-    Start([Start Research]) --> ThemeContext[Extract Theme Context]
-    ThemeContext --> ParallelProcess{Parallel Process}
-    
-    subgraph Trend Research
-    ParallelProcess --> GoogleTrends[Google Trends API]:::research
-    ParallelProcess --> WebScraping[Web Scraping]:::research
-    ParallelProcess --> RSSFeeds[RSS Feed Analysis]:::research
-    end
-    
-    subgraph Competitor Analysis
-    ParallelProcess --> TrackCompetitors[Track Competitors]:::competitor
-    TrackCompetitors --> ExtractContent[Extract Content]:::competitor
-    ExtractContent --> AnalyzeStructure[Analyze Structure]:::competitor
-    AnalyzeStructure --> ExtractTopics[Extract Topics]:::competitor
-    end
-    
-    subgraph Keyword Opportunities
-    ExtractTopics --> KeywordIdentification[Identify Keywords]:::keyword
-    KeywordIdentification --> ScoreOpportunities[Score Opportunities]:::keyword
-    ScoreOpportunities --> AssessDifficulty[Assess Difficulty]:::keyword
-    end
-    
-    GoogleTrends --> MergeTrends[Merge Trending Topics]
-    WebScraping --> MergeTrends
-    RSSFeeds --> MergeTrends
-    
-    AssessDifficulty --> MergeKeywords[Merge Keyword Opportunities]
-    
-    MergeTrends --> PrioritizeTopics[Prioritize Topics]
-    MergeKeywords --> PrioritizeTopics
-    
-    PrioritizeTopics --> SaveResults[Save Research Results]
-    SaveResults --> End([End Research])
-```
-
-### 3. Content Generation
-
-The content generation process uses AI to create optimized, polished content based on research inputs.
-
-```mermaid
-sequenceDiagram
-    participant ResearchFunction
-    participant ContentFunction
-    participant OpenAIService
-    participant StorageService
-    participant CompetitorAnalysis
-    
-    ResearchFunction->>ContentFunction: Send topic and research data
-    ContentFunction->>CompetitorAnalysis: Get keyword opportunities
-    CompetitorAnalysis-->>ContentFunction: Return SEO keywords
-    
-    ContentFunction->>OpenAIService: Generate content outline
-    OpenAIService-->>ContentFunction: Return structured outline
-    ContentFunction->>StorageService: Save outline
-    
-    ContentFunction->>OpenAIService: Generate draft content
-    OpenAIService-->>ContentFunction: Return draft markdown
-    ContentFunction->>StorageService: Save draft
-    
-    ContentFunction->>OpenAIService: Polish and optimize content
-    OpenAIService-->>ContentFunction: Return polished content
-    ContentFunction->>OpenAIService: Generate SEO metadata
-    OpenAIService-->>ContentFunction: Return title, meta description
-    
-    ContentFunction->>OpenAIService: Generate featured image prompt
-    OpenAIService-->>ContentFunction: Return image generation prompt
-    ContentFunction->>OpenAIService: Generate image
-    OpenAIService-->>ContentFunction: Return image URL
-    
-    ContentFunction->>StorageService: Save final content package
-    ContentFunction-->>ResearchFunction: Content generation complete
-```
-
-### 4. Publishing Workflow
-
-The publishing workflow handles content delivery to WordPress and related platforms.
-
-```mermaid
-stateDiagram-v2
-    [*] --> ContentReady
-    
-    ContentReady --> PreparePublishing: Scheduled
-    PreparePublishing --> WordPressPublishing: Package Ready
-    
-    WordPressPublishing --> SingleSite: Standard Blog
-    WordPressPublishing --> MultiSite: Multi-Domain Setup
-    
-    SingleSite --> PublishComplete: Success
-    SingleSite --> PublishRetry: Failed
-    PublishRetry --> SingleSite: Retry
-    
-    MultiSite --> SelectSite: Choose Blog
-    SelectSite --> DomainMapping: Map Domain
-    DomainMapping --> PublishComplete: Success
-    DomainMapping --> PublishRetry: Failed
-    
-    PublishComplete --> SocialMediaPromotion: Auto-Promote
-    SocialMediaPromotion --> Twitter: Share on Twitter
-    SocialMediaPromotion --> LinkedIn: Share on LinkedIn
-    SocialMediaPromotion --> Facebook: Share on Facebook
-    SocialMediaPromotion --> Reddit: Share on Reddit
-    SocialMediaPromotion --> Medium: Crosspost to Medium
-    
-    Twitter --> PromoComplete: Shared
-    LinkedIn --> PromoComplete: Shared
-    Facebook --> PromoComplete: Shared
-    Reddit --> PromoComplete: Shared
-    Medium --> PromoComplete: Shared
-    
-    PromoComplete --> [*]
-```
-
-## Data Storage Structure
-
-The system uses a structured storage approach for blogs, runs, and generated content.
-
-```mermaid
-erDiagram
-    BLOG ||--o{ BLOG_CONFIG : contains
-    BLOG ||--o{ THEME : contains
-    BLOG ||--o{ TOPICS : contains
-    BLOG ||--o{ RUN : generates
-    
-    BLOG_CONFIG {
-        string id
-        string name
-        string description
-        string theme
-        string audience
-        string tone
-        array topics
-        object wordpress_config
-        object social_media_config
-    }
-    
-    THEME {
-        string theme_name
-        string description
-        string target_audience
-        object tone_guidelines
-        object style_parameters
-        array content_types
-        array relevant_keywords
-    }
-    
-    TOPICS {
-        array topics
-        string last_updated
-    }
-    
-    RUN ||--o{ RESEARCH : contains
-    RUN ||--o{ CONTENT : contains
-    RUN ||--o{ PUBLISH : contains
-    RUN ||--o{ SOCIAL : contains
-    
-    RUN {
-        string run_id
-        string blog_id
-        string topic
-        string status
-        string created_at
-    }
-    
-    RESEARCH {
-        string topic
-        array keywords
-        array sources
-        object competitor_data
-        object trending_data
-    }
-    
-    CONTENT {
-        string title
-        string meta_description
-        string outline
-        string markdown_content
-        array images
-        object seo_data
-    }
-    
-    PUBLISH {
-        string status
-        string published_url
-        string wordpress_id
-        string published_at
-        object wordpress_response
-    }
-    
-    SOCIAL {
-        array platforms
-        object status_by_platform
-        array share_urls
-        string promoted_at
-    }
+    B & C & D & E & F --> G[Theme Context]
+    G --> H[Research Service]
+    G --> I[Content Generator]
+    G --> J[Image Generator]
 ```
 
 ## Analytics and Monitoring
 
-The system includes comprehensive analytics for tracking performance and optimizing content strategy.
+The system includes comprehensive analytics and monitoring capabilities:
 
 ```mermaid
-graph TD
-    classDef analytics fill:#9B59B6,color:white,stroke:none;
-    classDef traffic fill:#3498DB,color:white,stroke:none;
-    classDef engagement fill:#2ECC71,color:white,stroke:none;
-    classDef monetization fill:#F1C40F,color:black,stroke:none;
-
-    A[Analytics Dashboard] --> B[Traffic Analysis]:::traffic
-    A --> C[Engagement Metrics]:::engagement
-    A --> D[Monetization Tracking]:::monetization
-    A --> E[Competitor Insights]:::analytics
-    A --> F[Keyword Performance]:::analytics
+flowchart TD
+    A[Blog Posts] --> B[Performance Tracking]
+    B --> C[Google Analytics]
+    B --> D[WordPress Analytics]
+    B --> E[AdSense]
+    B --> F[Search Console]
     
-    B --> B1[Google Analytics]:::traffic
-    B --> B2[Search Console]:::traffic
-    B --> B3[WordPress Analytics]:::traffic
-    
-    C --> C1[User Behavior]:::engagement
-    C --> C2[Content Interaction]:::engagement
-    C --> C3[Social Media Engagement]:::engagement
-    
-    D --> D1[AdSense Performance]:::monetization
-    D --> D2[Affiliate Links]:::monetization
-    D --> D3[Conversion Tracking]:::monetization
-    
-    E --> E1[Content Gap Analysis]:::analytics
-    E --> E2[SEO Comparison]:::analytics
-    E --> E3[Topic Coverage]:::analytics
-    
-    F --> F1[Keyword Rankings]:::analytics
-    F --> F2[Opportunity Finder]:::analytics
-    F --> F3[Content Recommendations]:::analytics
+    C & D & E & F --> G[Unified Dashboard]
+    G --> H[Performance Reports]
+    G --> I[Content Recommendations]
 ```
 
-## AI Optimization System
+## AI Cost Optimization
 
-The AI optimization system manages token usage, prompt efficiency, and cost optimization.
+The system includes features to optimize AI usage and control costs:
 
 ```mermaid
-flowchart TB
-    classDef optimization fill:#E74C3C,color:white,stroke:none;
-    classDef cache fill:#3498DB,color:white,stroke:none;
-    classDef budget fill:#2ECC71,color:white,stroke:none;
-    
-    A[AI Optimization Controller] --> B[Token Counter]:::optimization
-    A --> C[Prompt Optimizer]:::optimization
-    A --> D[Response Cache]:::cache
-    A --> E[Budget Manager]:::budget
-    
-    B --> PromptAnalysis[Analyze Input Tokens]
-    PromptAnalysis --> TokenReduction[Reduce Token Usage]
-    
-    C --> PromptRefinement[Refine Prompt Structure]
-    PromptRefinement --> ContextPrioritization[Prioritize Context]
-    
-    D --> CacheCheck{Check Cache}
-    CacheCheck -- Hit --> ReturnCached[Return Cached Response]
-    CacheCheck -- Miss --> CallAPI[Call AI API]
-    CallAPI --> StoreResponse[Store in Cache]
-    StoreResponse --> ReturnFresh[Return Fresh Response]
-    
-    E --> BudgetCheck{Check Budget}
-    BudgetCheck -- Within Limits --> ApproveRequest[Approve Request]
-    BudgetCheck -- Exceeded --> ThrottleRequests[Throttle Requests]
-    ThrottleRequests --> ModelDowngrade[Downgrade Model]
-    ModelDowngrade --> RetryRequest[Retry Request]
+flowchart TD
+    A[AI Request] --> B{Cache Check}
+    B -->|Cache Hit| C[Return Cached Response]
+    B -->|Cache Miss| D[Token Counter]
+    D --> E[Model Selector]
+    E --> F[API Request]
+    F --> G[Response Cache]
+    G --> H[Usage Tracking]
 ```
 
-## Keyword Opportunity Finder
+## Competitor Analysis System
 
-The keyword opportunity finder identifies valuable keywords based on competitor analysis.
+The platform includes tools for analyzing competitor content and identifying opportunities:
 
 ```mermaid
-sequenceDiagram
-    participant User
-    participant ResearchService
-    participant CompetitorAnalysis
-    participant ContentResearchUI
+flowchart TD
+    A[Competitor URLs] --> B[Content Scraper]
+    B --> C[Content Analysis]
+    C --> D[Topic Extraction]
+    C --> E[Keyword Analysis]
+    C --> F[Structure Analysis]
     
-    User->>ContentResearchUI: Request Trending Topics
-    ContentResearchUI->>ResearchService: research_topics()
-    ResearchService->>CompetitorAnalysis: find_keyword_opportunities()
-    
-    CompetitorAnalysis->>CompetitorAnalysis: Extract Competitor Keywords
-    CompetitorAnalysis->>CompetitorAnalysis: Calculate Frequency
-    CompetitorAnalysis->>CompetitorAnalysis: Score Opportunities
-    CompetitorAnalysis->>CompetitorAnalysis: Assess Difficulty
-    
-    CompetitorAnalysis-->>ResearchService: Return Keyword Opportunities
-    ResearchService->>ResearchService: Merge with Trend Data
-    ResearchService->>ResearchService: Sort & Prioritize Results
-    
-    ResearchService-->>ContentResearchUI: Return Enhanced Topics
-    ContentResearchUI-->>User: Display Results with Opportunities
+    D & E & F --> G[Gap Analysis]
+    G --> H[Content Recommendations]
+    G --> I[Keyword Opportunities]
 ```
 
-## Configuration Files
+## Security and Authentication
 
-### Blog Configuration (`config.json`)
+The system uses Azure Key Vault for secure credential management:
 
-```json
-{
-  "name": "Tech Trends Blog",
-  "description": "Latest insights on technology trends and innovations",
-  "theme": "technology",
-  "audience": "tech professionals",
-  "tone": "informative",
-  "topics": ["AI", "Cloud Computing", "Cybersecurity"],
-  "wordpress_config": {
-    "site_url": "https://techtrends.example.com",
-    "username": "admin",
-    "category_id": 5,
-    "publishing_schedule": "weekly"
-  },
-  "social_media_config": {
-    "twitter": true,
-    "linkedin": true,
-    "facebook": false,
-    "reddit": true,
-    "medium": false
-  }
-}
+```mermaid
+flowchart TD
+    A[Application] --> B[Managed Identity]
+    B --> C[Key Vault]
+    C --> D[WordPress Credentials]
+    C --> E[API Keys]
+    C --> F[Database Credentials]
 ```
 
-### Theme Configuration (`theme.json`)
+## Deployment Process
 
-```json
-{
-  "theme_name": "technology",
-  "description": "Content focused on technology trends, innovations, and digital transformation",
-  "target_audience": {
-    "primary": "IT professionals",
-    "secondary": "Technology enthusiasts",
-    "characteristics": ["tech-savvy", "curious", "professionally motivated"]
-  },
-  "tone_guidelines": {
-    "primary_tone": "informative",
-    "secondary_tones": ["analytical", "future-oriented"],
-    "voice": "authoritative but accessible",
-    "avoid": ["overly technical jargon without explanation", "sensationalism"]
-  },
-  "style_parameters": {
-    "paragraph_length": "medium",
-    "sentence_complexity": "moderate",
-    "use_of_metaphors": "occasional",
-    "citation_style": "hyperlinked sources",
-    "code_examples": "when relevant"
-  },
-  "content_types": [
-    "how-to guides",
-    "trend analysis",
-    "product reviews",
-    "industry news",
-    "technical explainers"
-  ],
-  "relevant_keywords": [
-    "digital transformation",
-    "tech innovation",
-    "emerging technology",
-    "software development",
-    "cloud computing",
-    "AI and machine learning",
-    "cybersecurity"
-  ]
-}
-```
-
-## System Integration Points
-
-The system integrates with various external services to provide complete functionality.
+The system is deployed using Azure Bicep templates and GitHub Actions:
 
 ```mermaid
 flowchart LR
-    classDef system fill:#34495E,color:white,stroke:none;
-    classDef external fill:#E74C3C,color:white,stroke:none;
-    classDef ai fill:#3498DB,color:white,stroke:none;
-    classDef analytics fill:#2ECC71,color:white,stroke:none;
-    classDef social fill:#9B59B6,color:white,stroke:none;
-    
-    System[Automated Blog System]:::system
-    
-    subgraph AI Services
-    OpenAI[OpenAI API]:::ai
-    AzureOpenAI[Azure OpenAI]:::ai
-    end
-    
-    subgraph CMS Platforms
-    WordPress[WordPress API]:::external
-    Medium[Medium API]:::external
-    end
-    
-    subgraph Analytics Platforms
-    GoogleAnalytics[Google Analytics]:::analytics
-    AdSense[Google AdSense]:::analytics
-    SearchConsole[Search Console]:::analytics
-    end
-    
-    subgraph Social Media
-    Twitter[Twitter API]:::social
-    LinkedIn[LinkedIn API]:::social
-    Facebook[Facebook API]:::social
-    Reddit[Reddit API]:::social
-    end
-    
-    subgraph Research Tools
-    GoogleTrends[Google Trends]:::external
-    WebScraper[Web Scraper]:::external
-    RSSReader[RSS Parser]:::external
-    end
-    
-    System --> OpenAI
-    System --> AzureOpenAI
-    System --> WordPress
-    System --> Medium
-    System --> GoogleAnalytics
-    System --> AdSense
-    System --> SearchConsole
-    System --> Twitter
-    System --> LinkedIn
-    System --> Facebook
-    System --> Reddit
-    System --> GoogleTrends
-    System --> WebScraper
-    System --> RSSReader
+    A[GitHub Repository] --> B[GitHub Actions]
+    B --> C[Bicep Templates]
+    C --> D[Resource Group]
+    D --> E[Function App]
+    D --> F[Storage Account]
+    D --> G[Key Vault]
+    D --> H[App Insights]
 ```
 
-## Deployment Architecture
+## Error Handling and Retry Mechanisms
 
-The system is deployed on Azure using a serverless architecture for optimal scaling and cost efficiency.
+The system includes comprehensive error handling and retry mechanisms:
 
 ```mermaid
-graph TB
-    classDef azure fill:#0072C6,color:white,stroke:none;
-    classDef function fill:#3498DB,color:white,stroke:none;
-    classDef storage fill:#F1C40F,color:black,stroke:none;
-    classDef keyvault fill:#2ECC71,color:white,stroke:none;
-    classDef monitoring fill:#9B59B6,color:white,stroke:none;
-    
-    A[Azure Resource Group]:::azure
-    
-    A --> B[Azure Functions App]:::azure
-    A --> C[Azure Storage Account]:::storage
-    A --> D[Azure Key Vault]:::keyvault
-    A --> E[Azure Application Insights]:::monitoring
-    A --> F[Azure Monitor]:::monitoring
-    
-    B --> B1[Blog Setup Function]:::function
-    B --> B2[Research Function]:::function
-    B --> B3[Content Generator Function]:::function
-    B --> B4[Publisher Function]:::function
-    B --> B5[Social Media Function]:::function
-    B --> B6[Analytics Function]:::function
-    
-    C --> C1[Blob Storage]:::storage
-    C --> C2[Queue Storage]:::storage
-    C --> C3[Table Storage]:::storage
-    
-    D --> D1[API Keys]:::keyvault
-    D --> D2[Connection Strings]:::keyvault
-    D --> D3[WordPress Credentials]:::keyvault
-    
-    E --> F
-    
-    E --> E1[Performance Monitoring]:::monitoring
-    E --> E2[Error Tracking]:::monitoring
-    E --> E3[Usage Analytics]:::monitoring
-    
-    F --> F1[Alerts]:::monitoring
-    F --> F2[Dashboards]:::monitoring
+stateDiagram-v2
+    [*] --> Running
+    Running --> Failed : Error Occurs
+    Failed --> Retry : Retry Attempt
+    Retry --> Running : Success
+    Retry --> Failed : Failure
+    Retry --> DeadLetter : Max Retries Exceeded
+    DeadLetter --> [*]
+    Running --> Completed : Task Completes
+    Completed --> [*]
 ```
-
-## Getting Started with the System
-
-To get started with the Automated Multi-Blog Content Pipeline:
-
-1. Configure your blog through the web dashboard
-2. Set up integration credentials for WordPress and social media
-3. Define your blog's theme and target audience
-4. Initialize the content research process
-5. Review and approve generated content
-6. Monitor performance through the analytics dashboard
-
-This documentation provides a comprehensive overview of the system architecture, components, and workflows. For detailed API references and implementation guides, please refer to the individual component documentation.
