@@ -1990,7 +1990,8 @@ def rss_feed_api_v2():
         
         feed_url = data['feed_url']
         limit = int(data.get('limit', 10))
-        logger.info(f"Fetching RSS feed: {feed_url} with limit {limit}")
+        blog_id = data.get('blog_id')
+        logger.info(f"Fetching RSS feed: {feed_url} with limit {limit}, blog_id: {blog_id}")
         
         # Check if web scraper service is available
         if not web_scraper_service:
@@ -1999,8 +2000,28 @@ def rss_feed_api_v2():
                 "message": "Web scraper service is not available"
             }), 500
         
-        # Fetch RSS feed
-        feed_entries = web_scraper_service.fetch_rss_feed(feed_url, limit)
+        # Get blog context if specified
+        blog_context = None
+        if blog_id:
+            try:
+                blog_data = get_blog_by_id(blog_id)
+                if blog_data:
+                    blog_context = {
+                        'name': blog_data.get('name', ''),
+                        'theme': blog_data.get('theme', ''),
+                        'topics': blog_data.get('topics', []),
+                        'audience': blog_data.get('audience', ''),
+                        'tone': blog_data.get('tone', 'informative')
+                    }
+                    logger.info(f"Using blog context for RSS feed parsing API: {blog_context['name']}")
+            except Exception as e:
+                logger.warning(f"Could not get blog context for ID {blog_id}: {str(e)}")
+        
+        # Fetch RSS feed with optional blog context
+        if blog_context:
+            feed_entries = web_scraper_service.fetch_rss_feed_with_context(feed_url, limit, blog_context)
+        else:
+            feed_entries = web_scraper_service.fetch_rss_feed(feed_url, limit)
         
         if feed_entries is None:
             return jsonify({
@@ -2010,7 +2031,9 @@ def rss_feed_api_v2():
         
         return jsonify({
             "success": True, 
-            "data": feed_entries
+            "data": feed_entries,
+            "used_blog_context": blog_context is not None,
+            "blog_name": blog_context.get('name') if blog_context else None
         })
     except Exception as e:
         logger.error(f"Error fetching RSS feed: {str(e)}")

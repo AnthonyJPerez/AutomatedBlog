@@ -550,6 +550,54 @@ class WebScraperService:
         except Exception as e:
             logger.error(f"Error extracting content from URL {url}: {str(e)}")
             return None
+            
+    def extract_content_from_url_with_context(self, url, blog_context):
+        """
+        Extract content from a URL using trafilatura with blog context awareness.
+        This enhanced version analyzes content relevance to specific blog themes.
+        
+        Args:
+            url (str): The URL to extract content from
+            blog_context (dict): Blog context information (name, theme, topics, audience)
+            
+        Returns:
+            dict: A dictionary containing extracted content, metadata, and relevance scoring
+        """
+        try:
+            # First get content normally
+            content_data = self.extract_content_from_url(url)
+            
+            if not content_data:
+                return None
+                
+            # Add blog context relevance scoring
+            if 'content' in content_data and content_data['content']:
+                text = content_data['content']
+                
+                # Calculate relevance scores based on blog context
+                relevance_scores = self._calculate_blog_relevance(text, blog_context)
+                
+                # Add relevance information to the content data
+                content_data['blog_relevance'] = relevance_scores
+                
+                # If we have an analysis section, enhance it with blog-specific insights
+                if 'analysis' in content_data:
+                    content_data['analysis']['blog_insights'] = self._generate_blog_insights(
+                        text, blog_context, content_data['analysis']
+                    )
+                
+            # Add the blog context that was used
+            content_data['blog_context'] = {
+                'name': blog_context.get('name', ''),
+                'theme': blog_context.get('theme', ''),
+                'topics': blog_context.get('topics', [])
+            }
+                
+            return content_data
+            
+        except Exception as e:
+            logger.error(f"Error extracting content with context from {url}: {str(e)}")
+            return None
 
     def extract_with_newspaper(self, url):
         """
