@@ -589,6 +589,55 @@ class WebScraperService:
         except Exception as e:
             logger.error(f"Error extracting article from URL {url}: {str(e)}")
             return None
+            
+    def extract_with_newspaper_and_context(self, url, blog_context):
+        """
+        Extract article content using the newspaper3k library with blog context awareness.
+        
+        Args:
+            url (str): The URL to extract content from
+            blog_context (dict): Blog context information (name, theme, topics, audience)
+            
+        Returns:
+            dict: A dictionary containing the extracted article content and metadata with relevance scoring
+        """
+        try:
+            # First get article normally
+            result = self.extract_with_newspaper(url)
+            
+            if not result:
+                return None
+                
+            # Add blog context relevance scoring
+            if 'text' in result and result['text']:
+                text = result['text']
+                
+                # Calculate relevance scores based on blog context
+                relevance_scores = self._calculate_blog_relevance(text, blog_context)
+                
+                # Add relevance information to the result
+                result['blog_relevance'] = relevance_scores
+                
+                # Generate blog-specific insights for this content
+                result['blog_insights'] = self._generate_blog_insights(
+                    text, blog_context, {
+                        'keywords': result.get('keywords', []),
+                        'summary': result.get('summary', '')
+                    }
+                )
+                
+            # Add the blog context that was used
+            result['blog_context'] = {
+                'name': blog_context.get('name', ''),
+                'theme': blog_context.get('theme', ''),
+                'topics': blog_context.get('topics', [])
+            }
+                
+            return result
+            
+        except Exception as e:
+            logger.error(f"Error extracting article with context from {url}: {str(e)}")
+            return None
 
     def fetch_rss_feed(self, feed_url, limit=10):
         """
@@ -638,6 +687,67 @@ class WebScraperService:
         except Exception as e:
             logger.error(f"Error fetching RSS feed {feed_url}: {str(e)}")
             return []
+            
+    def fetch_rss_feed_with_context(self, feed_url, limit=10, blog_context=None):
+        """
+        Fetch and parse an RSS feed with blog context awareness.
+        Analyzes entries for relevance to the blog theme and reorders/filters accordingly.
+        
+        Args:
+            feed_url (str): The URL of the RSS feed
+            limit (int): Maximum number of entries to return
+            blog_context (dict): Blog context information (name, theme, topics, audience)
+            
+        Returns:
+            list: A list of dictionaries containing feed entries with relevance scoring
+        """
+        try:
+            # First get feed entries normally
+            entries = self.fetch_rss_feed(feed_url, limit * 2)  # Get more entries than needed for filtering
+            
+            if not entries or not blog_context:
+                return entries
+                
+            # Process entries with context awareness
+            processed_entries = []
+            for entry in entries:
+                # Extract text content from entry for analysis
+                text = ""
+                if 'summary' in entry and entry['summary']:
+                    text += entry['summary'] + " "
+                if 'content' in entry and entry['content']:
+                    text += entry['content'] + " "
+                if 'title' in entry and entry['title']:
+                    text += entry['title']
+                
+                if not text.strip():
+                    # Skip entries with no text content for analysis
+                    continue
+                
+                # Calculate relevance score
+                relevance_scores = self._calculate_blog_relevance(text, blog_context)
+                
+                # Add relevance information to the entry
+                entry['blog_relevance'] = relevance_scores
+                
+                # Add blog context that was used
+                entry['blog_context'] = {
+                    'name': blog_context.get('name', ''),
+                    'theme': blog_context.get('theme', ''),
+                    'topics': blog_context.get('topics', [])
+                }
+                
+                processed_entries.append(entry)
+            
+            # Sort entries by relevance score (descending)
+            processed_entries.sort(key=lambda x: x.get('blog_relevance', {}).get('overall_score', 0), reverse=True)
+            
+            # Return only the most relevant entries
+            return processed_entries[:limit]
+            
+        except Exception as e:
+            logger.error(f"Error processing RSS feed with context {feed_url}: {str(e)}")
+            return self.fetch_rss_feed(feed_url, limit)  # Fall back to regular fetch
 
     def research_topic(self, topic, num_sources=5, context=None):
         """
@@ -989,6 +1099,217 @@ class WebScraperService:
             logger.error(f"Error generating word cloud: {str(e)}")
             return None
     
+    def _calculate_blog_relevance(self, text, blog_context):
+        """
+        Calculate relevance scores for text content based on blog context.
+        
+        Args:
+            text (str): The text content to analyze
+            blog_context (dict): Blog context information (name, theme, topics, audience)
+            
+        Returns:
+            dict: Dictionary with various relevance scores
+        """
+        try:
+            # Extract blog context details
+            blog_theme = blog_context.get('theme', '').lower()
+            blog_topics = [t.lower() for t in blog_context.get('topics', [])]
+            blog_audience = blog_context.get('audience', '').lower()
+            blog_tone = blog_context.get('tone', '').lower()
+            
+            # Prepare text for analysis
+            text_lower = text.lower()
+            words = text_lower.split()
+            
+            # Initialize scores
+            theme_score = 0
+            topic_score = 0
+            audience_score = 0
+            tone_score = 0
+            
+            # Calculate theme relevance
+            if blog_theme:
+                theme_words = blog_theme.split()
+                theme_matches = sum(1 for word in theme_words if word in text_lower)
+                theme_score = min(10, theme_matches * 2)  # Scale up to max 10
+            
+            # Calculate topic relevance
+            matching_topics = []
+            for topic in blog_topics:
+                topic_words = topic.split()
+                topic_matches = sum(1 for word in topic_words if word in text_lower)
+                if topic_matches > 0:
+                    topic_score += min(5, topic_matches)  # Add up to 5 points per topic
+                    matching_topics.append(topic)
+            topic_score = min(10, topic_score)  # Cap at 10
+            
+            # Calculate audience relevance
+            if blog_audience:
+                audience_words = blog_audience.split()
+                audience_matches = sum(1 for word in audience_words if word in text_lower)
+                audience_score = min(5, audience_matches * 2)  # Scale up to max 5
+            
+            # Calculate tone relevance using sentiment
+            if blog_tone:
+                # Analyze sentiment
+                blob = TextBlob(text)
+                sentiment = blob.sentiment
+                
+                # Match tone to sentiment
+                tone_match = 0
+                if blog_tone in ['positive', 'upbeat', 'optimistic'] and sentiment.polarity > 0.2:
+                    tone_match = min(5, sentiment.polarity * 10)
+                elif blog_tone in ['negative', 'critical', 'cautious'] and sentiment.polarity < -0.2:
+                    tone_match = min(5, abs(sentiment.polarity) * 10)
+                elif blog_tone in ['neutral', 'balanced', 'objective'] and abs(sentiment.polarity) < 0.3:
+                    tone_match = 5 - (abs(sentiment.polarity) * 10)  # Higher for more neutral
+                
+                tone_score = max(0, tone_match)
+            
+            # Calculate keyword relevance
+            keywords = self._extract_keywords(text)
+            keyword_relevance = sum(1 for kw in keywords if 
+                                    kw.lower() in blog_theme.lower() or 
+                                    any(kw.lower() in t.lower() for t in blog_topics))
+            keyword_score = min(5, keyword_relevance)
+            
+            # Calculate overall score (weighted sum)
+            overall_score = (
+                theme_score * 0.35 +    # Theme is most important
+                topic_score * 0.3 +     # Topics are very important
+                audience_score * 0.15 + # Audience is somewhat important
+                tone_score * 0.1 +      # Tone is less important
+                keyword_score * 0.1     # Keyword relevance is additional factor
+            )
+            
+            return {
+                'theme_score': theme_score,
+                'topic_score': topic_score,
+                'audience_score': audience_score,
+                'tone_score': tone_score,
+                'keyword_score': keyword_score,
+                'overall_score': overall_score,
+                'matching_topics': matching_topics,
+                'max_possible': 10  # The maximum possible score
+            }
+            
+        except Exception as e:
+            logger.error(f"Error calculating blog relevance: {str(e)}")
+            return {
+                'theme_score': 0,
+                'topic_score': 0,
+                'audience_score': 0,
+                'tone_score': 0,
+                'keyword_score': 0,
+                'overall_score': 0,
+                'matching_topics': [],
+                'max_possible': 10,
+                'error': str(e)
+            }
+    
+    def _generate_blog_insights(self, text, blog_context, analysis):
+        """
+        Generate blog-specific insights based on content analysis and blog context.
+        
+        Args:
+            text (str): The text content to analyze
+            blog_context (dict): Blog context information
+            analysis (dict): Existing analysis data
+            
+        Returns:
+            dict: Dictionary with blog-specific insights
+        """
+        try:
+            blog_theme = blog_context.get('theme', '')
+            blog_topics = blog_context.get('topics', [])
+            blog_audience = blog_context.get('audience', '')
+            
+            # Extract keywords from content
+            keywords = analysis.get('keywords', []) if isinstance(analysis, dict) else []
+            
+            # Calculate keyword overlap with blog topics
+            topic_overlap = []
+            for topic in blog_topics:
+                topic_lower = topic.lower()
+                matching_keywords = [k for k in keywords if k.lower() in topic_lower or topic_lower in k.lower()]
+                if matching_keywords:
+                    topic_overlap.append({
+                        'topic': topic,
+                        'matching_keywords': matching_keywords
+                    })
+            
+            # Determine if content is on-theme
+            on_theme = False
+            theme_keywords = []
+            if blog_theme:
+                theme_words = blog_theme.lower().split()
+                text_lower = text.lower()
+                
+                # Check for theme words in the text
+                theme_mentions = sum(text_lower.count(word) for word in theme_words if len(word) > 3)
+                on_theme = theme_mentions >= 2  # Arbitrary threshold
+                
+                # Find keywords related to theme
+                theme_keywords = [k for k in keywords if any(word in k.lower() for word in theme_words)]
+            
+            # Calculate content readability (basic metric)
+            sentences = text.split('.')
+            avg_words_per_sentence = sum(len(s.split()) for s in sentences if s.strip()) / max(1, len(sentences))
+            
+            # Determine if readability matches audience
+            readability_matches_audience = True  # Default assumption
+            if blog_audience:
+                if 'technical' in blog_audience.lower() and avg_words_per_sentence < 15:
+                    readability_matches_audience = False
+                elif 'beginner' in blog_audience.lower() and avg_words_per_sentence > 20:
+                    readability_matches_audience = False
+            
+            return {
+                'on_theme': on_theme,
+                'theme_keywords': theme_keywords,
+                'topic_overlap': topic_overlap,
+                'readability': {
+                    'avg_words_per_sentence': round(avg_words_per_sentence, 1),
+                    'matches_audience': readability_matches_audience
+                },
+                'recommendation': self._generate_content_recommendation(
+                    on_theme, bool(topic_overlap), readability_matches_audience, blog_context
+                )
+            }
+            
+        except Exception as e:
+            logger.error(f"Error generating blog insights: {str(e)}")
+            return {
+                'error': str(e),
+                'on_theme': False,
+                'topic_overlap': [],
+                'recommendation': 'Error generating insights'
+            }
+    
+    def _generate_content_recommendation(self, on_theme, has_topic_overlap, readability_matches_audience, blog_context):
+        """
+        Generate a recommendation for how to use this content based on relevance to blog.
+        
+        Args:
+            on_theme (bool): Whether the content matches the blog theme
+            has_topic_overlap (bool): Whether there's overlap with blog topics
+            readability_matches_audience (bool): Whether readability matches audience
+            blog_context (dict): Blog context information
+            
+        Returns:
+            str: A recommendation string
+        """
+        if on_theme and has_topic_overlap and readability_matches_audience:
+            return f"Highly relevant content for {blog_context.get('name')} blog. Consider using as primary source."
+        elif on_theme and has_topic_overlap:
+            return f"Relevant to theme and topics of {blog_context.get('name')} blog, but may need readability adjustment."
+        elif on_theme:
+            return f"On-theme for {blog_context.get('name')} blog, but lacks topic specificity."
+        elif has_topic_overlap:
+            return f"Contains topic overlap with {blog_context.get('name')} blog, but isn't fully on-theme."
+        else:
+            return f"Low relevance to {blog_context.get('name')} blog. Consider as supplementary content only."
+            
     def _extract_additional_sources(self, articles, topic, max_sources=3):
         """
         Extract additional sources from article content to expand our knowledge base.
@@ -1263,6 +1584,89 @@ class WebScraperService:
                 {"topic": "Remote Work", "score": 85.0, "change": -1.0, "source": "Fallback", "link": None},
                 {"topic": "Sustainable Living", "score": 82.5, "change": 5.0, "source": "Fallback", "link": None}
             ][:limit]
+            
+    def get_trending_topics_with_context(self, category=None, limit=10, blog_context=None):
+        """
+        Get trending topics specifically filtered and ranked for blog context relevance.
+        This specialized version ensures that all returned topics are highly relevant to the blog.
+        
+        Args:
+            category (str): Optional category to filter topics by
+            limit (int): Maximum number of topics to return
+            blog_context (dict): Blog context information (name, theme, topics, audience)
+            
+        Returns:
+            list: A list of trending topics with their scores, prioritized for blog relevance
+        """
+        if not blog_context:
+            # If no blog context provided, fall back to regular trending topics
+            return self.get_trending_topics(category, limit)
+            
+        try:
+            logger.info(f"Getting trending topics with context for blog: {blog_context.get('name')}")
+            
+            # Get a larger set of trending topics to filter from
+            all_topics = self.get_trending_topics(category, limit * 3, blog_context)
+            
+            if not all_topics:
+                logger.warning("No trending topics found to filter for blog context")
+                return []
+                
+            # Extract blog context information
+            blog_name = blog_context.get('name', '')
+            blog_theme = blog_context.get('theme', '').lower()
+            blog_topics = [t.lower() for t in blog_context.get('topics', [])]
+            blog_audience = blog_context.get('audience', '').lower()
+            
+            # Calculate relevance score for each topic
+            for topic in all_topics:
+                topic_text = topic['topic'].lower()
+                
+                # Start with the existing score
+                relevance_score = 0
+                
+                # Check theme relevance
+                if blog_theme and (blog_theme in topic_text or any(word in topic_text for word in blog_theme.split())):
+                    relevance_score += 30
+                    topic['theme_match'] = True
+                
+                # Check topic relevance
+                for blog_topic in blog_topics:
+                    if blog_topic in topic_text or any(word in topic_text for word in blog_topic.split()):
+                        relevance_score += 20
+                        if not 'matching_topics' in topic:
+                            topic['matching_topics'] = []
+                        topic['matching_topics'].append(blog_topic)
+                
+                # Check audience relevance
+                if blog_audience and blog_audience in topic_text:
+                    relevance_score += 15
+                    topic['audience_match'] = True
+                
+                # Store the relevance score
+                topic['relevance_score'] = relevance_score
+                
+                # Adjust the main score to prioritize relevance
+                topic['original_score'] = topic['score']
+                topic['score'] = topic['score'] + relevance_score
+            
+            # Sort by the adjusted score
+            all_topics.sort(key=lambda x: x['score'], reverse=True)
+            
+            # Add blog context info to the response
+            context_topics = all_topics[:limit]
+            for topic in context_topics:
+                topic['blog_context'] = {
+                    'name': blog_name,
+                    'theme': blog_context.get('theme', ''),
+                    'topics': blog_context.get('topics', [])
+                }
+            
+            return context_topics
+            
+        except Exception as e:
+            logger.error(f"Error getting trending topics with context: {str(e)}")
+            return self.get_trending_topics(category, limit)
 
 
 # Create a singleton instance
