@@ -78,17 +78,27 @@ def main(inputBlob: func.InputStream, outputBlob: func.Out[str]) -> None:
     if adsense_snippet:
         content = f"{content}\n\n{adsense_snippet}"
     
-    # Get WordPress credentials
-    wordpress_url = os.environ.get("WORDPRESS_URL", "https://example.com")
-    wordpress_username = os.environ.get("WORDPRESS_USERNAME", "admin")
+    # Get WordPress credentials from Key Vault or environment variables
+    wordpress_url = get_wordpress_url_from_keyvault()
+    wordpress_username = get_wordpress_username_from_keyvault()
     wordpress_password = get_wordpress_app_password()
     
-    if not wordpress_password:
-        logger.error("WordPress application password not found")
+    # If any of the required credentials are missing, report error
+    if not wordpress_url or not wordpress_username or not wordpress_password:
+        missing_credentials = []
+        if not wordpress_url:
+            missing_credentials.append("WordPress URL")
+        if not wordpress_username:
+            missing_credentials.append("WordPress username")
+        if not wordpress_password:
+            missing_credentials.append("WordPress application password")
+            
+        error_message = f"WordPress credentials incomplete: missing {', '.join(missing_credentials)}"
+        logger.error(error_message)
         outputBlob.set(json.dumps({
             "runId": run_id,
             "status": "error",
-            "error": "WordPress application password not found"
+            "error": error_message
         }))
         return
     
@@ -202,6 +212,48 @@ def get_adsense_snippet():
     
     # Fallback to environment variable
     return os.environ.get("ADSENSE_SNIPPET", "")
+
+def get_wordpress_url_from_keyvault():
+    """Get WordPress URL from Key Vault or environment variable"""
+    # Check if we have access to Key Vault
+    key_vault_name = os.environ.get("KEY_VAULT_NAME")
+    
+    if key_vault_name:
+        try:
+            # Use managed identity to access Key Vault
+            credential = DefaultAzureCredential()
+            key_vault_uri = f"https://{key_vault_name}.vault.azure.net/"
+            secret_client = SecretClient(vault_url=key_vault_uri, credential=credential)
+            
+            # Get WordPress URL from Key Vault
+            wordpress_url = secret_client.get_secret("WordPressUrl").value
+            return wordpress_url
+        except Exception as e:
+            logging.error(f"Error retrieving WordPress URL from Key Vault: {str(e)}")
+    
+    # Fallback to environment variable
+    return os.environ.get("WORDPRESS_URL", "https://example.com")
+
+def get_wordpress_username_from_keyvault():
+    """Get WordPress username from Key Vault or environment variable"""
+    # Check if we have access to Key Vault
+    key_vault_name = os.environ.get("KEY_VAULT_NAME")
+    
+    if key_vault_name:
+        try:
+            # Use managed identity to access Key Vault
+            credential = DefaultAzureCredential()
+            key_vault_uri = f"https://{key_vault_name}.vault.azure.net/"
+            secret_client = SecretClient(vault_url=key_vault_uri, credential=credential)
+            
+            # Get WordPress username from Key Vault
+            wordpress_username = secret_client.get_secret("WordPressAdminUsername").value
+            return wordpress_username
+        except Exception as e:
+            logging.error(f"Error retrieving WordPress username from Key Vault: {str(e)}")
+    
+    # Fallback to environment variable
+    return os.environ.get("WORDPRESS_USERNAME", "admin")
 
 def get_wordpress_app_password():
     """Get WordPress application password from Key Vault or environment variable"""

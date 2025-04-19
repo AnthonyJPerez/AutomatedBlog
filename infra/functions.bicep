@@ -81,6 +81,28 @@ resource functionApp 'Microsoft.Web/sites@2022-03-01' = {
           name: 'STORAGE_ACCOUNT_NAME'
           value: storageAccount.name
         }
+        {
+          name: 'USE_KEY_VAULT_WORDPRESS_CREDENTIALS'
+          value: 'true'
+        }
+        // Default to automatic WordPress connection when credentials are in Key Vault
+        {
+          name: 'WORDPRESS_USE_DEFAULT_CREDENTIALS'
+          value: 'true'
+        }
+        // The following environment variables will be overridden by Key Vault values when available
+        {
+          name: 'WORDPRESS_URL'
+          value: '@Microsoft.KeyVault(SecretUri=https://${keyVaultName}.vault.azure.net/secrets/WordPressUrl/)'
+        }
+        {
+          name: 'WORDPRESS_USERNAME'
+          value: '@Microsoft.KeyVault(SecretUri=https://${keyVaultName}.vault.azure.net/secrets/WordPressAdminUsername/)'
+        }
+        {
+          name: 'WORDPRESS_APP_PASSWORD'
+          value: '@Microsoft.KeyVault(SecretUri=https://${keyVaultName}.vault.azure.net/secrets/WordPressAppPassword/)'
+        }
       ]
       ftpsState: 'Disabled'
       minTlsVersion: '1.2'
