@@ -733,6 +733,39 @@ def get_blogs():
     
     return jsonify(blogs)
 
+@app.route('/api/blogs/<blog_id>')
+def get_blog_details(blog_id):
+    """API endpoint to get details for a specific blog"""
+    try:
+        logger.info(f"Fetching details for blog ID: {blog_id}")
+        
+        # Use the existing get_blog_by_id helper function
+        blog = get_blog_by_id(blog_id)
+        
+        if not blog:
+            logger.warning(f"Blog with ID {blog_id} not found")
+            return jsonify({"error": "Blog not found"}), 404
+        
+        # Get additional details like content count
+        content_count = 0
+        runs_path = os.path.join("data", "blogs", blog_id, "runs")
+        if os.path.exists(runs_path):
+            run_folders = [f for f in os.listdir(runs_path) if os.path.isdir(os.path.join(runs_path, f))]
+            for run_id in run_folders:
+                content_path = os.path.join(runs_path, run_id, "content.md")
+                if os.path.exists(content_path):
+                    content_count += 1
+        
+        # Add content count to the response
+        blog['content_count'] = content_count
+        
+        logger.info(f"Successfully retrieved blog: {blog.get('name', 'Unknown')}")
+        return jsonify(blog)
+        
+    except Exception as e:
+        logger.error(f"Error getting blog details for {blog_id}: {str(e)}")
+        return jsonify({"error": f"Failed to get blog details: {str(e)}"}), 500
+
 @app.route('/content_research')
 def content_research():
     """Content research tools page for scraping and analysis"""
