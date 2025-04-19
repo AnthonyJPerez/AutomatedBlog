@@ -1,0 +1,31 @@
+{
+  "name": "Example Blog",
+  "theme": "Digital Marketing",
+  "description": "A blog about digital marketing trends and strategies",
+  "created_at": "2025-04-19",
+  "is_active": true,
+  "frequency": "weekly",
+  "wordpress": {
+    "connected": false,
+    "site_url": "",
+    "username": "",
+    "categories": ["Marketing", "Digital"]
+  },
+  "social_media": {
+    "enabled": true,
+    "platforms": {
+      "twitter": true,
+      "linkedin": true,
+      "facebook": false
+    }
+  },
+  "image_generation": {
+    "enabled": true,
+    "count": 1,
+    "use_gpt4o_descriptions": false,
+    "style": "natural",
+    "quality": "standard",
+    "size": "1024x1024",
+    "section_images": false
+  }
+}

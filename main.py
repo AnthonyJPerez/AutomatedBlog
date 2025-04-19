@@ -140,6 +140,12 @@ def setup():
             content_style = request.form.get('content_style', 'informative').strip()
             include_featured_image = request.form.get('include_featured_image') == '1'
             
+            # Image generation settings
+            image_generation_count = int(request.form.get('image_generation_count', '1'))
+            use_gpt4o_descriptions = request.form.get('use_gpt4o_descriptions') == '1'
+            image_generation_style = request.form.get('image_generation_style', 'natural')
+            enable_section_images = request.form.get('enable_section_images') == '1'
+            
             # Validate required fields
             if not blog_name or not theme or not topic_keywords:
                 flash("Blog name, theme, and topic keywords are required fields.", "danger")
@@ -169,8 +175,16 @@ def setup():
                 "frequency": frequency,
                 "content_settings": {
                     "length": content_length,
-                    "style": content_style,
-                    "include_featured_image": include_featured_image
+                    "style": content_style
+                },
+                "image_generation": {
+                    "enabled": include_featured_image,
+                    "count": image_generation_count if include_featured_image else 0,
+                    "use_gpt4o_descriptions": use_gpt4o_descriptions,
+                    "style": image_generation_style,
+                    "quality": "standard",  # Default to standard quality
+                    "size": "1024x1024",    # Default to 1024x1024 size
+                    "section_images": enable_section_images
                 },
                 "topics": topics_list
             }
