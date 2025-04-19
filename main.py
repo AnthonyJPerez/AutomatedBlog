@@ -7,6 +7,7 @@ from flask import Flask, render_template, request, redirect, url_for, jsonify, f
 from src.shared.storage_service import StorageService
 from src.shared.research_service import ResearchService
 from src.shared.openai_service import OpenAIService
+from src.shared.openai_service_optimizer import OptimizedOpenAIService
 from src.shared.billing_service import BillingService
 
 # Set up logging
@@ -21,6 +22,15 @@ app.secret_key = os.environ.get("SESSION_SECRET", "dev-secret-key")
 storage_service = StorageService()
 research_service = ResearchService()
 openai_service = OpenAIService()
+
+# Initialize the optimized OpenAI service with caching enabled
+# Use environment variables to configure caching and budget
+cache_ttl = int(os.environ.get("OPENAI_CACHE_TTL_SECONDS", "3600"))  # Default 1 hour
+enable_caching = os.environ.get("OPENAI_ENABLE_CACHING", "True").lower() == "true"
+optimized_openai_service = OptimizedOpenAIService(
+    cache_ttl_seconds=cache_ttl,
+    enable_caching=enable_caching
+)
 billing_service = BillingService()
 
 # Initialize social media service
