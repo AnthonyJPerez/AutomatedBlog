@@ -11,6 +11,34 @@
         </div>
     </div>
 
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header bg-dark">
+                    <h5 class="card-title mb-0">Blog Context</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="blog-selector" class="form-label">Select Blog Context</label>
+                                <select class="form-select" id="blog-selector">
+                                    <option value="" selected>Select a blog...</option>
+                                    <!-- Blog options will be loaded here -->
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="p-3 bg-light rounded" id="blog-theme-info">
+                                <p class="text-muted">Select a blog to see its theme and focus. All research will be contextualized to this blog.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div class="row">
         <div class="col-md-12 mb-4">
             <ul class="nav nav-tabs" id="research-tabs" role="tablist">
@@ -264,7 +292,98 @@
 
 {% block scripts %}
 <script>
+    // Global variable to store the currently selected blog ID
+    let currentBlogId = '';
+    
+    // Function to load blogs for the selector
+    function loadBlogs() {
+        fetch('/api/blogs')
+            .then(response => response.json())
+            .then(data => {
+                if (data && data.length > 0) {
+                    const selector = document.getElementById('blog-selector');
+                    // Clear existing options except the default one
+                    while (selector.options.length > 1) {
+                        selector.remove(1);
+                    }
+                    
+                    // Add blog options
+                    data.forEach(blog => {
+                        const option = document.createElement('option');
+                        option.value = blog.id;
+                        option.textContent = blog.name;
+                        selector.appendChild(option);
+                    });
+                } else {
+                    console.log('No blogs available');
+                }
+            })
+            .catch(error => {
+                console.error('Error loading blogs:', error);
+            });
+    }
+    
+    // Function to update the blog context based on selection
+    function updateBlogContext(blogId) {
+        if (!blogId) {
+            document.getElementById('blog-theme-info').innerHTML = 
+                '<p class="text-muted">Select a blog to see its theme and focus. All research will be contextualized to this blog.</p>';
+            currentBlogId = '';
+            return;
+        }
+        
+        // Store the selected blog ID globally
+        currentBlogId = blogId;
+        
+        // Show loading state
+        document.getElementById('blog-theme-info').innerHTML = 
+            '<p class="text-muted"><span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Loading blog information...</p>';
+        
+        // Fetch blog details
+        fetch(`/api/blogs/${blogId}`)
+            .then(response => response.json())
+            .then(blog => {
+                if (blog) {
+                    // Display blog theme information
+                    let themeInfo = `
+                        <h5>${blog.name}</h5>
+                        <p>${blog.description || 'No description available'}</p>
+                        <div class="mt-2">
+                            <strong>Theme:</strong> ${blog.theme || 'General'}
+                        </div>
+                    `;
+                    
+                    // Display focus topics if available
+                    if (blog.topics && blog.topics.length > 0) {
+                        themeInfo += '<div class="mt-2"><strong>Focus:</strong> ';
+                        themeInfo += blog.topics.map(topic => 
+                            `<span class="badge bg-dark me-1">${topic}</span>`
+                        ).join('');
+                        themeInfo += '</div>';
+                    }
+                    
+                    document.getElementById('blog-theme-info').innerHTML = themeInfo;
+                } else {
+                    document.getElementById('blog-theme-info').innerHTML = 
+                        '<p class="text-muted">Blog information not available.</p>';
+                }
+            })
+            .catch(error => {
+                console.error('Error loading blog details:', error);
+                document.getElementById('blog-theme-info').innerHTML = 
+                    '<p class="text-danger">Error loading blog information. Please try again.</p>';
+            });
+    }
+    
     document.addEventListener('DOMContentLoaded', function() {
+        // Load blogs for the context selector
+        loadBlogs();
+        
+        // Blog selector change event
+        document.getElementById('blog-selector').addEventListener('change', function() {
+            const blogId = this.value;
+            updateBlogContext(blogId);
+        });
         // Web Scraper Form
         document.getElementById('web-scraper-form').addEventListener('submit', function(e) {
             e.preventDefault();
