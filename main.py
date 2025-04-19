@@ -2506,8 +2506,9 @@ def get_trending_topics():
         category = request.form.get('category')
         limit = int(request.form.get('limit', 10))
         blog_id = request.form.get('blog_id')
+        include_opportunities = request.form.get('opportunities') == 'true'
         
-        logger.info(f"Getting trending topics for category: {category} with limit: {limit}, blog_id: {blog_id}")
+        logger.info(f"Getting trending topics for category: {category} with limit: {limit}, blog_id: {blog_id}, include_opportunities: {include_opportunities}")
         
         # Check if web scraper service is available
         if not web_scraper_service:
@@ -2530,11 +2531,42 @@ def get_trending_topics():
             except Exception as e:
                 logger.warning(f"Could not get blog context for ID {blog_id}: {str(e)}")
         
-        # Get trending topics with optional blog context
-        if blog_context:
-            topics = web_scraper_service.get_trending_topics_with_context(category, limit, blog_context)
-        else:
-            topics = web_scraper_service.get_trending_topics(category, limit)
+        # Get trending topics with keyword opportunities
+        topics = []
+        
+        # Check if competitor analysis should be used to find opportunities
+        use_opportunities = include_opportunities and competitor_analysis_service is not None
+        opportunity_count = 0
+        
+        if use_opportunities:
+            try:
+                # Use API endpoint that combines research service with competitor analysis
+                api_url = f"/api/trending-topics-new?limit={limit}"
+                if category:
+                    api_url += f"&category={category}"
+                if blog_id:
+                    api_url += f"&blog_id={blog_id}"
+                    
+                # Get data from our trending topics API with opportunities
+                with app.test_client() as client:
+                    response = client.get(api_url)
+                    api_response = response.get_json()
+                    
+                    if api_response.get('success') and api_response.get('data'):
+                        topics = api_response.get('data')
+                        opportunity_count = api_response.get('opportunity_count', 0)
+                        logger.info(f"Found {len(topics)} topics with {opportunity_count} opportunities")
+            except Exception as e:
+                logger.warning(f"Error getting keyword opportunities: {str(e)}")
+                # Fall back to traditional method
+                use_opportunities = False
+                
+        # Fall back to traditional method if needed
+        if not topics:
+            if blog_context:
+                topics = web_scraper_service.get_trending_topics_with_context(category, limit, blog_context)
+            else:
+                topics = web_scraper_service.get_trending_topics(category, limit)
         
         if not topics:
             flash("No trending topics found", "warning")
@@ -2544,8 +2576,10 @@ def get_trending_topics():
         results = {
             'type': 'trending_topics',
             'category': category,
-            'topics': topics,
-            'blog_context': blog_context.get('name') if blog_context else None
+            'data': topics,  # Use 'data' instead of 'topics' to match API format
+            'blog_context': blog_context.get('name') if blog_context else None,
+            'opportunity_count': opportunity_count,
+            'opportunity_percent': round((opportunity_count / len(topics)) * 100) if topics and opportunity_count else 0
         }
         
         return render_template('content_research.html', results=results)

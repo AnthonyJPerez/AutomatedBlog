@@ -93,6 +93,11 @@
                                     <label for="trend-limit" class="form-label">Number of Trends</label>
                                     <input type="number" class="form-control" id="trend-limit" name="limit" value="10" min="5" max="20">
                                 </div>
+                                <div class="mb-3 form-check">
+                                    <input type="checkbox" class="form-check-input" id="include-opportunities" name="opportunities" value="true" checked>
+                                    <label class="form-check-label" for="include-opportunities">Include competitor keyword opportunities <span class="badge bg-success">New</span></label>
+                                    <div class="form-text">Find high-value keywords your competitors are targeting that you're not</div>
+                                </div>
                                 <div class="d-grid">
                                     <button type="submit" class="btn btn-primary">Get Trending Topics</button>
                                 </div>
@@ -239,30 +244,77 @@
                             </div>
                             {% endif %}
                             
+                            {% if results.opportunity_count and results.opportunity_count > 0 %}
+                            <div class="alert alert-success">
+                                <i class="bi bi-lightbulb-fill me-2"></i> <strong>{{ results.opportunity_count }}</strong> keyword opportunities found based on competitor analysis ({{ results.opportunity_percent }}% of results)
+                            </div>
+                            {% endif %}
+                            
                             <div class="table-responsive">
                                 <table class="table table-hover">
                                     <thead>
                                         <tr>
                                             <th>#</th>
                                             <th>Topic</th>
-                                            <th>Trend Score</th>
-                                            <th>24h Change</th>
+                                            <th>Score</th>
+                                            <th>Type</th>
+                                            <th>Action</th>
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {% for topic in results.topics %}
-                                        <tr>
+                                        {% for topic in results.data %}
+                                        <tr class="{% if topic.source == 'competitor_analysis' %}table-success{% endif %}">
                                             <td>{{ loop.index }}</td>
-                                            <td>{{ topic.topic }}</td>
-                                            <td>{{ topic.score }}</td>
                                             <td>
-                                                {% if topic.change > 0 %}
-                                                <span class="text-success">↑ {{ topic.change }}%</span>
-                                                {% elif topic.change < 0 %}
-                                                <span class="text-danger">↓ {{ topic.change|abs }}%</span>
-                                                {% else %}
-                                                <span class="text-secondary">0%</span>
+                                                <strong>{{ topic.keyword }}</strong>
+                                                {% if topic.title %}
+                                                <div class="small text-muted">{{ topic.title }}</div>
                                                 {% endif %}
+                                            </td>
+                                            <td>
+                                                {% if topic.source == 'competitor_analysis' %}
+                                                    <div class="badge bg-success">{{ (topic.opportunity_score * 100)|int }}%</div>
+                                                    {% if topic.difficulty %}
+                                                        <div class="small mt-1">
+                                                            <span class="badge {% if topic.difficulty == 'Easy' %}bg-success{% elif topic.difficulty == 'Medium' %}bg-warning{% else %}bg-danger{% endif %}">
+                                                                {{ topic.difficulty }}
+                                                            </span>
+                                                        </div>
+                                                    {% endif %}
+                                                {% else %}
+                                                    {{ topic.trend_score }}
+                                                    {% if topic.change is defined %}
+                                                        <div class="small mt-1">
+                                                            {% if topic.change > 0 %}
+                                                            <span class="text-success">↑ {{ topic.change }}%</span>
+                                                            {% elif topic.change < 0 %}
+                                                            <span class="text-danger">↓ {{ topic.change|abs }}%</span>
+                                                            {% else %}
+                                                            <span class="text-secondary">0%</span>
+                                                            {% endif %}
+                                                        </div>
+                                                    {% endif %}
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                {% if topic.source == 'competitor_analysis' %}
+                                                    <span class="badge bg-primary">Opportunity</span>
+                                                    {% if topic.competitor_count %}
+                                                        <div class="small text-muted mt-1">{{ topic.competitor_count }} competitors</div>
+                                                    {% endif %}
+                                                {% elif topic.trend_type == 'rising' %}
+                                                    <span class="badge bg-warning">Rising</span>
+                                                {% elif topic.trend_type == 'top' %}
+                                                    <span class="badge bg-info">Top Trend</span>
+                                                {% else %}
+                                                    <span class="badge bg-secondary">{{ topic.trend_type|title }}</span>
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                <div class="btn-group btn-group-sm">
+                                                    <button type="button" class="btn btn-outline-primary research-topic-btn" data-keyword="{{ topic.keyword }}">Research</button>
+                                                    <button type="button" class="btn btn-outline-success generate-outline-btn" data-keyword="{{ topic.keyword }}">Outline</button>
+                                                </div>
                                             </td>
                                         </tr>
                                         {% endfor %}
