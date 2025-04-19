@@ -30,6 +30,8 @@ class WordPressService:
             'tags': {}      # Will hold tag data by site_id
         }
         self._cache_ttl = 300  # 5 minutes cache TTL
+        self._cache_last_purge = time.time()
+        self._cache_purge_interval = 3600  # Purge expired cache entries every hour
         
         # Get Key Vault name from environment variable
         key_vault_name = os.environ.get("KEY_VAULT_NAME")
@@ -97,6 +99,11 @@ class WordPressService:
         """Get data from cache if it exists and hasn't expired"""
         now = time.time()
         
+        # Periodically purge expired cache entries to prevent memory growth
+        if now - self._cache_last_purge > self._cache_purge_interval:
+            self._purge_expired_cache()
+            self._cache_last_purge = now
+        
         if subkey is not None:
             if cache_key in self._cache and subkey in self._cache[cache_key]:
                 cache_entry = self._cache[cache_key][subkey]
@@ -110,6 +117,82 @@ class WordPressService:
                 
         self.logger.debug(f"Cache miss for {cache_key}{f'/{subkey}' if subkey else ''}")
         return None
+        
+    def _purge_expired_cache(self):
+        """Purge expired entries from the cache to prevent memory leaks"""
+        now = time.time()
+        purged_count = 0
+        
+        self.logger.debug("Starting cache purge")
+        
+        # Clean top-level entries
+        for key in list(self._cache.keys()):
+            if isinstance(self._cache[key], dict) and 'expires' in self._cache[key] and self._cache[key]['expires'] < now:
+                del self._cache[key]
+                purged_count += 1
+                
+        # Clean nested entries
+        for key, value in self._cache.items():
+            if isinstance(value, dict) and 'expires' not in value:  # This is a container of cached items
+                for subkey in list(value.keys()):
+                    if 'expires' in value[subkey] and value[subkey]['expires'] < now:
+                        del value[subkey]
+                        purged_count += 1
+        
+        if purged_count > 0:
+            self.logger.info(f"Purged {purged_count} expired cache entries")
+        else:
+            self.logger.debug("No expired cache entries to purge")
+            
+    def clear_cache(self, cache_key=None, subkey=None):
+        """
+        Manually clear the cache, either entirely or specific sections.
+        
+        Args:
+            cache_key (str, optional): Specific cache section to clear (e.g., 'sites', 'domains', 'tags')
+            subkey (str, optional): Specific subkey within a cache section to clear
+            
+        Returns:
+            int: Number of cache entries cleared
+        """
+        cleared_count = 0
+        
+        if cache_key is None:
+            # Clear entire cache
+            for key in list(self._cache.keys()):
+                if isinstance(self._cache[key], dict) and 'expires' not in self._cache[key]:
+                    # This is a container of cached items, count its entries
+                    cleared_count += len(self._cache[key])
+                else:
+                    cleared_count += 1
+            
+            self._cache = {
+                'sites': {'data': None, 'expires': 0},
+                'domains': {},
+                'tags': {}
+            }
+            self.logger.info(f"Cleared entire cache ({cleared_count} entries)")
+            
+        elif subkey is None and cache_key in self._cache:
+            # Clear specific cache section
+            if isinstance(self._cache[cache_key], dict) and 'expires' not in self._cache[cache_key]:
+                # This is a container of cached items, count its entries
+                cleared_count = len(self._cache[cache_key])
+                self._cache[cache_key] = {}
+            else:
+                # This is a single cache entry
+                cleared_count = 1
+                self._cache[cache_key] = {'data': None, 'expires': 0}
+                
+            self.logger.info(f"Cleared cache section '{cache_key}' ({cleared_count} entries)")
+            
+        elif cache_key in self._cache and isinstance(self._cache[cache_key], dict) and 'expires' not in self._cache[cache_key] and subkey in self._cache[cache_key]:
+            # Clear specific subkey within a cache section
+            del self._cache[cache_key][subkey]
+            cleared_count = 1
+            self.logger.info(f"Cleared cache entry '{cache_key}/{subkey}'")
+            
+        return cleared_count
         
     def _set_cached_data(self, cache_key, data, subkey=None, ttl=None):
         """Store data in cache with expiration time"""
@@ -185,15 +268,31 @@ class WordPressService:
         
         # Create tags from keywords if available
         if seo_metadata.get('keywords'):
-            # Get existing tags first
-            tags_endpoint = f"{wordpress_url}wp/v2/tags"
-            existing_tags = self._make_request('GET', tags_endpoint, auth=(username, application_password))
+            # Try to get tags from cache
+            cache_key = f"{wordpress_url}:tags"
+            cached_tags = self._get_cached_data('tags', cache_key)
+            
+            if cached_tags is None:
+                # Get existing tags if not in cache
+                tags_endpoint = f"{wordpress_url}wp/v2/tags"
+                self.logger.debug(f"Fetching tags from WordPress API: {tags_endpoint}")
+                existing_tags = self._make_request('GET', tags_endpoint, auth=(username, application_password))
+                
+                # Cache the tags
+                if existing_tags:
+                    cached_tags = existing_tags
+                    self._set_cached_data('tags', existing_tags, cache_key)
+            else:
+                self.logger.debug(f"Using cached tags for {wordpress_url}")
+                existing_tags = cached_tags
             
             # Map existing tag names to IDs
             tag_map = {tag['name'].lower(): tag['id'] for tag in existing_tags} if existing_tags else {}
             
             # Process keywords into tags
             tag_ids = []
+            new_tags_created = False
+            
             for keyword in seo_metadata['keywords'][:5]:  # Limit to 5 tags
                 keyword_lower = keyword.lower()
                 if keyword_lower in tag_map:
@@ -202,9 +301,18 @@ class WordPressService:
                 else:
                     # Create new tag
                     tag_data = {'name': keyword}
+                    self.logger.debug(f"Creating new tag: {keyword}")
                     new_tag = self._make_request('POST', tags_endpoint, auth=(username, application_password), json=tag_data)
                     if new_tag and 'id' in new_tag:
                         tag_ids.append(new_tag['id'])
+                        # Add to cache to avoid future creations
+                        if cached_tags is not None:
+                            cached_tags.append(new_tag)
+                            new_tags_created = True
+            
+            # Update cache if new tags were created
+            if new_tags_created and cached_tags is not None:
+                self._set_cached_data('tags', cached_tags, cache_key)
             
             # Add tags to post data
             if tag_ids:
@@ -434,15 +542,31 @@ class WordPressService:
         
         # Handle tags same as in publish_post
         if seo_metadata and seo_metadata.get('keywords'):
-            # Get existing tags first for this specific site
-            tags_endpoint = f"{wordpress_url}wp/v2/sites/{site_id}/tags"
-            existing_tags = self._make_request('GET', tags_endpoint, auth=(username, application_password))
+            # Try to get tags from cache
+            cache_key = f"{wordpress_url}:site:{site_id}:tags"
+            cached_tags = self._get_cached_data('tags', cache_key)
+            
+            if cached_tags is None:
+                # Get existing tags if not in cache for this specific site
+                tags_endpoint = f"{wordpress_url}wp/v2/sites/{site_id}/tags"
+                self.logger.debug(f"Fetching tags from WordPress API for site {site_id}: {tags_endpoint}")
+                existing_tags = self._make_request('GET', tags_endpoint, auth=(username, application_password))
+                
+                # Cache the tags
+                if existing_tags:
+                    cached_tags = existing_tags
+                    self._set_cached_data('tags', existing_tags, cache_key)
+            else:
+                self.logger.debug(f"Using cached tags for {wordpress_url} site {site_id}")
+                existing_tags = cached_tags
             
             # Map existing tag names to IDs
             tag_map = {tag['name'].lower(): tag['id'] for tag in existing_tags} if existing_tags else {}
             
             # Process keywords into tags
             tag_ids = []
+            new_tags_created = False
+            
             for keyword in seo_metadata['keywords'][:5]:  # Limit to 5 tags
                 keyword_lower = keyword.lower()
                 if keyword_lower in tag_map:
@@ -451,9 +575,18 @@ class WordPressService:
                 else:
                     # Create new tag
                     tag_data = {'name': keyword}
+                    self.logger.debug(f"Creating new tag for site {site_id}: {keyword}")
                     new_tag = self._make_request('POST', tags_endpoint, auth=(username, application_password), json=tag_data)
                     if new_tag and 'id' in new_tag:
                         tag_ids.append(new_tag['id'])
+                        # Add to cache to avoid future creations
+                        if cached_tags is not None:
+                            cached_tags.append(new_tag)
+                            new_tags_created = True
+            
+            # Update cache if new tags were created
+            if new_tags_created and cached_tags is not None:
+                self._set_cached_data('tags', cached_tags, cache_key)
             
             # Add tags to post data
             if tag_ids:
@@ -687,6 +820,12 @@ class WordPressService:
             result = self._make_request('DELETE', endpoint, auth=(self.default_wordpress_username, self.default_wordpress_password))
             
             self.logger.info(f"Successfully deleted domain mapping ID {domain_id} from site {site_id}")
+            
+            # Invalidate site domains cache since we've removed a domain
+            if 'domains' in self._cache and str(site_id) in self._cache['domains']:
+                del self._cache['domains'][str(site_id)]
+                self.logger.debug(f"Invalidated domains cache for site ID {site_id}")
+            
             return {
                 'success': True,
                 'domain_id': domain_id,
@@ -697,10 +836,49 @@ class WordPressService:
             self.logger.error(f"Error deleting domain mapping: {str(e)}")
             raise Exception(f"Failed to delete domain mapping ID {domain_id} from site {site_id}: {str(e)}")
     
+    # Create a session with connection pooling for better performance
+    _session = None
+    
+    @property
+    def session(self):
+        """Get or create a requests session with connection pooling"""
+        if self._session is None:
+            self._session = requests.Session()
+            # Set up reasonable timeouts
+            self._session.mount('https://', requests.adapters.HTTPAdapter(
+                max_retries=3,  # Auto-retry on certain errors
+                pool_connections=10,  # Connection pool size
+                pool_maxsize=20  # Maximum number of connections to keep in the pool
+            ))
+            self._session.mount('http://', requests.adapters.HTTPAdapter(
+                max_retries=3,
+                pool_connections=10,
+                pool_maxsize=20
+            ))
+        return self._session
+    
     def _make_request(self, method, url, **kwargs):
-        """Make HTTP request with error handling and logging"""
+        """
+        Make HTTP request with error handling, logging, connection pooling and retries.
+        
+        Args:
+            method (str): HTTP method (GET, POST, etc.)
+            url (str): The URL to call
+            **kwargs: Additional arguments to pass to the request
+            
+        Returns:
+            dict: The JSON response as a dictionary
+            
+        Raises:
+            Exception: If the request fails
+        """
+        # Set defaults if not provided
+        if 'timeout' not in kwargs:
+            kwargs['timeout'] = (5, 30)  # (connect timeout, read timeout)
+            
         try:
-            response = requests.request(method, url, **kwargs)
+            # Use session for connection pooling
+            response = self.session.request(method, url, **kwargs)
             response.raise_for_status()
             
             if response.status_code == 204:  # No content
@@ -726,7 +904,7 @@ class WordPressService:
             raise Exception(error_msg)
             
         except requests.exceptions.Timeout:
-            error_msg = f"Timeout when calling {url}"
+            error_msg = f"Timeout when calling {url} (timeout settings: {kwargs.get('timeout')})"
             self.logger.error(error_msg)
             raise Exception(error_msg)
             
