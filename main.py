@@ -216,6 +216,36 @@ def setup():
                 "platforms": social_platforms
             }
             
+            # Handle blog-specific API keys and credentials
+            # Initialize integrations section for custom credentials
+            integrations = {}
+            
+            # OpenAI API key
+            openai_api_key = request.form.get('openai_api_key', '').strip()
+            if openai_api_key:
+                integrations['openai_api_key'] = openai_api_key
+            
+            # Social media API keys (if social promotion is enabled)
+            if enable_social_promotion:
+                # Twitter API key
+                twitter_api_key = request.form.get('twitter_api_key', '').strip()
+                if twitter_api_key:
+                    integrations['twitter_api_key'] = twitter_api_key
+                
+                # LinkedIn API key
+                linkedin_api_key = request.form.get('linkedin_api_key', '').strip()
+                if linkedin_api_key:
+                    integrations['linkedin_api_key'] = linkedin_api_key
+                
+                # Facebook API key
+                facebook_api_key = request.form.get('facebook_api_key', '').strip()
+                if facebook_api_key:
+                    integrations['facebook_api_key'] = facebook_api_key
+            
+            # Only add integrations section if there are any custom credentials
+            if integrations:
+                config["integrations"] = integrations
+            
             # Write the main config file
             with open(os.path.join(blog_path, "config.json"), 'w') as f:
                 json.dump(config, f, indent=2)

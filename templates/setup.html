@@ -135,6 +135,24 @@
                         </div>
                     </div>
                     
+                    <h5 class="mt-4 mb-3">Integration Credentials (Optional)</h5>
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle me-2"></i>
+                        Specify blog-specific API keys if you want to override the global credentials.
+                        Leave blank to use global credentials.
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="openaiApiKey" class="form-label">OpenAI API Key</label>
+                        <div class="input-group">
+                            <input type="password" class="form-control" id="openaiApiKey" name="openai_api_key" placeholder="Use global credentials">
+                            <button class="btn btn-outline-secondary toggle-password" type="button" data-target="openaiApiKey">
+                                <i class="bi bi-eye"></i>
+                            </button>
+                        </div>
+                        <div class="form-text">Blog-specific OpenAI API key (optional)</div>
+                    </div>
+                    
                     <h5 class="mt-4 mb-3">Social Media Promotion</h5>
                     
                     <div class="mb-3 form-check">
@@ -161,6 +179,51 @@
                         </div>
                     </div>
                     
+                    <div class="mb-3" id="socialCredentialsContainer">
+                        <div class="accordion" id="socialCredentialsAccordion">
+                            <div class="accordion-item">
+                                <h2 class="accordion-header" id="socialCredentialsHeading">
+                                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#socialCredentialsCollapse" aria-expanded="false" aria-controls="socialCredentialsCollapse">
+                                        Blog-specific Social Media Credentials (Optional)
+                                    </button>
+                                </h2>
+                                <div id="socialCredentialsCollapse" class="accordion-collapse collapse" aria-labelledby="socialCredentialsHeading" data-bs-parent="#socialCredentialsAccordion">
+                                    <div class="accordion-body">
+                                        <div class="row g-3">
+                                            <div class="col-md-4">
+                                                <label for="twitterApiKey" class="form-label">Twitter API Key</label>
+                                                <div class="input-group">
+                                                    <input type="password" class="form-control" id="twitterApiKey" name="twitter_api_key" placeholder="Use global credentials">
+                                                    <button class="btn btn-outline-secondary toggle-password" type="button" data-target="twitterApiKey">
+                                                        <i class="bi bi-eye"></i>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-4">
+                                                <label for="linkedinApiKey" class="form-label">LinkedIn API Key</label>
+                                                <div class="input-group">
+                                                    <input type="password" class="form-control" id="linkedinApiKey" name="linkedin_api_key" placeholder="Use global credentials">
+                                                    <button class="btn btn-outline-secondary toggle-password" type="button" data-target="linkedinApiKey">
+                                                        <i class="bi bi-eye"></i>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-4">
+                                                <label for="facebookApiKey" class="form-label">Facebook API Key</label>
+                                                <div class="input-group">
+                                                    <input type="password" class="form-control" id="facebookApiKey" name="facebook_api_key" placeholder="Use global credentials">
+                                                    <button class="btn btn-outline-secondary toggle-password" type="button" data-target="facebookApiKey">
+                                                        <i class="bi bi-eye"></i>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
                     <button type="submit" class="btn btn-primary">Create Blog</button>
                 </form>
             </div>
@@ -172,6 +235,22 @@
 {% block scripts %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    // Toggle password visibility
+    document.querySelectorAll('.toggle-password').forEach(button => {
+        button.addEventListener('click', function() {
+            const targetId = this.getAttribute('data-target');
+            const input = document.getElementById(targetId);
+            
+            if (input.type === 'password') {
+                input.type = 'text';
+                this.innerHTML = '<i class="bi bi-eye-slash"></i>';
+            } else {
+                input.type = 'password';
+                this.innerHTML = '<i class="bi bi-eye"></i>';
+            }
+        });
+    });
+    
     // WordPress field toggle
     const wordpressFields = document.querySelectorAll('#wordpressUsername, #wordpressAppPassword');
     const wordpressUrl = document.querySelector('#wordpressUrl');
@@ -213,6 +292,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Social media platform toggle
     const enableSocialPromotion = document.querySelector('#enableSocialPromotion');
     const socialPlatformsContainer = document.querySelector('#socialPlatformsContainer');
+    const socialCredentialsContainer = document.querySelector('#socialCredentialsContainer'); 
     const socialPlatforms = document.querySelectorAll('.social-platform');
     
     // Initial check
@@ -222,9 +302,17 @@ document.addEventListener('DOMContentLoaded', function() {
     function toggleSocialPlatforms() {
         const isEnabled = enableSocialPromotion.checked;
         socialPlatformsContainer.style.opacity = isEnabled ? '1' : '0.5';
+        socialCredentialsContainer.style.opacity = isEnabled ? '1' : '0.5';
         socialPlatforms.forEach(platform => {
             platform.disabled = !isEnabled;
         });
+        
+        // Disable credentials accordion if social promotion is disabled
+        if (!isEnabled) {
+            document.querySelector('#socialCredentialsHeading button').setAttribute('disabled', 'disabled');
+        } else {
+            document.querySelector('#socialCredentialsHeading button').removeAttribute('disabled');
+        }
     }
 });
 </script>
