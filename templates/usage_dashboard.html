@@ -1,0 +1,708 @@
+{% extends 'base.html' %}
+
+{% block title %}Usage & Billing - Blog Automation Platform{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="mb-0">Usage & Billing Dashboard</h1>
+        <a href="{{ url_for('index') }}" class="btn btn-secondary">Back to Dashboard</a>
+    </div>
+    
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="alert alert-info">
+                <i class="bi bi-info-circle me-2"></i>
+                This dashboard shows usage and billing information for all connected integrations.
+                Each blog can use global credentials or override with blog-specific credentials.
+            </div>
+        </div>
+    </div>
+    
+    <!-- Global Credentials and Usage -->
+    <div class="card mb-4">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0">Global Credentials & Usage</h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <!-- OpenAI -->
+                <div class="col-md-6 mb-4">
+                    <div class="card h-100">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h6 class="mb-0">OpenAI</h6>
+                            <span id="openai-status-badge" class="badge bg-secondary">Checking...</span>
+                        </div>
+                        <div class="card-body" id="openai-details">
+                            <div class="d-flex justify-content-center">
+                                <div class="spinner-border text-primary" role="status">
+                                    <span class="visually-hidden">Loading...</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- WordPress -->
+                <div class="col-md-6 mb-4">
+                    <div class="card h-100">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h6 class="mb-0">WordPress</h6>
+                            <span id="wordpress-status-badge" class="badge bg-secondary">Checking...</span>
+                        </div>
+                        <div class="card-body" id="wordpress-details">
+                            <div class="d-flex justify-content-center">
+                                <div class="spinner-border text-primary" role="status">
+                                    <span class="visually-hidden">Loading...</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Social Media -->
+                <div class="col-md-6 mb-4">
+                    <div class="card h-100">
+                        <div class="card-header">
+                            <h6 class="mb-0">Social Media</h6>
+                        </div>
+                        <div class="card-body">
+                            <ul class="list-group list-group-flush">
+                                <li class="list-group-item d-flex justify-content-between align-items-center">
+                                    Twitter
+                                    <span id="twitter-status-badge" class="badge bg-secondary">Checking...</span>
+                                </li>
+                                <li class="list-group-item d-flex justify-content-between align-items-center">
+                                    LinkedIn
+                                    <span id="linkedin-status-badge" class="badge bg-secondary">Checking...</span>
+                                </li>
+                                <li class="list-group-item d-flex justify-content-between align-items-center">
+                                    Facebook
+                                    <span id="facebook-status-badge" class="badge bg-secondary">Checking...</span>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Azure Services -->
+                <div class="col-md-6 mb-4">
+                    <div class="card h-100">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h6 class="mb-0">Azure Services</h6>
+                            <span id="azure-status-badge" class="badge bg-secondary">Checking...</span>
+                        </div>
+                        <div class="card-body" id="azure-details">
+                            <div class="d-flex justify-content-center">
+                                <div class="spinner-border text-primary" role="status">
+                                    <span class="visually-hidden">Loading...</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Blog-Specific Credentials and Usage -->
+    <h2 class="mb-3">Blog-Specific Configurations</h2>
+    
+    {% if blogs %}
+        <div class="accordion" id="blogAccordion">
+            {% for blog in blogs %}
+                <div class="accordion-item mb-3">
+                    <h2 class="accordion-header" id="heading-{{ blog.id }}">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapse-{{ blog.id }}" aria-expanded="false" aria-controls="collapse-{{ blog.id }}">
+                            <div class="d-flex justify-content-between w-100 me-3">
+                                <span>{{ blog.name }}</span>
+                                {% if blog.has_custom_credentials %}
+                                    <span class="badge bg-info ms-2">Custom credentials</span>
+                                {% else %}
+                                    <span class="badge bg-secondary ms-2">Using global credentials</span>
+                                {% endif %}
+                            </div>
+                        </button>
+                    </h2>
+                    <div id="collapse-{{ blog.id }}" class="accordion-collapse collapse" aria-labelledby="heading-{{ blog.id }}" data-bs-parent="#blogAccordion">
+                        <div class="accordion-body">
+                            <div class="mb-3">
+                                <h5>Integration Credentials</h5>
+                                <p class="text-muted">Configure blog-specific API keys and credentials. Leave blank to use global credentials.</p>
+                                
+                                <form id="credentials-form-{{ blog.id }}">
+                                    <div class="row g-3">
+                                        <div class="col-md-6">
+                                            <label for="openai-api-key-{{ blog.id }}" class="form-label">OpenAI API Key</label>
+                                            <div class="input-group">
+                                                <input type="password" class="form-control credential-field" id="openai-api-key-{{ blog.id }}" name="openai_api_key" placeholder="Use global credentials">
+                                                <button class="btn btn-outline-secondary toggle-password" type="button" data-target="openai-api-key-{{ blog.id }}">
+                                                    <i class="bi bi-eye"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="col-md-6">
+                                            <label for="wordpress-app-password-{{ blog.id }}" class="form-label">WordPress App Password</label>
+                                            <div class="input-group">
+                                                <input type="password" class="form-control credential-field" id="wordpress-app-password-{{ blog.id }}" name="wordpress_app_password" placeholder="Use global credentials">
+                                                <button class="btn btn-outline-secondary toggle-password" type="button" data-target="wordpress-app-password-{{ blog.id }}">
+                                                    <i class="bi bi-eye"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="col-md-4">
+                                            <label for="twitter-api-key-{{ blog.id }}" class="form-label">Twitter API Key</label>
+                                            <div class="input-group">
+                                                <input type="password" class="form-control credential-field" id="twitter-api-key-{{ blog.id }}" name="twitter_api_key" placeholder="Use global credentials">
+                                                <button class="btn btn-outline-secondary toggle-password" type="button" data-target="twitter-api-key-{{ blog.id }}">
+                                                    <i class="bi bi-eye"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="col-md-4">
+                                            <label for="linkedin-api-key-{{ blog.id }}" class="form-label">LinkedIn API Key</label>
+                                            <div class="input-group">
+                                                <input type="password" class="form-control credential-field" id="linkedin-api-key-{{ blog.id }}" name="linkedin_api_key" placeholder="Use global credentials">
+                                                <button class="btn btn-outline-secondary toggle-password" type="button" data-target="linkedin-api-key-{{ blog.id }}">
+                                                    <i class="bi bi-eye"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="col-md-4">
+                                            <label for="facebook-api-key-{{ blog.id }}" class="form-label">Facebook API Key</label>
+                                            <div class="input-group">
+                                                <input type="password" class="form-control credential-field" id="facebook-api-key-{{ blog.id }}" name="facebook_api_key" placeholder="Use global credentials">
+                                                <button class="btn btn-outline-secondary toggle-password" type="button" data-target="facebook-api-key-{{ blog.id }}">
+                                                    <i class="bi bi-eye"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="d-flex justify-content-end mt-3">
+                                        <button type="button" class="btn btn-primary save-credentials" data-blog-id="{{ blog.id }}">Save Credentials</button>
+                                    </div>
+                                </form>
+                            </div>
+                            
+                            <hr>
+                            
+                            <div class="usage-stats mt-4" id="blog-usage-{{ blog.id }}">
+                                <h5>Usage Statistics</h5>
+                                <div class="d-flex justify-content-center my-4">
+                                    <div class="spinner-border text-primary" role="status">
+                                        <span class="visually-hidden">Loading...</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="alert alert-warning">
+            <i class="bi bi-exclamation-triangle me-2"></i>
+            No blogs have been created yet. Please create a blog first.
+        </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Load global usage data
+    fetchGlobalUsage();
+    
+    // Toggle password visibility
+    document.querySelectorAll('.toggle-password').forEach(button => {
+        button.addEventListener('click', function() {
+            const targetId = this.getAttribute('data-target');
+            const input = document.getElementById(targetId);
+            
+            if (input.type === 'password') {
+                input.type = 'text';
+                this.innerHTML = '<i class="bi bi-eye-slash"></i>';
+            } else {
+                input.type = 'password';
+                this.innerHTML = '<i class="bi bi-eye"></i>';
+            }
+        });
+    });
+    
+    // Load blog-specific existing credentials
+    {% for blog in blogs %}
+        if ('integrations' in {{ blog.config|tojson }}) {
+            const integrations = {{ blog.config.integrations|default({})|tojson }};
+            
+            Object.keys(integrations).forEach(key => {
+                const inputId = key.replace(/_/g, '-') + '-{{ blog.id }}';
+                const input = document.getElementById(inputId);
+                if (input) {
+                    // For security, don't show the actual value, just indicate it's set
+                    input.placeholder = '••••••••••••••••';
+                }
+            });
+        }
+        
+        // Load blog-specific usage data when accordion is opened
+        document.querySelector('[data-bs-target="#collapse-{{ blog.id }}"]').addEventListener('shown.bs.collapse', function() {
+            fetchBlogUsage('{{ blog.id }}');
+        });
+    {% endfor %}
+    
+    // Save credentials
+    document.querySelectorAll('.save-credentials').forEach(button => {
+        button.addEventListener('click', function() {
+            const blogId = this.getAttribute('data-blog-id');
+            const form = document.getElementById(`credentials-form-${blogId}`);
+            const formData = new FormData(form);
+            
+            // Convert to object and filter out empty values
+            const credentials = {};
+            formData.forEach((value, key) => {
+                if (value.trim() !== '') {
+                    credentials[key] = value;
+                }
+            });
+            
+            saveCredentials(blogId, credentials);
+        });
+    });
+});
+
+function fetchGlobalUsage() {
+    fetch('/api/usage/global')
+        .then(response => response.json())
+        .then(data => {
+            updateOpenAIUsage(data.openai);
+            updateWordPressStatus(data.wordpress);
+            updateSocialMediaStatus(data.twitter, data.linkedin, data.facebook);
+            updateAzureStatus(data.azure);
+        })
+        .catch(error => {
+            console.error('Error fetching global usage:', error);
+            document.querySelectorAll('[id$=-status-badge]').forEach(badge => {
+                badge.textContent = 'Error';
+                badge.className = 'badge bg-danger';
+            });
+        });
+}
+
+function fetchBlogUsage(blogId) {
+    const container = document.getElementById(`blog-usage-${blogId}`);
+    
+    fetch(`/api/usage/blog/${blogId}`)
+        .then(response => response.json())
+        .then(data => {
+            let html = '<div class="row">';
+            
+            // OpenAI
+            html += '<div class="col-md-6 mb-3">';
+            html += '<div class="card h-100">';
+            html += '<div class="card-header d-flex justify-content-between align-items-center">';
+            html += '<h6 class="mb-0">OpenAI</h6>';
+            
+            if (data.openai.has_credentials) {
+                if (data.openai.is_global_credentials) {
+                    html += '<span class="badge bg-secondary">Global Credentials</span>';
+                } else {
+                    html += '<span class="badge bg-success">Custom Credentials</span>';
+                }
+            } else {
+                html += '<span class="badge bg-danger">Not Configured</span>';
+            }
+            
+            html += '</div>'; // End card-header
+            
+            html += '<div class="card-body">';
+            if (data.openai.has_credentials) {
+                if (data.openai.usage_available) {
+                    html += `<p><strong>Current Usage:</strong> $${data.openai.usage.total_usage.toFixed(2)}</p>`;
+                    
+                    if (data.openai.subscription) {
+                        html += `<p><strong>Plan:</strong> ${data.openai.subscription.plan}</p>`;
+                        html += `<p><strong>Soft Limit:</strong> $${data.openai.subscription.soft_limit_usd}</p>`;
+                        html += `<p><strong>Hard Limit:</strong> $${data.openai.subscription.hard_limit_usd}</p>`;
+                    }
+                    
+                    if (data.openai.usage.breakdown_by_model) {
+                        html += '<h6 class="mt-3">Model Usage</h6>';
+                        html += '<ul class="list-group list-group-flush">';
+                        
+                        Object.entries(data.openai.usage.breakdown_by_model).forEach(([model, cost]) => {
+                            html += `<li class="list-group-item d-flex justify-content-between">`;
+                            html += `<span>${model}</span>`;
+                            html += `<span>$${cost.toFixed(2)}</span>`;
+                            html += `</li>`;
+                        });
+                        
+                        html += '</ul>';
+                    }
+                } else {
+                    html += '<p>Usage data not available.</p>';
+                    if (data.openai.message) {
+                        html += `<p class="text-muted">${data.openai.message}</p>`;
+                    }
+                }
+            } else {
+                html += '<p>OpenAI API key not configured. Usage data unavailable.</p>';
+            }
+            html += '</div>'; // End card-body
+            html += '</div>'; // End card
+            html += '</div>'; // End col
+            
+            // WordPress
+            html += '<div class="col-md-6 mb-3">';
+            html += '<div class="card h-100">';
+            html += '<div class="card-header d-flex justify-content-between align-items-center">';
+            html += '<h6 class="mb-0">WordPress</h6>';
+            
+            if (data.wordpress.has_credentials) {
+                if (data.wordpress.is_global_credentials) {
+                    html += '<span class="badge bg-secondary">Global Credentials</span>';
+                } else {
+                    html += '<span class="badge bg-success">Custom Credentials</span>';
+                }
+                
+                if (data.wordpress.connection_status === 'connected') {
+                    html += '<span class="badge bg-success ms-2">Connected</span>';
+                } else {
+                    html += '<span class="badge bg-danger ms-2">Error</span>';
+                }
+            } else {
+                html += '<span class="badge bg-warning">Not Configured</span>';
+            }
+            
+            html += '</div>'; // End card-header
+            
+            html += '<div class="card-body">';
+            if (data.wordpress.has_credentials) {
+                html += `<p><strong>URL:</strong> ${data.wordpress.url}</p>`;
+                
+                if (data.wordpress.total_posts) {
+                    html += `<p><strong>Total Posts:</strong> ${data.wordpress.total_posts}</p>`;
+                }
+                
+                if (data.wordpress.user) {
+                    html += `<p><strong>User:</strong> ${data.wordpress.user.name} (${data.wordpress.user.role})</p>`;
+                }
+                
+                if (data.wordpress.connection_status !== 'connected') {
+                    html += `<div class="alert alert-danger mt-3">${data.wordpress.error || 'Connection error'}</div>`;
+                }
+            } else {
+                html += '<p>WordPress integration not configured.</p>';
+            }
+            html += '</div>'; // End card-body
+            html += '</div>'; // End card
+            html += '</div>'; // End col
+            
+            // Social Media
+            html += '<div class="col-md-6 mb-3">';
+            html += '<div class="card h-100">';
+            html += '<div class="card-header">';
+            html += '<h6 class="mb-0">Social Media</h6>';
+            html += '</div>'; // End card-header
+            
+            html += '<div class="card-body">';
+            html += '<ul class="list-group list-group-flush">';
+            
+            // Twitter
+            html += '<li class="list-group-item d-flex justify-content-between align-items-center">';
+            html += 'Twitter';
+            if (data.twitter.has_credentials) {
+                if (data.twitter.is_global_credentials) {
+                    html += '<span class="badge bg-secondary">Global Credentials</span>';
+                } else {
+                    html += '<span class="badge bg-success">Custom Credentials</span>';
+                }
+            } else {
+                html += '<span class="badge bg-warning">Not Configured</span>';
+            }
+            html += '</li>';
+            
+            // LinkedIn
+            html += '<li class="list-group-item d-flex justify-content-between align-items-center">';
+            html += 'LinkedIn';
+            if (data.linkedin.has_credentials) {
+                if (data.linkedin.is_global_credentials) {
+                    html += '<span class="badge bg-secondary">Global Credentials</span>';
+                } else {
+                    html += '<span class="badge bg-success">Custom Credentials</span>';
+                }
+            } else {
+                html += '<span class="badge bg-warning">Not Configured</span>';
+            }
+            html += '</li>';
+            
+            // Facebook
+            html += '<li class="list-group-item d-flex justify-content-between align-items-center">';
+            html += 'Facebook';
+            if (data.facebook.has_credentials) {
+                if (data.facebook.is_global_credentials) {
+                    html += '<span class="badge bg-secondary">Global Credentials</span>';
+                } else {
+                    html += '<span class="badge bg-success">Custom Credentials</span>';
+                }
+            } else {
+                html += '<span class="badge bg-warning">Not Configured</span>';
+            }
+            html += '</li>';
+            
+            html += '</ul>';
+            html += '</div>'; // End card-body
+            html += '</div>'; // End card
+            html += '</div>'; // End col
+            
+            html += '</div>'; // End row
+            
+            container.innerHTML = html;
+        })
+        .catch(error => {
+            console.error(`Error fetching usage for blog ${blogId}:`, error);
+            container.innerHTML = `
+                <div class="alert alert-danger">
+                    <i class="bi bi-exclamation-triangle me-2"></i>
+                    Error loading usage data. Please try again.
+                </div>
+            `;
+        });
+}
+
+function updateOpenAIUsage(data) {
+    const badge = document.getElementById('openai-status-badge');
+    const details = document.getElementById('openai-details');
+    
+    if (data.has_credentials) {
+        badge.textContent = 'Configured';
+        badge.className = 'badge bg-success';
+        
+        let html = '';
+        
+        if (data.usage_available) {
+            html += `<p><strong>Current Usage:</strong> $${data.usage.total_usage.toFixed(2)}</p>`;
+            
+            if (data.subscription) {
+                html += `<p><strong>Plan:</strong> ${data.subscription.plan}</p>`;
+                html += `<p><strong>Soft Limit:</strong> $${data.subscription.soft_limit_usd}</p>`;
+                html += `<p><strong>Hard Limit:</strong> $${data.subscription.hard_limit_usd}</p>`;
+            }
+            
+            if (data.usage.breakdown_by_model) {
+                html += '<h6 class="mt-3">Model Usage</h6>';
+                html += '<ul class="list-group list-group-flush">';
+                
+                Object.entries(data.usage.breakdown_by_model).forEach(([model, cost]) => {
+                    html += `<li class="list-group-item d-flex justify-content-between">`;
+                    html += `<span>${model}</span>`;
+                    html += `<span>$${cost.toFixed(2)}</span>`;
+                    html += `</li>`;
+                });
+                
+                html += '</ul>';
+            }
+        } else {
+            if (data.provider === 'Azure OpenAI') {
+                html += '<p><strong>Provider:</strong> Azure OpenAI</p>';
+                html += '<p>Usage data is available in the Azure Portal.</p>';
+                if (data.deployment_info) {
+                    html += `<p><strong>API Base:</strong> ${data.deployment_info.api_base}</p>`;
+                }
+            } else {
+                html += '<p>Usage data not available. Please check your API key.</p>';
+            }
+        }
+        
+        details.innerHTML = html;
+    } else {
+        badge.textContent = 'Not Configured';
+        badge.className = 'badge bg-danger';
+        
+        details.innerHTML = `
+            <div class="alert alert-warning">
+                <i class="bi bi-exclamation-triangle me-2"></i>
+                OpenAI API key not configured. Please set up your API key in the environment variables or Key Vault.
+            </div>
+        `;
+    }
+}
+
+function updateWordPressStatus(data) {
+    const badge = document.getElementById('wordpress-status-badge');
+    const details = document.getElementById('wordpress-details');
+    
+    if (data.has_credentials) {
+        if (data.connection_status === 'connected') {
+            badge.textContent = 'Connected';
+            badge.className = 'badge bg-success';
+        } else {
+            badge.textContent = 'Error';
+            badge.className = 'badge bg-danger';
+        }
+        
+        let html = `<p><strong>URL:</strong> ${data.url}</p>`;
+        
+        if (data.total_posts) {
+            html += `<p><strong>Total Posts:</strong> ${data.total_posts}</p>`;
+        }
+        
+        if (data.user) {
+            html += `<p><strong>User:</strong> ${data.user.name} (${data.user.role})</p>`;
+        }
+        
+        if (data.connection_status !== 'connected') {
+            html += `<div class="alert alert-danger mt-3">${data.error || 'Connection error'}</div>`;
+        }
+        
+        details.innerHTML = html;
+    } else {
+        badge.textContent = 'Not Configured';
+        badge.className = 'badge bg-warning';
+        
+        details.innerHTML = `
+            <div class="alert alert-warning">
+                <i class="bi bi-exclamation-triangle me-2"></i>
+                WordPress integration not configured. Configure WordPress in blog settings.
+            </div>
+        `;
+    }
+}
+
+function updateSocialMediaStatus(twitter, linkedin, facebook) {
+    // Twitter
+    const twitterBadge = document.getElementById('twitter-status-badge');
+    if (twitter.has_credentials) {
+        twitterBadge.textContent = 'Configured';
+        twitterBadge.className = 'badge bg-success';
+    } else {
+        twitterBadge.textContent = 'Not Configured';
+        twitterBadge.className = 'badge bg-warning';
+    }
+    
+    // LinkedIn
+    const linkedinBadge = document.getElementById('linkedin-status-badge');
+    if (linkedin.has_credentials) {
+        linkedinBadge.textContent = 'Configured';
+        linkedinBadge.className = 'badge bg-success';
+    } else {
+        linkedinBadge.textContent = 'Not Configured';
+        linkedinBadge.className = 'badge bg-warning';
+    }
+    
+    // Facebook
+    const facebookBadge = document.getElementById('facebook-status-badge');
+    if (facebook.has_credentials) {
+        facebookBadge.textContent = 'Configured';
+        facebookBadge.className = 'badge bg-success';
+    } else {
+        facebookBadge.textContent = 'Not Configured';
+        facebookBadge.className = 'badge bg-warning';
+    }
+}
+
+function updateAzureStatus(data) {
+    const badge = document.getElementById('azure-status-badge');
+    const details = document.getElementById('azure-details');
+    
+    if (data && data.has_credentials) {
+        badge.textContent = 'Configured';
+        badge.className = 'badge bg-success';
+        
+        details.innerHTML = `
+            <div class="alert alert-info">
+                <i class="bi bi-info-circle me-2"></i>
+                ${data.message || 'Azure usage information is available in the Azure Portal.'}
+            </div>
+        `;
+    } else {
+        badge.textContent = 'Not Using Azure';
+        badge.className = 'badge bg-secondary';
+        
+        details.innerHTML = `
+            <div class="alert alert-secondary">
+                <i class="bi bi-info-circle me-2"></i>
+                Azure services are not configured. This application is using direct API access.
+            </div>
+        `;
+    }
+}
+
+function saveCredentials(blogId, credentials) {
+    fetch(`/api/blog/${blogId}/credentials`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(credentials),
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            showToast('Credentials updated successfully', 'success');
+            
+            // Update form placeholders to indicate credentials are set
+            for (const key in credentials) {
+                const inputId = key.replace(/_/g, '-') + '-' + blogId;
+                const input = document.getElementById(inputId);
+                if (input) {
+                    input.value = '';
+                    input.placeholder = '••••••••••••••••';
+                }
+            }
+            
+            // Refresh usage data for this blog
+            fetchBlogUsage(blogId);
+        } else {
+            showToast(data.error || 'Failed to update credentials', 'danger');
+        }
+    })
+    .catch(error => {
+        console.error('Error saving credentials:', error);
+        showToast('Error saving credentials. Please try again.', 'danger');
+    });
+}
+
+function showToast(message, type = 'info') {
+    // Create toast container if it doesn't exist
+    let toastContainer = document.querySelector('.toast-container');
+    if (!toastContainer) {
+        toastContainer = document.createElement('div');
+        toastContainer.className = 'toast-container position-fixed bottom-0 end-0 p-3';
+        document.body.appendChild(toastContainer);
+    }
+    
+    // Create toast
+    const toastId = 'toast-' + Date.now();
+    const toastHtml = `
+        <div id="${toastId}" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
+            <div class="toast-header">
+                <strong class="me-auto">Notification</strong>
+                <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
+            </div>
+            <div class="toast-body bg-${type} text-white">
+                ${message}
+            </div>
+        </div>
+    `;
+    
+    // Add toast to container
+    toastContainer.insertAdjacentHTML('beforeend', toastHtml);
+    
+    // Initialize and show toast
+    const toastElement = document.getElementById(toastId);
+    const toast = new bootstrap.Toast(toastElement);
+    toast.show();
+    
+    // Remove toast after it's hidden
+    toastElement.addEventListener('hidden.bs.toast', function() {
+        toastElement.remove();
+    });
+}
+</script>
+{% endblock %}

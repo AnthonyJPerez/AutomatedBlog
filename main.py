@@ -7,6 +7,7 @@ from flask import Flask, render_template, request, redirect, url_for, jsonify, f
 from src.shared.storage_service import StorageService
 from src.shared.research_service import ResearchService
 from src.shared.openai_service import OpenAIService
+from src.shared.billing_service import BillingService
 
 # Set up logging
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -20,6 +21,7 @@ app.secret_key = os.environ.get("SESSION_SECRET", "dev-secret-key")
 storage_service = StorageService()
 research_service = ResearchService()
 openai_service = OpenAIService()
+billing_service = BillingService()
 
 # Initialize social media service
 try:
@@ -998,6 +1000,120 @@ def edit_content(blog_id, run_id):
         logger.error(f"Error updating content for {blog_id}/{run_id}: {str(e)}")
         flash(f"Error updating content: {str(e)}", "danger")
         return redirect(url_for('view_content', blog_id=blog_id, run_id=run_id))
+
+@app.route('/usage')
+def usage_dashboard():
+    """
+    Display usage and billing information for all services
+    """
+    # Get global service status
+    global_status = billing_service.get_all_services_status()
+    
+    # Get blog-specific service status
+    blogs = []
+    blog_data_path = "data/blogs"
+    storage_service.ensure_local_directory(blog_data_path)
+    
+    try:
+        local_blog_folders = [f for f in os.listdir(blog_data_path) if os.path.isdir(os.path.join(blog_data_path, f))]
+        
+        for blog_id in local_blog_folders:
+            try:
+                blog_config_path = os.path.join(blog_data_path, blog_id, "config.json")
+                if os.path.exists(blog_config_path):
+                    with open(blog_config_path, 'r') as f:
+                        blog_config = json.load(f)
+                    
+                    # Check for blog-specific credentials
+                    has_custom_credentials = False
+                    if 'integrations' in blog_config:
+                        has_custom_credentials = any([
+                            'openai_api_key' in blog_config['integrations'],
+                            'wordpress_app_password' in blog_config['integrations'],
+                            'twitter_api_key' in blog_config['integrations'],
+                            'linkedin_api_key' in blog_config['integrations'],
+                            'facebook_api_key' in blog_config['integrations']
+                        ])
+                    
+                    blogs.append({
+                        'id': blog_id,
+                        'name': blog_config.get('name', 'Unnamed Blog'),
+                        'has_custom_credentials': has_custom_credentials,
+                        'config': blog_config
+                    })
+            except Exception as e:
+                logger.error(f"Error loading blog config for {blog_id}: {str(e)}")
+    except Exception as e:
+        logger.error(f"Error listing blog configurations: {str(e)}")
+    
+    return render_template('usage_dashboard.html', 
+                          global_status=global_status, 
+                          blogs=blogs)
+
+@app.route('/api/usage/global')
+def api_global_usage():
+    """API endpoint to get global usage and billing information"""
+    try:
+        global_status = billing_service.get_all_services_status()
+        return jsonify(global_status)
+    except Exception as e:
+        logger.error(f"Error retrieving global usage data: {str(e)}")
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/usage/blog/<blog_id>')
+def api_blog_usage(blog_id):
+    """API endpoint to get blog-specific usage and billing information"""
+    try:
+        blog_config_path = os.path.join("data/blogs", blog_id, "config.json")
+        if not os.path.exists(blog_config_path):
+            return jsonify({"error": f"Blog {blog_id} not found"}), 404
+        
+        with open(blog_config_path, 'r') as f:
+            blog_config = json.load(f)
+        
+        blog_status = billing_service.get_all_services_status(blog_config)
+        return jsonify(blog_status)
+    except Exception as e:
+        logger.error(f"Error retrieving usage data for blog {blog_id}: {str(e)}")
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/blog/<blog_id>/credentials', methods=['POST'])
+def update_blog_credentials(blog_id):
+    """API endpoint to update blog-specific integration credentials"""
+    try:
+        blog_config_path = os.path.join("data/blogs", blog_id, "config.json")
+        if not os.path.exists(blog_config_path):
+            return jsonify({"error": f"Blog {blog_id} not found"}), 404
+        
+        # Load the current config
+        with open(blog_config_path, 'r') as f:
+            blog_config = json.load(f)
+        
+        # Get credential data from request
+        data = request.json
+        if not data:
+            return jsonify({"error": "No data provided"}), 400
+        
+        # Initialize integrations section if it doesn't exist
+        if 'integrations' not in blog_config:
+            blog_config['integrations'] = {}
+        
+        # Update credentials
+        for key, value in data.items():
+            if value:  # Only update if a value is provided
+                blog_config['integrations'][key] = value
+            elif key in blog_config['integrations']:
+                # Remove the key if value is empty
+                del blog_config['integrations'][key]
+        
+        # Save the updated config
+        with open(blog_config_path, 'w') as f:
+            json.dump(blog_config, f, indent=2)
+        
+        return jsonify({"status": "success", "message": "Credentials updated successfully"})
+    except Exception as e:
+        logger.error(f"Error updating credentials for blog {blog_id}: {str(e)}")
+        return jsonify({"error": str(e)}), 500
 
 @app.errorhandler(404)
 def page_not_found(e):
