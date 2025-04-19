@@ -4,6 +4,7 @@ version = "0.1.0"
 description = "Add your description here"
 requires-python = ">=3.11"
 dependencies = [
+    "azure-core>=1.33.0",
     "azure-functions>=1.23.0",
     "azure-identity>=1.21.0",
     "azure-keyvault-secrets>=4.9.0",
@@ -13,6 +14,7 @@ dependencies = [
     "flask>=3.1.0",
     "flask-sqlalchemy>=3.1.1",
     "gunicorn>=23.0.0",
+    "markdown>=3.8",
     "openai>=1.75.0",
     "psycopg2-binary>=2.9.10",
     "python-dateutil>=2.9.0.post0",

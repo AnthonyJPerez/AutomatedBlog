@@ -1,0 +1,309 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ title }} - Blog Automation Platform{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row mb-4">
+        <div class="col-md-9">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{{ url_for('index') }}">Home</a></li>
+                    <li class="breadcrumb-item"><a href="{{ url_for('blog_detail', blog_id=blog_id) }}">{{ blog_name }}</a></li>
+                    <li class="breadcrumb-item active" aria-current="page">Content View</li>
+                </ol>
+            </nav>
+            <h1 class="display-5 fw-bold">{{ title }}</h1>
+            <div class="mb-3 text-muted">
+                <span class="me-3"><i class="bi bi-calendar-event"></i> {{ date }}</span>
+                <span class="me-3"><i class="bi bi-tag"></i> {{ theme }}</span>
+                {% if status == 'published' %}
+                <span class="badge bg-success">Published</span>
+                {% elif status == 'completed' %}
+                <span class="badge bg-info">Generated</span>
+                {% else %}
+                <span class="badge bg-secondary">{{ status }}</span>
+                {% endif %}
+            </div>
+        </div>
+        <div class="col-md-3 text-end">
+            {% if post_url %}
+            <a href="{{ post_url }}" target="_blank" class="btn btn-outline-primary mb-2 w-100">
+                <i class="bi bi-box-arrow-up-right"></i> View Published Post
+            </a>
+            {% endif %}
+            <a href="{{ url_for('blog_detail', blog_id=blog_id) }}" class="btn btn-outline-secondary w-100">
+                <i class="bi bi-arrow-left"></i> Back to Blog
+            </a>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Content</h5>
+                    <div class="btn-group">
+                        <button class="btn btn-sm btn-outline-secondary" id="viewMode" onclick="toggleView('preview')">
+                            <i class="bi bi-eye"></i> Preview
+                        </button>
+                        <button class="btn btn-sm btn-outline-secondary" onclick="toggleView('markdown')">
+                            <i class="bi bi-code-slash"></i> Markdown
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div id="preview-content" class="markdown-body">
+                        {{ content_html|safe }}
+                    </div>
+                    <div id="markdown-content" style="display: none;">
+                        <pre class="p-3 bg-light"><code>{{ content }}</code></pre>
+                    </div>
+                </div>
+                <div class="card-footer text-muted">
+                    <small>{{ word_count }} words &middot; ~{{ reading_time }} min read</small>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4">
+            <!-- Research Data -->
+            {% if research %}
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">Research Data</h5>
+                </div>
+                <div class="card-body">
+                    {% if research.trending_topics %}
+                    <h6>Trending Topics</h6>
+                    <ul class="list-group mb-3">
+                        {% for topic in research.trending_topics %}
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            {{ topic.title }}
+                            <span class="badge bg-primary rounded-pill">{{ topic.trending_score }}</span>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                    {% endif %}
+                    
+                    {% if research.blog_topics %}
+                    <h6>Blog Topics</h6>
+                    <div class="mb-3">
+                        {% for topic in research.blog_topics %}
+                        <span class="badge bg-secondary me-1 mb-1">{{ topic }}</span>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
+            
+            <!-- SEO Recommendations -->
+            {% if recommendations %}
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">SEO Recommendations</h5>
+                </div>
+                <div class="card-body">
+                    {% if recommendations.meta_title %}
+                    <div class="mb-3">
+                        <h6>Meta Title</h6>
+                        <p class="text-primary">{{ recommendations.meta_title }}</p>
+                    </div>
+                    {% endif %}
+                    
+                    {% if recommendations.meta_description %}
+                    <div class="mb-3">
+                        <h6>Meta Description</h6>
+                        <p class="small">{{ recommendations.meta_description }}</p>
+                    </div>
+                    {% endif %}
+                    
+                    {% if recommendations.keywords %}
+                    <div class="mb-3">
+                        <h6>Keywords</h6>
+                        <div>
+                            {% for keyword in recommendations.keywords %}
+                            <span class="badge bg-info text-dark me-1 mb-1">{{ keyword }}</span>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    {% if recommendations.suggestions %}
+                    <div class="mb-3">
+                        <h6>Suggestions</h6>
+                        <ul class="list-group">
+                            {% for suggestion in recommendations.suggestions %}
+                            <li class="list-group-item">{{ suggestion }}</li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
+            
+            <!-- Publishing Status -->
+            {% if publish %}
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">Publishing Status</h5>
+                </div>
+                <div class="card-body">
+                    <p class="mb-1"><strong>Status:</strong> 
+                        {% if publish.status == 'published' %}
+                        <span class="badge bg-success">Published</span>
+                        {% elif publish.status == 'pending' %}
+                        <span class="badge bg-warning text-dark">Pending</span>
+                        {% else %}
+                        <span class="badge bg-secondary">{{ publish.status }}</span>
+                        {% endif %}
+                    </p>
+                    
+                    {% if publish.wordpress_url %}
+                    <p class="mb-1"><strong>WordPress Site:</strong> <a href="{{ publish.wordpress_url }}" target="_blank">{{ publish.wordpress_url }}</a></p>
+                    {% endif %}
+                    
+                    {% if publish.published_time %}
+                    <p class="mb-1"><strong>Published:</strong> {{ publish.published_time }}</p>
+                    {% elif publish.scheduled_time %}
+                    <p class="mb-1"><strong>Scheduled:</strong> {{ publish.scheduled_time }}</p>
+                    {% endif %}
+                    
+                    {% if publish.url %}
+                    <p class="mb-1"><strong>Post URL:</strong> <a href="{{ publish.url }}" target="_blank">{{ publish.url }}</a></p>
+                    {% endif %}
+                    
+                    {% if publish.categories %}
+                    <p class="mb-1"><strong>Categories:</strong> 
+                        {% for category in publish.categories %}
+                        <span class="badge bg-secondary me-1">{{ category }}</span>
+                        {% endfor %}
+                    </p>
+                    {% endif %}
+                    
+                    {% if publish.tags %}
+                    <p class="mb-1"><strong>Tags:</strong> 
+                        {% for tag in publish.tags %}
+                        <span class="badge bg-light text-dark me-1">{{ tag }}</span>
+                        {% endfor %}
+                    </p>
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
+            
+            <!-- Results -->
+            {% if results %}
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">Results</h5>
+                </div>
+                <div class="card-body">
+                    <p class="mb-1"><strong>Status:</strong> 
+                        {% if results.status == 'completed' %}
+                        <span class="badge bg-success">Completed</span>
+                        {% else %}
+                        <span class="badge bg-secondary">{{ results.status }}</span>
+                        {% endif %}
+                    </p>
+                    
+                    {% if results.timestamp %}
+                    <p class="mb-1"><strong>Completed:</strong> {{ results.timestamp }}</p>
+                    {% endif %}
+                    
+                    {% if results.content_length %}
+                    <p class="mb-1"><strong>Content Length:</strong> {{ results.content_length }} words</p>
+                    {% endif %}
+                    
+                    {% if results.metrics %}
+                    <div class="mt-3">
+                        <h6>Metrics</h6>
+                        <div class="card">
+                            <ul class="list-group list-group-flush">
+                                {% if results.metrics.reading_time_minutes %}
+                                <li class="list-group-item d-flex justify-content-between">
+                                    <span>Reading Time</span>
+                                    <span>{{ results.metrics.reading_time_minutes }} min</span>
+                                </li>
+                                {% endif %}
+                                
+                                {% if results.metrics.flesch_reading_ease %}
+                                <li class="list-group-item d-flex justify-content-between">
+                                    <span>Reading Ease</span>
+                                    <span>{{ results.metrics.flesch_reading_ease }}</span>
+                                </li>
+                                {% endif %}
+                                
+                                {% if results.metrics.image_count %}
+                                <li class="list-group-item d-flex justify-content-between">
+                                    <span>Images</span>
+                                    <span>{{ results.metrics.image_count }}</span>
+                                </li>
+                                {% endif %}
+                            </ul>
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    {% if results.analytics %}
+                    <div class="mt-3">
+                        <h6>Analytics</h6>
+                        <div class="card">
+                            <ul class="list-group list-group-flush">
+                                {% if results.analytics.views %}
+                                <li class="list-group-item d-flex justify-content-between">
+                                    <span>Views</span>
+                                    <span>{{ results.analytics.views }}</span>
+                                </li>
+                                {% endif %}
+                                
+                                {% if results.analytics.unique_visitors %}
+                                <li class="list-group-item d-flex justify-content-between">
+                                    <span>Unique Visitors</span>
+                                    <span>{{ results.analytics.unique_visitors }}</span>
+                                </li>
+                                {% endif %}
+                                
+                                {% if results.analytics.average_time_on_page %}
+                                <li class="list-group-item d-flex justify-content-between">
+                                    <span>Avg. Time on Page</span>
+                                    <span>{{ results.analytics.average_time_on_page }}</span>
+                                </li>
+                                {% endif %}
+                                
+                                {% if results.analytics.social_shares %}
+                                <li class="list-group-item d-flex justify-content-between">
+                                    <span>Social Shares</span>
+                                    <span>{{ results.analytics.social_shares }}</span>
+                                </li>
+                                {% endif %}
+                            </ul>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script>
+function toggleView(mode) {
+    if (mode === 'preview') {
+        document.getElementById('preview-content').style.display = 'block';
+        document.getElementById('markdown-content').style.display = 'none';
+        document.getElementById('viewMode').innerHTML = '<i class="bi bi-eye"></i> Preview';
+    } else {
+        document.getElementById('preview-content').style.display = 'none';
+        document.getElementById('markdown-content').style.display = 'block';
+        document.getElementById('viewMode').innerHTML = '<i class="bi bi-code-slash"></i> Markdown';
+    }
+}
+</script>
+{% endblock %}

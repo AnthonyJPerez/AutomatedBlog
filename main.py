@@ -588,6 +588,114 @@ def generate_outline():
         logger.error(f"Error generating outline: {str(e)}")
         return jsonify({"error": str(e)}), 500
 
+@app.route('/blog/<blog_id>/content/<run_id>')
+def view_content(blog_id, run_id):
+    """View content for a specific run"""
+    try:
+        # Get blog configuration
+        blog_path = os.path.join("data/blogs", blog_id)
+        config_path = os.path.join(blog_path, "config.json")
+        
+        if not os.path.exists(config_path):
+            flash(f"Blog configuration not found for ID: {blog_id}", "danger")
+            return redirect(url_for('index'))
+        
+        with open(config_path, 'r') as f:
+            config = json.load(f)
+        
+        # Get run data
+        run_path = os.path.join(blog_path, "runs", run_id)
+        content_path = os.path.join(run_path, "content.md")
+        
+        if not os.path.exists(content_path):
+            flash(f"Content not found for run ID: {run_id}", "danger")
+            return redirect(url_for('blog_detail', blog_id=blog_id))
+        
+        # Read content file
+        with open(content_path, 'r') as f:
+            content = f.read()
+        
+        # Extract title from content (assuming first line is a markdown heading)
+        lines = content.strip().split('\n')
+        title = lines[0].strip('# ') if lines and lines[0].startswith('# ') else run_id
+        
+        # Calculate word count and reading time
+        word_count = len(content.split())
+        reading_time = max(1, round(word_count / 200))  # Assuming 200 words per minute reading speed
+        
+        # Parse date from run_id (assuming format YYYYMMDD_HHMMSS_XXX)
+        date_str = None
+        if '_' in run_id:
+            try:
+                date_part = run_id.split('_')[0]
+                date_str = f"{date_part[:4]}-{date_part[4:6]}-{date_part[6:8]}"
+            except:
+                date_str = "Unknown Date"
+        
+        # Try to load research.json if exists
+        research = None
+        research_path = os.path.join(run_path, "research.json")
+        if os.path.exists(research_path):
+            with open(research_path, 'r') as f:
+                research = json.load(f)
+        
+        # Try to load recommendations.json if exists
+        recommendations = None
+        recommendations_path = os.path.join(run_path, "recommendations.json")
+        if os.path.exists(recommendations_path):
+            with open(recommendations_path, 'r') as f:
+                recommendations = json.load(f)
+        
+        # Try to load publish.json if exists
+        publish = None
+        publish_path = os.path.join(run_path, "publish.json")
+        post_url = None
+        status = 'generated'
+        if os.path.exists(publish_path):
+            with open(publish_path, 'r') as f:
+                publish = json.load(f)
+            status = publish.get('status', 'pending')
+            post_url = publish.get('url')
+        
+        # Try to load results.json if exists
+        results = None
+        results_path = os.path.join(run_path, "results.json")
+        if os.path.exists(results_path):
+            with open(results_path, 'r') as f:
+                results = json.load(f)
+            status = 'completed'
+        
+        # Convert markdown to HTML for preview
+        try:
+            import markdown
+            content_html = markdown.markdown(content, extensions=['extra', 'codehilite'])
+        except ImportError:
+            # If markdown package is not available, use a simple conversion
+            content_html = content.replace('\n', '<br>').replace('# ', '<h1>').replace('## ', '<h2>').replace('### ', '<h3>')
+        
+        return render_template('content_view.html',
+                              blog_id=blog_id,
+                              blog_name=config.get('name', 'Unnamed Blog'),
+                              run_id=run_id,
+                              title=title,
+                              content=content,
+                              content_html=content_html,
+                              theme=config.get('theme', ''),
+                              date=date_str or "Unknown Date",
+                              word_count=word_count,
+                              reading_time=reading_time,
+                              research=research,
+                              recommendations=recommendations,
+                              publish=publish,
+                              results=results,
+                              status=status,
+                              post_url=post_url)
+    
+    except Exception as e:
+        logger.error(f"Error loading content for {blog_id}/{run_id}: {str(e)}")
+        flash(f"Error loading content: {str(e)}", "danger")
+        return redirect(url_for('blog_detail', blog_id=blog_id))
+
 @app.errorhandler(404)
 def page_not_found(e):
     return render_template('404.html'), 404

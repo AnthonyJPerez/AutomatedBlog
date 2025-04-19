@@ -164,35 +164,16 @@
                                     {% endif %}
                                 </td>
                                 <td>
-                                    {% if item.url %}
-                                    <a href="{{ item.url }}" target="_blank" class="btn btn-sm btn-info">View Post</a>
-                                    {% else %}
-                                    <a href="#" class="btn btn-sm btn-outline-secondary disabled">Not Published</a>
-                                    {% endif %}
-                                    
-                                    <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#contentModal{{ loop.index }}">
-                                        Preview
-                                    </button>
-                                    
-                                    <!-- Content Preview Modal -->
-                                    <div class="modal fade" id="contentModal{{ loop.index }}" tabindex="-1" aria-labelledby="contentModalLabel{{ loop.index }}" aria-hidden="true">
-                                        <div class="modal-dialog modal-lg">
-                                            <div class="modal-content">
-                                                <div class="modal-header">
-                                                    <h5 class="modal-title" id="contentModalLabel{{ loop.index }}">{{ item.title }}</h5>
-                                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                                                </div>
-                                                <div class="modal-body">
-                                                    {{ item.excerpt|safe }}
-                                                </div>
-                                                <div class="modal-footer">
-                                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                                                    {% if item.url %}
-                                                    <a href="{{ item.url }}" target="_blank" class="btn btn-primary">View Full Post</a>
-                                                    {% endif %}
-                                                </div>
-                                            </div>
-                                        </div>
+                                    <div class="btn-group">
+                                        <a href="{{ url_for('view_content', blog_id=blog.id, run_id=item.run_id) }}" class="btn btn-sm btn-primary">
+                                            <i class="bi bi-eye"></i> View Details
+                                        </a>
+                                        
+                                        {% if item.url %}
+                                        <a href="{{ item.url }}" target="_blank" class="btn btn-sm btn-outline-success">
+                                            <i class="bi bi-box-arrow-up-right"></i> View Published
+                                        </a>
+                                        {% endif %}
                                     </div>
                                 </td>
                             </tr>

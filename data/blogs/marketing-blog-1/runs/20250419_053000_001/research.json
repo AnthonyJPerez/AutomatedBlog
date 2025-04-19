@@ -1,0 +1,43 @@
+{
+  "theme": "Digital Marketing",
+  "timestamp": "2025-04-19 05:30:00",
+  "trending_topics": [
+    {
+      "title": "Content Marketing Strategies",
+      "query": "Content Marketing Strategies",
+      "search_volume": 14200,
+      "trending_score": 93
+    },
+    {
+      "title": "Social Media Marketing Trends",
+      "query": "Social Media Marketing Trends",
+      "search_volume": 11500,
+      "trending_score": 89
+    },
+    {
+      "title": "Email Marketing Automation",
+      "query": "Email Marketing Automation",
+      "search_volume": 9800,
+      "trending_score": 86
+    },
+    {
+      "title": "SEO Best Practices 2025",
+      "query": "SEO Best Practices 2025",
+      "search_volume": 8700,
+      "trending_score": 81
+    },
+    {
+      "title": "Marketing Analytics Tools",
+      "query": "Marketing Analytics Tools",
+      "search_volume": 7900,
+      "trending_score": 78
+    }
+  ],
+  "blog_topics": [
+    "Content Marketing",
+    "Social Media Strategy",
+    "Email Marketing",
+    "SEO Techniques",
+    "Marketing Analytics"
+  ]
+}
