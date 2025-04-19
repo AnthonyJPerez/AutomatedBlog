@@ -1,173 +1,136 @@
 {% extends 'base.html' %}
 
-{% block title %}Multi-Blog Automation - Setup{% endblock %}
+{% block title %}Setup New Blog - Blog Automation Platform{% endblock %}
 
 {% block content %}
-<h1 class="mb-4">Create New Blog</h1>
-
-<div class="card">
-    <div class="card-header">
-        <h5 class="card-title mb-0">Blog Configuration</h5>
-    </div>
-    <div class="card-body">
-        <form method="POST" action="{{ url_for('setup') }}">
-            <h5 class="mb-3">Basic Information</h5>
-            <div class="row mb-3">
-                <div class="col-md-6">
-                    <div class="mb-3">
-                        <label for="blog_name" class="form-label">Blog Name <span class="text-danger">*</span></label>
-                        <input type="text" class="form-control" id="blog_name" name="blog_name" required>
-                        <div class="form-text">Give your blog a descriptive name</div>
-                    </div>
-                </div>
-                <div class="col-md-6">
-                    <div class="mb-3">
-                        <label for="theme" class="form-label">Blog Theme <span class="text-danger">*</span></label>
-                        <input type="text" class="form-control" id="theme" name="theme" required>
-                        <div class="form-text">The main topic or niche of your blog (e.g., technology, fitness, finance)</div>
-                    </div>
-                </div>
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h4 class="mb-0">New Blog Setup</h4>
+                <a href="{{ url_for('index') }}" class="btn btn-secondary">Back to Dashboard</a>
             </div>
-
-            <h5 class="mb-3">Content Settings</h5>
-            <div class="row mb-3">
-                <div class="col-md-6">
+            <div class="card-body">
+                <form id="setupForm" method="POST" action="{{ url_for('setup') }}">
                     <div class="mb-3">
-                        <label for="tone" class="form-label">Content Tone</label>
-                        <select class="form-control" id="tone" name="tone">
-                            <option value="professional">Professional</option>
-                            <option value="casual">Casual</option>
-                            <option value="conversational">Conversational</option>
-                            <option value="educational">Educational</option>
-                            <option value="entertaining">Entertaining</option>
-                        </select>
+                        <label for="blogName" class="form-label">Blog Name</label>
+                        <input type="text" class="form-control" id="blogName" name="blog_name" required placeholder="Travel Adventures Blog">
+                        <div class="form-text">A descriptive name for your blog</div>
                     </div>
-                </div>
-                <div class="col-md-6">
+                    
                     <div class="mb-3">
-                        <label for="target_audience" class="form-label">Target Audience</label>
-                        <input type="text" class="form-control" id="target_audience" name="target_audience" value="general">
-                        <div class="form-text">Who your content is intended for (e.g., beginners, experts, entrepreneurs)</div>
+                        <label for="blogTheme" class="form-label">Blog Theme</label>
+                        <input type="text" class="form-control" id="blogTheme" name="theme" required placeholder="Sustainable Travel">
+                        <div class="form-text">The main theme of your blog (e.g., Technology, Finance, Travel)</div>
                     </div>
-                </div>
-            </div>
-
-            <div class="row mb-3">
-                <div class="col-md-6">
+                    
                     <div class="mb-3">
-                        <label class="form-label">Content Types</label>
-                        <div class="form-check">
-                            <input class="form-check-input" type="checkbox" name="content_types" value="article" id="content_article" checked>
-                            <label class="form-check-label" for="content_article">Articles</label>
-                        </div>
-                        <div class="form-check">
-                            <input class="form-check-input" type="checkbox" name="content_types" value="listicle" id="content_listicle">
-                            <label class="form-check-label" for="content_listicle">Listicles</label>
-                        </div>
-                        <div class="form-check">
-                            <input class="form-check-input" type="checkbox" name="content_types" value="how_to" id="content_how_to">
-                            <label class="form-check-label" for="content_how_to">How-to Guides</label>
-                        </div>
-                        <div class="form-check">
-                            <input class="form-check-input" type="checkbox" name="content_types" value="review" id="content_review">
-                            <label class="form-check-label" for="content_review">Reviews</label>
-                        </div>
+                        <label for="topicKeywords" class="form-label">Topic Keywords</label>
+                        <input type="text" class="form-control" id="topicKeywords" name="topic_keywords" required placeholder="eco-friendly, carbon offset, responsible tourism">
+                        <div class="form-text">Comma-separated keywords related to your blog theme</div>
                     </div>
-                </div>
-                <div class="col-md-6">
+                    
                     <div class="mb-3">
-                        <label for="publishing_frequency" class="form-label">Publishing Frequency</label>
-                        <select class="form-control" id="publishing_frequency" name="publishing_frequency">
+                        <label for="contentFrequency" class="form-label">Content Generation Frequency</label>
+                        <select class="form-select" id="contentFrequency" name="frequency" required>
                             <option value="daily">Daily</option>
                             <option value="weekly" selected>Weekly</option>
                             <option value="biweekly">Bi-weekly</option>
                             <option value="monthly">Monthly</option>
                         </select>
+                        <div class="form-text">How often new content should be generated</div>
                     </div>
+                    
+                    <h5 class="mt-4 mb-3">WordPress Integration</h5>
+                    
                     <div class="mb-3">
-                        <label for="region" class="form-label">Target Region</label>
-                        <select class="form-control" id="region" name="region">
-                            <option value="US" selected>United States</option>
-                            <option value="UK">United Kingdom</option>
-                            <option value="CA">Canada</option>
-                            <option value="AU">Australia</option>
-                            <option value="Global">Global</option>
+                        <label for="wordpressUrl" class="form-label">WordPress Site URL</label>
+                        <input type="url" class="form-control" id="wordpressUrl" name="wordpress_url" placeholder="https://example.com">
+                        <div class="form-text">The URL of your WordPress site (leave blank to skip WordPress integration)</div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="wordpressUsername" class="form-label">WordPress Username</label>
+                        <input type="text" class="form-control" id="wordpressUsername" name="wordpress_username" placeholder="admin">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="wordpressAppPassword" class="form-label">WordPress Application Password</label>
+                        <input type="password" class="form-control" id="wordpressAppPassword" name="wordpress_app_password">
+                        <div class="form-text">An application password generated in your WordPress admin dashboard</div>
+                    </div>
+                    
+                    <h5 class="mt-4 mb-3">Domain Suggestions</h5>
+                    
+                    <div class="mb-3 form-check">
+                        <input type="checkbox" class="form-check-input" id="enableDomainSuggestions" name="enable_domain_suggestions" value="1">
+                        <label class="form-check-label" for="enableDomainSuggestions">Enable domain name suggestions</label>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="maxPrice" class="form-label">Maximum Domain Price (USD)</label>
+                        <input type="number" class="form-control" id="maxPrice" name="max_price" value="50" min="1" max="1000">
+                    </div>
+                    
+                    <h5 class="mt-4 mb-3">Content Settings</h5>
+                    
+                    <div class="mb-3">
+                        <label for="contentLength" class="form-label">Average Content Length (words)</label>
+                        <select class="form-select" id="contentLength" name="content_length">
+                            <option value="500">Short (~500 words)</option>
+                            <option value="1000" selected>Medium (~1000 words)</option>
+                            <option value="1500">Long (~1500 words)</option>
+                            <option value="2000">Very Long (~2000+ words)</option>
                         </select>
                     </div>
-                </div>
-            </div>
-
-            <h5 class="mb-3">WordPress Connection</h5>
-            <div class="row mb-3">
-                <div class="col-md-12">
+                    
                     <div class="mb-3">
-                        <label for="wordpress_url" class="form-label">WordPress URL <span class="text-danger">*</span></label>
-                        <input type="url" class="form-control" id="wordpress_url" name="wordpress_url" placeholder="https://yourblog.com" required>
-                        <div class="form-text">Your WordPress site URL</div>
+                        <label for="contentStyle" class="form-label">Content Style</label>
+                        <select class="form-select" id="contentStyle" name="content_style">
+                            <option value="informative" selected>Informative</option>
+                            <option value="conversational">Conversational</option>
+                            <option value="professional">Professional</option>
+                            <option value="casual">Casual</option>
+                            <option value="technical">Technical</option>
+                        </select>
                     </div>
-                </div>
+                    
+                    <div class="mb-3 form-check">
+                        <input type="checkbox" class="form-check-input" id="includeFeaturedImage" name="include_featured_image" value="1" checked>
+                        <label class="form-check-label" for="includeFeaturedImage">Include AI-generated featured images</label>
+                    </div>
+                    
+                    <button type="submit" class="btn btn-primary">Create Blog</button>
+                </form>
             </div>
-            <div class="row mb-3">
-                <div class="col-md-6">
-                    <div class="mb-3">
-                        <label for="wordpress_username" class="form-label">WordPress Username <span class="text-danger">*</span></label>
-                        <input type="text" class="form-control" id="wordpress_username" name="wordpress_username" required>
-                    </div>
-                </div>
-                <div class="col-md-6">
-                    <div class="mb-3">
-                        <label for="wordpress_app_password" class="form-label">Application Password <span class="text-danger">*</span></label>
-                        <input type="password" class="form-control" id="wordpress_app_password" name="wordpress_app_password" required>
-                        <div class="form-text">Create an application password in your WordPress admin</div>
-                    </div>
-                </div>
-            </div>
-
-            <h5 class="mb-3">AdSense Integration (Optional)</h5>
-            <div class="row mb-3">
-                <div class="col-md-12">
-                    <div class="mb-3">
-                        <label for="adsense_publisher_id" class="form-label">AdSense Publisher ID</label>
-                        <input type="text" class="form-control" id="adsense_publisher_id" name="adsense_publisher_id" placeholder="pub-1234567890">
-                        <div class="form-text">Your AdSense publisher ID (format: pub-xxxxxxxxxx)</div>
-                    </div>
-                </div>
-            </div>
-            <div class="row mb-4">
-                <div class="col-md-6">
-                    <div class="mb-3">
-                        <label for="adsense_ad_slot_1" class="form-label">Ad Slot ID (Content)</label>
-                        <input type="text" class="form-control" id="adsense_ad_slot_1" name="adsense_ad_slot_1">
-                        <div class="form-text">Ad unit to display within content</div>
-                    </div>
-                </div>
-                <div class="col-md-6">
-                    <div class="mb-3">
-                        <label for="adsense_ad_slot_2" class="form-label">Ad Slot ID (Sidebar)</label>
-                        <input type="text" class="form-control" id="adsense_ad_slot_2" name="adsense_ad_slot_2">
-                        <div class="form-text">Ad unit to display in sidebar</div>
-                    </div>
-                </div>
-            </div>
-
-            <h5 class="mb-3">Domain Configuration</h5>
-            <div class="row mb-3">
-                <div class="col-md-12">
-                    <div class="form-check mb-3">
-                        <input class="form-check-input" type="checkbox" id="needs_domain" name="needs_domain" value="true">
-                        <label class="form-check-label" for="needs_domain">
-                            I need domain suggestions for this blog
-                        </label>
-                        <div class="form-text">If checked, domain suggestions will be provided based on your theme and blog name</div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="d-flex justify-content-between">
-                <a href="{{ url_for('index') }}" class="btn btn-secondary">Back to Dashboard</a>
-                <button type="submit" class="btn btn-primary">Create Blog</button>
-            </div>
-        </form>
+        </div>
     </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const wordpressFields = document.querySelectorAll('#wordpressUsername, #wordpressAppPassword');
+    const wordpressUrl = document.querySelector('#wordpressUrl');
+    
+    // Initial check
+    toggleWordpressFields();
+    
+    wordpressUrl.addEventListener('input', toggleWordpressFields);
+    
+    function toggleWordpressFields() {
+        const isEnabled = wordpressUrl.value.trim() !== '';
+        wordpressFields.forEach(field => {
+            field.disabled = !isEnabled;
+            if (isEnabled) {
+                field.required = true;
+            } else {
+                field.required = false;
+                field.value = '';
+            }
+        });
+    }
+});
+</script>
 {% endblock %}

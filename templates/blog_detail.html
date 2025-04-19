@@ -1,144 +1,209 @@
 {% extends 'base.html' %}
 
-{% block title %}{{ blog.blog_name }} - Blog Details{% endblock %}
+{% block title %}Blog Details - {{ blog.name }}{% endblock %}
 
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h1>{{ blog.blog_name }}</h1>
-    <a href="{{ url_for('index') }}" class="btn btn-outline-secondary">Back to Dashboard</a>
-</div>
-
 <div class="row mb-4">
-    <div class="col-md-8">
-        <div class="card mb-4">
-            <div class="card-header">
-                <h5 class="card-title mb-0">Blog Overview</h5>
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h4 class="mb-0">{{ blog.name }}</h4>
+                <div>
+                    <a href="{{ url_for('generate_content', blog_id=blog.id) }}" class="btn btn-success">Generate Content</a>
+                    <a href="{{ url_for('index') }}" class="btn btn-secondary">Back to Dashboard</a>
+                </div>
             </div>
             <div class="card-body">
                 <div class="row">
                     <div class="col-md-6">
-                        <p><strong>Theme:</strong> {{ blog.theme }}</p>
-                        <p><strong>Tone:</strong> {{ blog.tone|capitalize }}</p>
-                        <p><strong>Target Audience:</strong> {{ blog.target_audience|capitalize }}</p>
-                        <p><strong>Region:</strong> {{ blog.region }}</p>
-                    </div>
-                    <div class="col-md-6">
-                        <p><strong>Content Types:</strong> {{ blog.content_types|join(', ')|capitalize }}</p>
-                        <p><strong>Publishing Frequency:</strong> {{ blog.publishing_frequency|capitalize }}</p>
-                        <p><strong>Created:</strong> {{ blog.created_at.split('T')[0] if 'T' in blog.created_at else blog.created_at }}</p>
-                        <p><strong>Last Published:</strong>
-                            {% if blog.last_published_date %}
-                                {{ blog.last_published_date.split('T')[0] if 'T' in blog.last_published_date else blog.last_published_date }}
-                            {% else %}
-                                Never
-                            {% endif %}
-                        </p>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="card">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <h5 class="card-title mb-0">Content Generation Tasks</h5>
-                <form method="POST" action="{{ url_for('generate_content', blog_id=blog.blog_id) }}">
-                    <button type="submit" class="btn btn-primary">Generate New Content</button>
-                </form>
-            </div>
-            <div class="card-body">
-                {% if tasks and tasks|length > 0 %}
-                    <div class="table-responsive">
-                        <table class="table table-hover">
-                            <thead>
-                                <tr>
-                                    <th>Task ID</th>
-                                    <th>Created</th>
-                                    <th>Status</th>
-                                    <th>Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for task in tasks %}
-                                <tr>
-                                    <td>{{ task.id[:8] }}...</td>
-                                    <td>{{ task.created_at.split('T')[0] if 'T' in task.created_at else task.created_at }}</td>
-                                    <td>
-                                        {% if task.status == 'pending' %}
-                                            <span class="badge bg-warning">Pending</span>
-                                        {% elif task.status == 'processing' %}
-                                            <span class="badge bg-info">Processing</span>
-                                        {% elif task.status == 'completed' %}
-                                            <span class="badge bg-success">Completed</span>
-                                        {% elif task.status == 'error' %}
-                                            <span class="badge bg-danger">Error</span>
-                                        {% else %}
-                                            <span class="badge bg-secondary">{{ task.status|capitalize }}</span>
-                                        {% endif %}
-                                    </td>
-                                    <td>
-                                        <button class="btn btn-sm btn-outline-info">View Details</button>
-                                    </td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
+                        <h5>Blog Details</h5>
+                        <table class="table">
+                            <tr>
+                                <th>ID:</th>
+                                <td>{{ blog.id }}</td>
+                            </tr>
+                            <tr>
+                                <th>Theme:</th>
+                                <td>{{ blog.theme }}</td>
+                            </tr>
+                            <tr>
+                                <th>Creation Date:</th>
+                                <td>{{ blog.created_at }}</td>
+                            </tr>
+                            <tr>
+                                <th>Content Frequency:</th>
+                                <td>{{ blog.frequency }}</td>
+                            </tr>
+                            <tr>
+                                <th>Status:</th>
+                                <td>
+                                    {% if blog.is_active %}
+                                    <span class="badge bg-success">Active</span>
+                                    {% else %}
+                                    <span class="badge bg-danger">Inactive</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
                         </table>
                     </div>
-                {% else %}
-                    <div class="alert alert-info mb-0">
-                        <p class="mb-0">No content generation tasks have been created yet. Click "Generate New Content" to start.</p>
+                    <div class="col-md-6">
+                        <h5>Configuration Files</h5>
+                        <div class="list-group">
+                            {% for file in blog.config_files %}
+                            <div class="list-group-item d-flex justify-content-between align-items-center">
+                                {{ file.name }}
+                                {% if file.exists %}
+                                <span class="badge bg-success">Present</span>
+                                {% else %}
+                                <span class="badge bg-danger">Missing</span>
+                                {% endif %}
+                            </div>
+                            {% endfor %}
+                        </div>
                     </div>
+                </div>
+                
+                {% if blog.wordpress_url %}
+                <div class="row mt-4">
+                    <div class="col-md-12">
+                        <h5>WordPress Integration</h5>
+                        <table class="table">
+                            <tr>
+                                <th>WordPress URL:</th>
+                                <td><a href="{{ blog.wordpress_url }}" target="_blank">{{ blog.wordpress_url }}</a></td>
+                            </tr>
+                            <tr>
+                                <th>Username:</th>
+                                <td>{{ blog.wordpress_username }}</td>
+                            </tr>
+                            <tr>
+                                <th>Status:</th>
+                                <td>
+                                    {% if blog.wordpress_connected %}
+                                    <span class="badge bg-success">Connected</span>
+                                    {% else %}
+                                    <span class="badge bg-warning">Not Verified</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+                {% endif %}
+                
+                {% if blog.domain_suggestions %}
+                <div class="row mt-4">
+                    <div class="col-md-12">
+                        <h5>Domain Suggestions</h5>
+                        <div class="table-responsive">
+                            <table class="table table-striped">
+                                <thead>
+                                    <tr>
+                                        <th>Domain Name</th>
+                                        <th>Available</th>
+                                        <th>Price (USD)</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for domain in blog.domain_suggestions %}
+                                    <tr>
+                                        <td>{{ domain.name }}</td>
+                                        <td>
+                                            {% if domain.available %}
+                                            <span class="badge bg-success">Available</span>
+                                            {% else %}
+                                            <span class="badge bg-danger">Unavailable</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>{{ domain.price if domain.price else 'N/A' }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
                 {% endif %}
             </div>
         </div>
     </div>
-    
-    <div class="col-md-4">
-        <div class="card mb-4">
-            <div class="card-header">
-                <h5 class="card-title mb-0">WordPress Connection</h5>
-            </div>
-            <div class="card-body">
-                <p><strong>Site URL:</strong> {{ blog.wordpress_url }}</p>
-                <p><strong>Username:</strong> {{ blog.wordpress_username }}</p>
-                <p><strong>Connection Status:</strong> <span class="badge bg-success">Connected</span></p>
-            </div>
-        </div>
+</div>
 
-        {% if blog.adsense_publisher_id %}
-        <div class="card mb-4">
-            <div class="card-header">
-                <h5 class="card-title mb-0">AdSense Integration</h5>
-            </div>
-            <div class="card-body">
-                <p><strong>Publisher ID:</strong> {{ blog.adsense_publisher_id }}</p>
-                <p><strong>Ad Slots:</strong> {{ blog.adsense_ad_slots|length }}</p>
-            </div>
-        </div>
-        {% endif %}
-
+<div class="row">
+    <div class="col-md-12">
         <div class="card">
             <div class="card-header">
-                <h5 class="card-title mb-0">Published Content</h5>
+                <h4 class="mb-0">Content History</h4>
             </div>
             <div class="card-body">
-                {% if results and results|length > 0 %}
-                    <ul class="list-group">
-                        {% for result in results %}
-                            <li class="list-group-item">
-                                <div class="d-flex justify-content-between align-items-center">
-                                    <div>
-                                        <h6 class="mb-1">{{ result.title }}</h6>
-                                        <small class="text-muted">{{ result.published_at.split('T')[0] if 'T' in result.published_at else result.published_at }}</small>
-                                    </div>
-                                    {% if result.post_url %}
-                                        <a href="{{ result.post_url }}" target="_blank" class="btn btn-sm btn-outline-secondary">View</a>
+                {% if blog.content_items %}
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Title</th>
+                                <th>Date Generated</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in blog.content_items %}
+                            <tr>
+                                <td>{{ item.title }}</td>
+                                <td>{{ item.date }}</td>
+                                <td>
+                                    {% if item.status == 'published' %}
+                                    <span class="badge bg-success">Published</span>
+                                    {% elif item.status == 'generated' %}
+                                    <span class="badge bg-primary">Generated</span>
+                                    {% elif item.status == 'failed' %}
+                                    <span class="badge bg-danger">Failed</span>
+                                    {% else %}
+                                    <span class="badge bg-secondary">{{ item.status }}</span>
                                     {% endif %}
-                                </div>
-                            </li>
-                        {% endfor %}
-                    </ul>
+                                </td>
+                                <td>
+                                    {% if item.url %}
+                                    <a href="{{ item.url }}" target="_blank" class="btn btn-sm btn-info">View Post</a>
+                                    {% else %}
+                                    <a href="#" class="btn btn-sm btn-outline-secondary disabled">Not Published</a>
+                                    {% endif %}
+                                    
+                                    <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#contentModal{{ loop.index }}">
+                                        Preview
+                                    </button>
+                                    
+                                    <!-- Content Preview Modal -->
+                                    <div class="modal fade" id="contentModal{{ loop.index }}" tabindex="-1" aria-labelledby="contentModalLabel{{ loop.index }}" aria-hidden="true">
+                                        <div class="modal-dialog modal-lg">
+                                            <div class="modal-content">
+                                                <div class="modal-header">
+                                                    <h5 class="modal-title" id="contentModalLabel{{ loop.index }}">{{ item.title }}</h5>
+                                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                                </div>
+                                                <div class="modal-body">
+                                                    {{ item.excerpt|safe }}
+                                                </div>
+                                                <div class="modal-footer">
+                                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                                                    {% if item.url %}
+                                                    <a href="{{ item.url }}" target="_blank" class="btn btn-primary">View Full Post</a>
+                                                    {% endif %}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
                 {% else %}
-                    <p class="text-muted mb-0">No content has been published yet.</p>
+                <div class="alert alert-info">
+                    <p>No content has been generated for this blog yet. Click the "Generate Content" button to start creating content.</p>
+                </div>
                 {% endif %}
             </div>
         </div>

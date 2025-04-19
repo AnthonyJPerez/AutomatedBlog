@@ -7,92 +7,74 @@
     <div class="col-md-12">
         <div class="card">
             <div class="card-header d-flex justify-content-between align-items-center">
-                <h4 class="mb-0">Dashboard</h4>
+                <h4 class="mb-0">Multi-Blog Automation Dashboard</h4>
                 <a href="{{ url_for('setup') }}" class="btn btn-primary">New Blog Setup</a>
             </div>
             <div class="card-body">
-                <h5>Configuration Status</h5>
-                <div class="table-responsive">
-                    <table class="table table-striped">
-                        <thead>
-                            <tr>
-                                <th>Configuration File</th>
-                                <th>Status</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr>
-                                <td>topics.json</td>
-                                <td>
-                                    {% if config_files.topics_json %}
-                                    <span class="badge bg-success">Present</span>
-                                    {% else %}
-                                    <span class="badge bg-danger">Missing</span>
-                                    {% endif %}
-                                </td>
-                            </tr>
-                            <tr>
-                                <td>theme.json</td>
-                                <td>
-                                    {% if config_files.theme_json %}
-                                    <span class="badge bg-success">Present</span>
-                                    {% else %}
-                                    <span class="badge bg-danger">Missing</span>
-                                    {% endif %}
-                                </td>
-                            </tr>
-                            <tr>
-                                <td>frequency.json</td>
-                                <td>
-                                    {% if config_files.frequency_json %}
-                                    <span class="badge bg-success">Present</span>
-                                    {% else %}
-                                    <span class="badge bg-danger">Missing</span>
-                                    {% endif %}
-                                </td>
-                            </tr>
-                            <tr>
-                                <td>ready.json</td>
-                                <td>
-                                    {% if config_files.ready_json %}
-                                    <span class="badge bg-success">Present</span>
-                                    {% else %}
-                                    <span class="badge bg-danger">Missing</span>
-                                    {% endif %}
-                                </td>
-                            </tr>
-                            <tr>
-                                <td>bootstrap.json</td>
-                                <td>
-                                    {% if config_files.bootstrap_json %}
-                                    <span class="badge bg-success">Present</span>
-                                    {% else %}
-                                    <span class="badge bg-danger">Missing</span>
-                                    {% endif %}
-                                </td>
-                            </tr>
-                            <tr>
-                                <td>bootstrap.done.json</td>
-                                <td>
-                                    {% if config_files.bootstrap_done_json %}
-                                    <span class="badge bg-success">Present</span>
-                                    {% else %}
-                                    <span class="badge bg-warning">Pending</span>
-                                    {% endif %}
-                                </td>
-                            </tr>
-                            <tr>
-                                <td>DomainNames.json</td>
-                                <td>
-                                    {% if config_files.DomainNames_json %}
-                                    <span class="badge bg-success">Present</span>
-                                    {% else %}
-                                    <span class="badge bg-warning">Pending</span>
-                                    {% endif %}
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
+                <div class="alert alert-info">
+                    <strong>Welcome to your Blog Automation Platform!</strong>
+                    <p>This dashboard allows you to manage multiple automated blogs with distinct themes and topics. 
+                    Each blog will automatically generate content based on trending topics related to its theme.</p>
+                    <p>To get started, click the "New Blog Setup" button to create a new blog configuration.</p>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="card border-primary mb-3">
+                            <div class="card-header bg-primary text-white">System Overview</div>
+                            <div class="card-body">
+                                <ul class="list-group">
+                                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                                        Total Blogs
+                                        <span class="badge bg-primary rounded-pill">{{ blogs|default([])|length }}</span>
+                                    </li>
+                                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                                        Content Runs
+                                        <span class="badge bg-primary rounded-pill">{{ runs|default([])|length }}</span>
+                                    </li>
+                                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                                        Content Pieces Generated
+                                        <span class="badge bg-primary rounded-pill">
+                                            {{ runs|selectattr('status', 'equalto', 'content-generated')|list|length + 
+                                               runs|selectattr('status', 'equalto', 'published')|list|length + 
+                                               runs|selectattr('status', 'equalto', 'completed')|list|length }}
+                                        </span>
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card border-success mb-3">
+                            <div class="card-header bg-success text-white">Recent Activity</div>
+                            <div class="card-body">
+                                {% if runs %}
+                                <ul class="list-group">
+                                    {% for run in runs[:3] %}
+                                    <li class="list-group-item">
+                                        {{ run.timestamp_str }} - 
+                                        {% if run.status == 'completed' %}
+                                        Content generation completed
+                                        {% elif run.status == 'published' %}
+                                        Content published
+                                        {% elif run.status == 'content-generated' %}
+                                        Content generated
+                                        {% elif run.status == 'researched' %}
+                                        Research completed
+                                        {% elif run.status == 'started' %}
+                                        Run started
+                                        {% else %}
+                                        Status unknown
+                                        {% endif %}
+                                    </li>
+                                    {% endfor %}
+                                </ul>
+                                {% else %}
+                                <p class="text-muted">No recent activity to display.</p>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>

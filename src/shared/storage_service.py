@@ -3,6 +3,7 @@ import logging
 import json
 import time
 import datetime
+import shutil
 from pathlib import Path
 from azure.storage.blob import BlobServiceClient, BlobClient, ContainerClient, ContentSettings
 from azure.identity import DefaultAzureCredential
@@ -74,10 +75,28 @@ class StorageService:
             Path('./data').mkdir(exist_ok=True)
             Path('./data/generated').mkdir(exist_ok=True)
             Path('./data/integrations').mkdir(exist_ok=True)
+            Path('./data/blogs').mkdir(exist_ok=True)
             
             self.logger.info("Local storage directories created")
         except Exception as e:
             self.logger.error(f"Error creating local storage directories: {str(e)}")
+            
+    def ensure_local_directory(self, directory_path):
+        """
+        Ensure a local directory exists (create it if it doesn't).
+        
+        Args:
+            directory_path (str): Path to the directory to ensure exists
+            
+        Returns:
+            bool: True if successful, False otherwise
+        """
+        try:
+            Path(directory_path).mkdir(parents=True, exist_ok=True)
+            return True
+        except Exception as e:
+            self.logger.error(f"Error creating directory {directory_path}: {str(e)}")
+            return False
     
     def get_blob(self, container_name, blob_name):
         """
