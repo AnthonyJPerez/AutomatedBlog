@@ -2837,6 +2837,216 @@ def wordpress_domain_mapping():
         logger.error(f"Error in wordpress_domain_mapping endpoint: {str(e)}")
         return render_template('error.html', error_message=f"Error accessing WordPress Multisite information: {str(e)}")
         
+@app.route('/competitor-analysis')
+def competitor_analysis_dashboard():
+    """
+    Display competitor analysis dashboard
+    """
+    # Get all blogs for the blog selector
+    blogs = []
+    try:
+        blogs_data = get_blogs()
+        blogs = json.loads(blogs_data.data)['blogs']
+    except Exception as e:
+        logger.error(f"Error getting blogs for competitor analysis: {str(e)}")
+    
+    return render_template('competitor_analysis.html', blogs=blogs)
+
+# API routes for competitor analysis
+@app.route('/api/competitors', methods=['GET', 'POST'])
+def api_competitors():
+    """API endpoint to get all competitors or add a new one"""
+    if not competitor_analysis_service:
+        return jsonify({
+            "success": False,
+            "message": "Competitor Analysis service is not available"
+        }), 500
+    
+    if request.method == 'GET':
+        # Get blog_id from query params (optional)
+        blog_id = request.args.get('blog_id')
+        
+        try:
+            competitors = competitor_analysis_service.get_competitors(blog_id)
+            return jsonify({
+                "success": True,
+                "competitors": competitors
+            })
+        except Exception as e:
+            logger.error(f"Error getting competitors: {str(e)}")
+            return jsonify({
+                "success": False,
+                "message": f"Error getting competitors: {str(e)}"
+            }), 500
+    
+    elif request.method == 'POST':
+        # Add a new competitor
+        data = request.json
+        
+        if not data or not data.get('url'):
+            return jsonify({
+                "success": False,
+                "message": "URL is required"
+            }), 400
+        
+        try:
+            result = competitor_analysis_service.add_competitor(
+                url=data.get('url'),
+                name=data.get('name'),
+                description=data.get('description'),
+                category=data.get('category'),
+                blog_id=data.get('blog_id'),
+                priority=data.get('priority', 1)
+            )
+            return jsonify(result)
+        except Exception as e:
+            logger.error(f"Error adding competitor: {str(e)}")
+            return jsonify({
+                "success": False,
+                "message": f"Error adding competitor: {str(e)}"
+            }), 500
+
+@app.route('/api/competitors/<int:competitor_id>', methods=['GET', 'DELETE'])
+def api_competitor_detail(competitor_id):
+    """API endpoint to get details for a specific competitor or delete it"""
+    if not competitor_analysis_service:
+        return jsonify({
+            "success": False,
+            "message": "Competitor Analysis service is not available"
+        }), 500
+    
+    if request.method == 'GET':
+        try:
+            result = competitor_analysis_service.get_competitor_analysis(competitor_id=competitor_id)
+            return jsonify(result)
+        except Exception as e:
+            logger.error(f"Error getting competitor details: {str(e)}")
+            return jsonify({
+                "success": False,
+                "message": f"Error getting competitor details: {str(e)}"
+            }), 500
+    
+    elif request.method == 'DELETE':
+        try:
+            result = competitor_analysis_service.delete_competitor(competitor_id)
+            return jsonify(result)
+        except Exception as e:
+            logger.error(f"Error deleting competitor: {str(e)}")
+            return jsonify({
+                "success": False,
+                "message": f"Error deleting competitor: {str(e)}"
+            }), 500
+
+@app.route('/api/competitors/<int:competitor_id>/analyze', methods=['POST'])
+def api_analyze_competitor(competitor_id):
+    """API endpoint to analyze a competitor"""
+    if not competitor_analysis_service:
+        return jsonify({
+            "success": False,
+            "message": "Competitor Analysis service is not available"
+        }), 500
+    
+    try:
+        max_articles = request.json.get('max_articles', 10) if request.is_json else 10
+        result = competitor_analysis_service.analyze_competitor(competitor_id, max_articles)
+        return jsonify(result)
+    except Exception as e:
+        logger.error(f"Error analyzing competitor: {str(e)}")
+        return jsonify({
+            "success": False,
+            "message": f"Error analyzing competitor: {str(e)}"
+        }), 500
+
+@app.route('/api/blogs/<blog_id>/competitive-gap-analysis')
+def api_competitive_gap_analysis(blog_id):
+    """API endpoint to perform gap analysis for a blog"""
+    if not competitor_analysis_service:
+        return jsonify({
+            "success": False,
+            "message": "Competitor Analysis service is not available"
+        }), 500
+    
+    try:
+        # Get the blog's current topics
+        topics = []
+        try:
+            blog_config_path = os.path.join("data/blogs", blog_id, "config.json")
+            if os.path.exists(blog_config_path):
+                with open(blog_config_path, 'r') as f:
+                    blog_config = json.load(f)
+                topics = blog_config.get('topics', [])
+        except Exception as e:
+            logger.warning(f"Could not get topics for blog {blog_id}: {str(e)}")
+        
+        # Perform gap analysis
+        result = competitor_analysis_service.get_competitive_gap_analysis(blog_id, topics)
+        return jsonify(result)
+    except Exception as e:
+        logger.error(f"Error performing gap analysis: {str(e)}")
+        return jsonify({
+            "success": False,
+            "message": f"Error performing gap analysis: {str(e)}"
+        }), 500
+
+@app.route('/api/blogs/<blog_id>/content-recommendations')
+def api_content_recommendations(blog_id):
+    """API endpoint to get content recommendations based on competitor analysis"""
+    if not competitor_analysis_service:
+        return jsonify({
+            "success": False,
+            "message": "Competitor Analysis service is not available"
+        }), 500
+    
+    try:
+        # Get the blog's theme
+        theme = None
+        try:
+            blog_config_path = os.path.join("data/blogs", blog_id, "config.json")
+            if os.path.exists(blog_config_path):
+                with open(blog_config_path, 'r') as f:
+                    blog_config = json.load(f)
+                theme = blog_config.get('theme')
+        except Exception as e:
+            logger.warning(f"Could not get theme for blog {blog_id}: {str(e)}")
+        
+        # Get specific topic if provided
+        topic = request.args.get('topic')
+        
+        # Get recommendations
+        result = competitor_analysis_service.get_content_recommendations(blog_id, theme, topic)
+        return jsonify(result)
+    except Exception as e:
+        logger.error(f"Error getting content recommendations: {str(e)}")
+        return jsonify({
+            "success": False,
+            "message": f"Error getting content recommendations: {str(e)}"
+        }), 500
+
+@app.route('/api/blogs/<blog_id>/competitor-report')
+def api_competitor_report(blog_id):
+    """API endpoint to generate a competitor analysis report"""
+    if not competitor_analysis_service:
+        return jsonify({
+            "success": False,
+            "message": "Competitor Analysis service is not available"
+        }), 500
+    
+    try:
+        # Get format from query parameters (default to json)
+        format = request.args.get('format', 'json')
+        if format not in ['json', 'html', 'markdown']:
+            format = 'json'
+        
+        # Generate report
+        result = competitor_analysis_service.generate_competitor_report(blog_id, format)
+        return jsonify(result)
+    except Exception as e:
+        logger.error(f"Error generating competitor report: {str(e)}")
+        return jsonify({
+            "success": False,
+            "message": f"Error generating competitor report: {str(e)}"
+        }), 500
+
 @app.route('/ai-optimization')
 def ai_optimization_dashboard():
     """
