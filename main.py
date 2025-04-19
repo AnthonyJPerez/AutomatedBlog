@@ -710,6 +710,11 @@ def get_blogs():
     
     return jsonify(blogs)
 
+@app.route('/content_research')
+def content_research():
+    """Content research tools page for scraping and analysis"""
+    return render_template('research_tools.html')
+
 @app.route('/api/research_topics', methods=['POST'])
 def research_topics():
     """API endpoint to research trending topics"""
@@ -725,6 +730,176 @@ def research_topics():
     except Exception as e:
         logger.error(f"Error researching topics: {str(e)}")
         return jsonify({"error": str(e)}), 500
+
+@app.route('/api/scrape-url', methods=['POST'])
+def scrape_url():
+    """API endpoint to scrape content from a URL"""
+    if not web_scraper_service:
+        return jsonify({
+            "success": False,
+            "message": "Web scraper service is not available"
+        }), 500
+    
+    # Get URL and scraping method from request
+    data = request.json
+    url = data.get('url')
+    method = data.get('method', 'general')
+    
+    if not url:
+        return jsonify({
+            "success": False,
+            "message": "URL is required"
+        }), 400
+    
+    try:
+        # Get content from URL based on method
+        logger.info(f"Scraping URL: {url} using method: {method}")
+        
+        if method == 'article':
+            content = web_scraper_service.extract_article(url)
+            
+            # Add article analysis
+            if content:
+                content['analysis'] = web_scraper_service.analyze_text(content.get('text', ''))
+        else:
+            content = web_scraper_service.get_website_content(url)
+            
+            # Add general content analysis
+            if content:
+                content['analysis'] = web_scraper_service.analyze_text(content.get('content', ''))
+        
+        # Add extraction timestamp
+        content['extracted_at'] = datetime.datetime.now().isoformat()
+        
+        return jsonify({
+            "success": True,
+            "data": content
+        })
+        
+    except Exception as e:
+        logger.error(f"Error scraping URL {url}: {str(e)}")
+        return jsonify({
+            "success": False,
+            "message": f"Failed to scrape URL: {str(e)}"
+        }), 500
+
+@app.route('/api/research-topic', methods=['POST'])
+def research_topic_api():
+    """API endpoint to research a topic using the web scraper service"""
+    if not web_scraper_service:
+        return jsonify({
+            "success": False,
+            "message": "Web scraper service is not available"
+        }), 500
+    
+    # Get topic and number of sources from request
+    data = request.json
+    topic = data.get('topic')
+    num_sources = data.get('num_sources', 3)
+    
+    if not topic:
+        return jsonify({
+            "success": False,
+            "message": "Topic is required"
+        }), 400
+    
+    try:
+        # Research the topic
+        logger.info(f"Researching topic: {topic} with {num_sources} sources")
+        research_data = web_scraper_service.research_topic(topic, num_sources=num_sources)
+        
+        # Add research timestamp
+        research_data['research_date'] = datetime.datetime.now().isoformat()
+        
+        # Try to generate a wordcloud if possible
+        try:
+            if web_scraper_service.can_generate_wordcloud() and research_data.get('articles'):
+                wordcloud_path = web_scraper_service.generate_wordcloud(
+                    [a.get('content', '') for a in research_data.get('articles', []) if a.get('content')]
+                )
+                if wordcloud_path:
+                    research_data['wordcloud_path'] = wordcloud_path
+        except Exception as wc_error:
+            logger.warning(f"Error generating wordcloud: {str(wc_error)}")
+        
+        return jsonify({
+            "success": True,
+            "data": research_data
+        })
+        
+    except Exception as e:
+        logger.error(f"Error researching topic {topic}: {str(e)}")
+        return jsonify({
+            "success": False,
+            "message": f"Failed to research topic: {str(e)}"
+        }), 500
+
+@app.route('/api/trending-topics-new', methods=['GET'])
+def trending_topics_api_new():
+    """Updated API endpoint to get trending topics"""
+    if not web_scraper_service:
+        return jsonify({
+            "success": False,
+            "message": "Web scraper service is not available"
+        }), 500
+    
+    # Get category and limit from request
+    category = request.args.get('category')
+    limit = request.args.get('limit', 10, type=int)
+    
+    try:
+        # Get trending topics
+        logger.info(f"Getting trending topics for category: {category} with limit: {limit}")
+        topics = web_scraper_service.get_trending_topics(category=category, limit=limit)
+        
+        return jsonify({
+            "success": True,
+            "data": topics
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting trending topics: {str(e)}")
+        return jsonify({
+            "success": False,
+            "message": f"Failed to get trending topics: {str(e)}"
+        }), 500
+
+@app.route('/api/rss-feed', methods=['POST']) 
+def rss_feed_api():
+    """API endpoint to fetch and parse an RSS feed"""
+    if not web_scraper_service:
+        return jsonify({
+            "success": False,
+            "message": "Web scraper service is not available"
+        }), 500
+    
+    # Get feed URL and limit from request
+    data = request.json
+    feed_url = data.get('feed_url')
+    limit = data.get('limit', 10)
+    
+    if not feed_url:
+        return jsonify({
+            "success": False,
+            "message": "Feed URL is required"
+        }), 400
+    
+    try:
+        # Parse the RSS feed
+        logger.info(f"Parsing RSS feed: {feed_url} with limit: {limit}")
+        entries = web_scraper_service.parse_rss_feed(feed_url, limit=limit)
+        
+        return jsonify({
+            "success": True,
+            "data": entries
+        })
+        
+    except Exception as e:
+        logger.error(f"Error parsing RSS feed {feed_url}: {str(e)}")
+        return jsonify({
+            "success": False,
+            "message": f"Failed to parse RSS feed: {str(e)}"
+        }), 500
 
 @app.route('/api/generate_outline', methods=['POST'])
 def generate_outline():
@@ -1371,9 +1546,9 @@ def update_social_media_credentials():
         logger.error(f"Error updating social media credentials: {str(e)}")
         return jsonify({"success": False, "message": f"Error: {str(e)}"}), 500
 
-@app.route('/api/scrape-url', methods=['POST'])
-def scrape_url():
-    """API endpoint to scrape content from a URL"""
+@app.route('/api/scrape-url-legacy', methods=['POST'])
+def scrape_url_legacy():
+    """Legacy API endpoint to scrape content from a URL"""
     try:
         data = request.json
         if not data or 'url' not in data:
@@ -1411,9 +1586,9 @@ def scrape_url():
         logger.error(f"Error scraping URL: {str(e)}")
         return jsonify({"success": False, "message": f"Error: {str(e)}"}), 500
 
-@app.route('/api/research-topic', methods=['POST'])
-def research_topic_api():
-    """API endpoint to research a topic using the web scraper service"""
+@app.route('/api/research-topic-legacy', methods=['POST'])
+def research_topic_api_legacy():
+    """Legacy API endpoint to research a topic using the web scraper service"""
     try:
         data = request.json
         if not data or 'topic' not in data:
@@ -1473,8 +1648,8 @@ def trending_topics_api():
         return jsonify({"success": False, "message": f"Error: {str(e)}"}), 500
 
 @app.route('/content-research', methods=['GET'])
-def content_research():
-    """Content research tools page for scraping and analysis"""
+def content_research_dash():
+    """Content research tools page (dash version)"""
     return render_template('content_research.html')
 
 @app.route('/scrape-url', methods=['POST'])
@@ -1658,9 +1833,9 @@ def parse_rss_feed():
         flash(f"Error: {str(e)}", "danger")
         return redirect(url_for('content_research'))
 
-@app.route('/api/rss-feed', methods=['POST'])
-def rss_feed_api():
-    """API endpoint to fetch and parse an RSS feed"""
+@app.route('/api/rss-feed-v2', methods=['POST'])
+def rss_feed_api_v2():
+    """Updated API endpoint to fetch and parse an RSS feed"""
     try:
         data = request.json
         if not data or 'feed_url' not in data:
