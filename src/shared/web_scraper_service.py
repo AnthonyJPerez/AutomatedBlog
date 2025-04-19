@@ -639,7 +639,7 @@ class WebScraperService:
             logger.error(f"Error fetching RSS feed {feed_url}: {str(e)}")
             return []
 
-    def research_topic(self, topic, num_sources=5):
+    def research_topic(self, topic, num_sources=5, context=None):
         """
         Research a specific topic by searching for and analyzing relevant content.
         Uses SourceTracker to dynamically improve source selection over time.
@@ -647,12 +647,38 @@ class WebScraperService:
         Args:
             topic (str): The topic to research
             num_sources (int): Number of sources to include in the research
+            context (dict, optional): Blog context information to guide research relevance,
+                                      containing theme, topics, description, tone, audience
             
         Returns:
             dict: A dictionary containing research results
         """
         try:
             logger.info(f"Researching topic: {topic}")
+            
+            # If we have blog context, use it to enrich the research
+            blog_context_string = ""
+            if context:
+                logger.info(f"Using blog context: {context.get('theme')} with tone: {context.get('tone')}")
+                
+                # Create a context string that can be used to enhance search queries
+                theme = context.get('theme', '')
+                topics = context.get('topics', [])
+                description = context.get('description', '')
+                audience = context.get('audience', 'general')
+                
+                # Build a context string incorporating blog information
+                blog_context_string = f"{theme} "
+                if topics:
+                    blog_context_string += ' '.join(topics) + " "
+                if description:
+                    blog_context_string += description
+                
+                # Adjust the topic to be more specific to the blog context
+                if theme and not topic.lower() in theme.lower():
+                    original_topic = topic
+                    topic = f"{topic} for {theme}"
+                    logger.info(f"Modified research topic from '{original_topic}' to '{topic}' based on blog context")
             
             # Get good sources for this topic from our source tracker
             known_sources = self.source_tracker.get_sources_for_topic(topic, limit=num_sources)
@@ -775,6 +801,14 @@ class WebScraperService:
                 'wordcloud_path': wordcloud_path,
                 'research_date': datetime.now().isoformat()
             }
+            
+            # Add blog context information if available
+            if context:
+                research_results['blog_context'] = {
+                    'theme': context.get('theme', ''),
+                    'audience': context.get('audience', 'general'),
+                    'tone': context.get('tone', 'informative')
+                }
             
             logger.info(f"Successfully completed research on topic: {topic}")
             return research_results
@@ -1057,7 +1091,7 @@ class WebScraperService:
         except Exception as e:
             logger.error(f"Error extracting additional sources: {str(e)}")
     
-    def get_trending_topics(self, category=None, limit=10):
+    def get_trending_topics(self, category=None, limit=10, context=None):
         """
         Get trending topics based on recent web content.
         Uses source tracker to get most popular sources if available.
@@ -1065,11 +1099,31 @@ class WebScraperService:
         Args:
             category (str): Optional category to filter topics by
             limit (int): Maximum number of topics to return
+            context (dict, optional): Blog context information to guide topic relevance,
+                                     containing theme, topics, description, tone, audience
             
         Returns:
             list: A list of trending topics with their scores
         """
         try:
+            # Log information about context if provided
+            if context:
+                logger.info(f"Using blog context for trending topics: {context.get('theme')} with topics: {context.get('topics')}")
+                
+                # If no category is specified but context has a theme, use the theme as category
+                if not category and context.get('theme'):
+                    theme = context.get('theme').lower()
+                    # Map theme to closest category
+                    if any(keyword in theme for keyword in ['tech', 'software', 'digital', 'code', 'ai']):
+                        category = 'technology'
+                    elif any(keyword in theme for keyword in ['health', 'fitness', 'wellness', 'medical']):
+                        category = 'health'
+                    elif any(keyword in theme for keyword in ['business', 'entrepreneur', 'finance', 'work']):
+                        category = 'business'
+                    elif any(keyword in theme for keyword in ['life', 'home', 'travel', 'food', 'art']):
+                        category = 'lifestyle'
+                    logger.info(f"Auto-selected category '{category}' based on blog theme")
+            
             # First check if we have sources with RSS feeds to get real trending content
             trending_sources = self.source_tracker.get_trending_sources(category=category, limit=5)
             real_trending_topics = []
@@ -1161,6 +1215,37 @@ class WebScraperService:
             
             # Combine real and simulated topics
             result = real_trending_topics + simulated_topics
+            
+            # If we have blog context, enhance topic relevance
+            if context and context.get('topics'):
+                blog_topics = [t.lower() for t in context.get('topics', [])]
+                blog_theme = context.get('theme', '').lower()
+                
+                # Boost scores for topics relevant to the blog
+                for topic_item in result:
+                    topic_text = topic_item['topic'].lower()
+                    
+                    # Check if any of the blog topics or theme appears in the trending topic
+                    # This is a simple relevance check, in a production system you'd use NLP
+                    boost = 0
+                    
+                    # Boost for theme match
+                    if blog_theme and (blog_theme in topic_text or any(word in topic_text for word in blog_theme.split())):
+                        boost += 15
+                        topic_item['theme_match'] = True
+                    
+                    # Boost for topic match
+                    for blog_topic in blog_topics:
+                        if blog_topic in topic_text or any(word in topic_text for word in blog_topic.split()):
+                            boost += 10
+                            topic_item['topic_match'] = True
+                            break
+                    
+                    # Apply the boost
+                    if boost > 0:
+                        topic_item['score'] += boost
+                        topic_item['boosted_for_relevance'] = True
+                        logger.info(f"Boosted score for '{topic_item['topic']}' by {boost} points for relevance to blog theme/topics")
             
             # Sort by score
             result.sort(key=lambda x: x["score"], reverse=True)
