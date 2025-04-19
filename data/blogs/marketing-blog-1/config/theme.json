@@ -1,24 +1,45 @@
 {
+  "name": "Digital Marketing Insights",
   "theme": "Digital Marketing",
-  "description": "A blog about digital marketing strategies, trends, and best practices for businesses looking to grow their online presence and engagement.",
+  "description": "A comprehensive blog about digital marketing strategies, trends, and best practices for businesses looking to grow their online presence and engagement, with actionable insights and data-driven recommendations.",
   "tone": "Professional yet approachable",
   "target_audience": [
     "Marketing professionals",
     "Small business owners",
     "Digital entrepreneurs",
-    "Content creators"
+    "Content creators",
+    "Marketing students",
+    "Social media managers"
   ],
+  "theme_prompt": "Create educational and strategic content focused on modern digital marketing approaches. Emphasize data-driven insights, practical implementation steps, and measurable results. Include current industry trends, case studies of successful campaigns, and expert opinions. Each article should provide clear, actionable takeaways that readers can immediately apply to their marketing efforts.",
   "style_guide": {
     "paragraph_length": "3-5 sentences",
     "heading_style": "Sentence case with key terms capitalized",
     "bullet_points": "Encouraged for lists and key takeaways",
-    "language_complexity": "Moderate - explain industry jargon when used"
+    "language_complexity": "Moderate - explain industry jargon when used",
+    "visual_elements": "Include relevant data visualizations, process diagrams, and example screenshots",
+    "citations": "Reference current marketing studies, statistics, and expert sources"
   },
   "content_types": [
     "How-to guides",
     "Trend analysis",
     "Case studies",
     "Strategy overviews",
-    "Tool comparisons"
+    "Tool comparisons",
+    "Industry interviews",
+    "Data analysis reports",
+    "ROI breakdowns"
+  ],
+  "keywords": [
+    "digital marketing",
+    "content marketing",
+    "SEO",
+    "social media marketing",
+    "email campaigns",
+    "marketing analytics",
+    "PPC advertising",
+    "conversion optimization",
+    "marketing automation",
+    "growth strategies"
   ]
 }

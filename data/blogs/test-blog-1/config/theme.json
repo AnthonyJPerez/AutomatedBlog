@@ -1,5 +1,38 @@
 {
-  "name": "Technology Trends",
-  "description": "A blog about Technology Trends",
-  "target_audience": "General audience interested in Technology Trends"
+  "name": "Travel Adventures",
+  "description": "A vibrant travel blog focused on inspiring wanderlust through authentic destination experiences, practical travel advice, and captivating narratives. This blog seeks to help both budget-conscious and luxury travelers plan meaningful journeys while providing cultural insights and photography tips.",
+  "target_audience": [
+    "Adventure seekers",
+    "Budget travelers",
+    "Luxury travelers",
+    "Digital nomads",
+    "Family travelers",
+    "Photography enthusiasts"
+  ],
+  "theme_prompt": "Create engaging travel content that inspires readers to explore new destinations while providing practical travel tips, cultural insights, and authentic experiences. Focus on a mix of off-the-beaten-path adventures and popular destinations, with attention to sustainable travel practices and respect for local cultures. Include vivid descriptions that transport readers to the location.",
+  "tone": "Conversational, enthusiastic, and informative with a personal touch",
+  "style_guide": {
+    "paragraph_length": "2-4 sentences for readability",
+    "heading_style": "Clear, engaging headlines with locations prominently featured",
+    "visual_elements": "High-quality destination photos, maps, and practical itineraries",
+    "language_complexity": "Accessible to general audience while incorporating travel terminology"
+  },
+  "content_types": [
+    "Destination guides",
+    "Travel tips and hacks",
+    "Adventure narratives",
+    "Budget travel strategies",
+    "Cultural insights",
+    "Photography guides"
+  ],
+  "keywords": [
+    "travel blog",
+    "adventure travel",
+    "destination guides",
+    "budget travel",
+    "luxury travel",
+    "travel tips",
+    "cultural experiences",
+    "sustainable travel"
+  ]
 }
