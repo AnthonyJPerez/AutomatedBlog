@@ -546,7 +546,8 @@ def generate_content(blog_id):
             """
             
             # Generate content
-            content = openai_service.generate_content(prompt)
+            # Use the optimized service for cost savings
+            content = optimized_openai_service.generate_content(prompt)
             
             # Generate featured image if enabled
             featured_image_path = None
@@ -577,7 +578,7 @@ def generate_content(blog_id):
                         Do not include any explanation or commentary, just the image description.
                         """
                         
-                        image_prompt = openai_service.generate_content(gpt4o_prompt).strip()
+                        image_prompt = optimized_openai_service.generate_content(gpt4o_prompt, content_type="polish").strip()
                         logger.info(f"Generated GPT-4o image prompt: {image_prompt[:100]}...")
                     else:
                         # Use a simple prompt
@@ -2086,6 +2087,13 @@ def wordpress_domain_mapping():
     except Exception as e:
         logger.error(f"Error in wordpress_domain_mapping endpoint: {str(e)}")
         return render_template('error.html', error_message=f"Error accessing WordPress Multisite information: {str(e)}")
+        
+@app.route('/ai-optimization')
+def ai_optimization_dashboard():
+    """
+    Display AI optimization settings and statistics
+    """
+    return render_template('ai_optimization.html')
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)), debug=True)
