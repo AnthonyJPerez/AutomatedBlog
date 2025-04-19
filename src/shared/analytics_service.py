@@ -254,6 +254,8 @@ class AnalyticsService:
             if period != "all":
                 # Calculate the cutoff timestamp based on the period
                 now = datetime.datetime.now()
+                start_date = now.isoformat()  # Default in case none of the conditions match
+                
                 if period == "day":
                     start_date = (now - datetime.timedelta(days=1)).isoformat()
                 elif period == "week":

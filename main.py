@@ -1489,6 +1489,49 @@ def edit_content(blog_id, run_id):
         flash(f"Error updating content: {str(e)}", "danger")
         return redirect(url_for('view_content', blog_id=blog_id, run_id=run_id))
 
+@app.route('/analytics')
+def analytics_dashboard():
+    """
+    Display analytics dashboard for traffic, engagement, and ad clicks
+    """
+    try:
+        # Get all blogs from the config service
+        blogs = []
+        blog_data_path = "data/blogs"
+        storage_service.ensure_local_directory(blog_data_path)
+        local_blog_folders = [f for f in os.listdir(blog_data_path) if os.path.isdir(os.path.join(blog_data_path, f))]
+        
+        for blog_id in local_blog_folders:
+            try:
+                blog_config_path = os.path.join(blog_data_path, blog_id, "config.json")
+                if os.path.exists(blog_config_path):
+                    with open(blog_config_path, 'r') as f:
+                        blog_config = json.load(f)
+                    
+                    blogs.append({
+                        'id': blog_id,
+                        'name': blog_config.get('name', 'Unnamed Blog')
+                    })
+            except Exception as e:
+                logger.error(f"Error loading blog config for {blog_id}: {str(e)}")
+        
+        # Prepare custom data sources
+        google_analytics_enabled = os.environ.get("GOOGLE_ANALYTICS_API_KEY") is not None
+        adsense_enabled = os.environ.get("GOOGLE_ADSENSE_API_KEY") is not None
+        search_console_enabled = os.environ.get("GOOGLE_SEARCH_CONSOLE_API_KEY") is not None
+        wordpress_analytics_enabled = os.environ.get("WORDPRESS_ANALYTICS_ENABLED", "").lower() == "true"
+        
+        return render_template('analytics_dashboard.html', 
+                              blogs=blogs,
+                              google_analytics_enabled=google_analytics_enabled,
+                              adsense_enabled=adsense_enabled,
+                              search_console_enabled=search_console_enabled,
+                              wordpress_analytics_enabled=wordpress_analytics_enabled)
+    except Exception as e:
+        logger.error(f"Error loading analytics dashboard: {str(e)}")
+        flash(f"Error loading analytics dashboard: {str(e)}", "danger")
+        return redirect(url_for('index'))
+
 @app.route('/usage')
 def usage_dashboard():
     """
@@ -1662,6 +1705,348 @@ def update_blog_credentials(blog_id):
         logger.error(f"Error updating credentials for blog {blog_id}: {str(e)}")
         return jsonify({"error": str(e)}), 500
         
+# Analytics API Endpoints
+@app.route('/api/analytics/summary')
+def api_analytics_summary():
+    """API endpoint to get analytics summary for a blog or all blogs"""
+    try:
+        blog_id = request.args.get('blog_id', 'all')
+        period = request.args.get('period', 'month')
+        
+        if blog_id == 'all':
+            # Get analytics for all blogs
+            blogs_summary = {}
+            blog_ids = analytics_service._get_all_blog_ids()
+            
+            for bid in blog_ids:
+                blogs_summary[bid] = analytics_service.get_analytics_summary(bid, period)
+            
+            # Aggregate the data
+            total_views = sum(data.get('total_views', 0) for data in blogs_summary.values())
+            total_engagements = sum(data.get('total_engagements', 0) for data in blogs_summary.values())
+            total_ad_clicks = sum(data.get('total_ad_clicks', 0) for data in blogs_summary.values())
+            estimated_revenue = sum(data.get('estimated_revenue', 0.0) for data in blogs_summary.values())
+            
+            # Combine top posts
+            all_top_posts = []
+            for bid, data in blogs_summary.items():
+                for post in data.get('top_posts', []):
+                    post['blog_id'] = bid
+                    all_top_posts.append(post)
+            
+            # Sort by views (descending)
+            all_top_posts.sort(key=lambda x: x.get('views', 0), reverse=True)
+            
+            # Combine top referrers
+            all_referrers = {}
+            for data in blogs_summary.values():
+                for referrer in data.get('top_referrers', []):
+                    ref = referrer.get('referrer', 'unknown')
+                    count = referrer.get('count', 0)
+                    if ref in all_referrers:
+                        all_referrers[ref] += count
+                    else:
+                        all_referrers[ref] = count
+            
+            top_referrers = [{"referrer": ref, "count": count} for ref, count in all_referrers.items()]
+            top_referrers.sort(key=lambda x: x['count'], reverse=True)
+            
+            # Combine traffic by country and device
+            traffic_by_country = {}
+            traffic_by_device = {}
+            
+            for data in blogs_summary.values():
+                # Combine country data
+                for country, count in data.get('traffic_by_country', {}).items():
+                    if country in traffic_by_country:
+                        traffic_by_country[country] += count
+                    else:
+                        traffic_by_country[country] = count
+                
+                # Combine device data
+                for device, count in data.get('traffic_by_device', {}).items():
+                    if device in traffic_by_device:
+                        traffic_by_device[device] += count
+                    else:
+                        traffic_by_device[device] = count
+            
+            return jsonify({
+                'total_views': total_views,
+                'total_engagements': total_engagements,
+                'total_ad_clicks': total_ad_clicks,
+                'estimated_revenue': estimated_revenue,
+                'top_posts': all_top_posts[:10],  # Top 10 posts
+                'top_referrers': top_referrers[:10],  # Top 10 referrers
+                'traffic_by_country': traffic_by_country,
+                'traffic_by_device': traffic_by_device,
+                'period': period
+            })
+        else:
+            # Get analytics for a specific blog
+            summary = analytics_service.get_analytics_summary(blog_id, period)
+            return jsonify(summary)
+        
+    except Exception as e:
+        logger.error(f"Error getting analytics summary: {str(e)}")
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/analytics/google_analytics')
+def api_google_analytics():
+    """API endpoint to get Google Analytics data for a blog"""
+    try:
+        blog_id = request.args.get('blog_id')
+        period = request.args.get('period', 'month')
+        
+        if not blog_id or blog_id == 'all':
+            # Get data for all blogs (example)
+            return jsonify({
+                "enabled": os.environ.get("GOOGLE_ANALYTICS_API_KEY") is not None,
+                "error": "Please select a specific blog for Google Analytics data"
+            })
+        
+        # Get Google Analytics data for the specific blog
+        ga_data = analytics_service.get_google_analytics_data(blog_id, period)
+        return jsonify(ga_data)
+        
+    except Exception as e:
+        logger.error(f"Error getting Google Analytics data: {str(e)}")
+        return jsonify({"error": str(e), "enabled": False}), 500
+
+@app.route('/api/analytics/adsense')
+def api_adsense():
+    """API endpoint to get AdSense data for a blog"""
+    try:
+        blog_id = request.args.get('blog_id')
+        period = request.args.get('period', 'month')
+        
+        if not blog_id or blog_id == 'all':
+            # Get data for all blogs (example)
+            return jsonify({
+                "enabled": os.environ.get("GOOGLE_ADSENSE_API_KEY") is not None,
+                "error": "Please select a specific blog for AdSense data"
+            })
+        
+        # Get AdSense data for the specific blog
+        adsense_data = analytics_service.get_adsense_data(blog_id, period)
+        return jsonify(adsense_data)
+        
+    except Exception as e:
+        logger.error(f"Error getting AdSense data: {str(e)}")
+        return jsonify({"error": str(e), "enabled": False}), 500
+
+@app.route('/api/analytics/search_console')
+def api_search_console():
+    """API endpoint to get Search Console data for a blog"""
+    try:
+        blog_id = request.args.get('blog_id')
+        period = request.args.get('period', 'month')
+        
+        if not blog_id or blog_id == 'all':
+            # Get data for all blogs (example)
+            return jsonify({
+                "enabled": os.environ.get("GOOGLE_SEARCH_CONSOLE_API_KEY") is not None,
+                "error": "Please select a specific blog for Search Console data"
+            })
+        
+        # Get Search Console data for the specific blog
+        search_console_data = analytics_service.get_search_console_data(blog_id, period)
+        return jsonify(search_console_data)
+        
+    except Exception as e:
+        logger.error(f"Error getting Search Console data: {str(e)}")
+        return jsonify({"error": str(e), "enabled": False}), 500
+
+@app.route('/api/analytics/wordpress')
+def api_wordpress_analytics():
+    """API endpoint to get WordPress analytics data for a blog"""
+    try:
+        blog_id = request.args.get('blog_id')
+        
+        if not blog_id or blog_id == 'all':
+            # Get data for all blogs (example)
+            return jsonify({
+                "enabled": os.environ.get("WORDPRESS_ANALYTICS_ENABLED", "").lower() == "true",
+                "error": "Please select a specific blog for WordPress analytics data"
+            })
+        
+        # Get WordPress analytics data for the specific blog
+        wordpress_data = analytics_service.get_wordpress_analytics(blog_id)
+        return jsonify(wordpress_data)
+        
+    except Exception as e:
+        logger.error(f"Error getting WordPress analytics data: {str(e)}")
+        return jsonify({"error": str(e), "enabled": False}), 500
+
+@app.route('/api/analytics/topic_performance')
+def api_topic_performance():
+    """API endpoint to get topic performance across blogs"""
+    try:
+        blog_id = request.args.get('blog_id', 'all')
+        
+        if blog_id == 'all':
+            # Get performance for all topics across all blogs
+            topic_performance = analytics_service.get_topic_performance()
+        else:
+            # Get performance for all topics in a specific blog
+            topic_performance = analytics_service.get_topic_performance(blog_id)
+        
+        return jsonify(topic_performance)
+        
+    except Exception as e:
+        logger.error(f"Error getting topic performance: {str(e)}")
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/analytics/seo_insights')
+def api_seo_insights():
+    """API endpoint to get SEO insights for content optimization"""
+    try:
+        blog_id = request.args.get('blog_id', 'all')
+        
+        if blog_id == 'all':
+            # Get SEO insights across all blogs
+            seo_insights = analytics_service.get_seo_insights()
+        else:
+            # Get SEO insights for a specific blog
+            seo_insights = analytics_service.get_seo_insights(blog_id)
+        
+        return jsonify(seo_insights)
+        
+    except Exception as e:
+        logger.error(f"Error getting SEO insights: {str(e)}")
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/analytics/configure_google_analytics', methods=['POST'])
+def api_configure_google_analytics():
+    """API endpoint to configure Google Analytics for a blog"""
+    try:
+        data = request.json
+        blog_id = data.get('blog_id')
+        property_id = data.get('property_id')
+        measurement_id = data.get('measurement_id')
+        
+        if not property_id:
+            return jsonify({"success": False, "error": "Property ID is required"}), 400
+        
+        if blog_id and blog_id != 'all':
+            # Configure Google Analytics for a specific blog
+            success = analytics_service.configure_google_analytics(blog_id, property_id, measurement_id)
+        else:
+            # Configure Google Analytics for all blogs (not implemented)
+            return jsonify({"success": False, "error": "Configuration for all blogs not supported"}), 400
+        
+        return jsonify({"success": success})
+        
+    except Exception as e:
+        logger.error(f"Error configuring Google Analytics: {str(e)}")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+@app.route('/api/analytics/configure_adsense', methods=['POST'])
+def api_configure_adsense():
+    """API endpoint to configure AdSense for a blog"""
+    try:
+        data = request.json
+        blog_id = data.get('blog_id')
+        client_id = data.get('client_id')
+        ad_units = data.get('ad_units', [])
+        
+        if not client_id:
+            return jsonify({"success": False, "error": "Client ID is required"}), 400
+        
+        if blog_id and blog_id != 'all':
+            # Configure AdSense for a specific blog
+            success = analytics_service.configure_adsense(blog_id, client_id, ad_units)
+        else:
+            # Configure AdSense for all blogs (not implemented)
+            return jsonify({"success": False, "error": "Configuration for all blogs not supported"}), 400
+        
+        return jsonify({"success": success})
+        
+    except Exception as e:
+        logger.error(f"Error configuring AdSense: {str(e)}")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+@app.route('/api/analytics/configure_search_console', methods=['POST'])
+def api_configure_search_console():
+    """API endpoint to configure Search Console for a blog"""
+    try:
+        data = request.json
+        blog_id = data.get('blog_id')
+        site_url = data.get('site_url')
+        
+        if not site_url:
+            return jsonify({"success": False, "error": "Site URL is required"}), 400
+        
+        if blog_id and blog_id != 'all':
+            # Configure Search Console for a specific blog
+            success = analytics_service.configure_search_console(blog_id, site_url)
+        else:
+            # Configure Search Console for all blogs (not implemented)
+            return jsonify({"success": False, "error": "Configuration for all blogs not supported"}), 400
+        
+        return jsonify({"success": success})
+        
+    except Exception as e:
+        logger.error(f"Error configuring Search Console: {str(e)}")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+@app.route('/api/analytics/page_view', methods=['POST'])
+def api_record_page_view():
+    """API endpoint to record a page view"""
+    try:
+        data = request.json
+        blog_id = data.get('blog_id')
+        post_id = data.get('post_id')
+        view_data = data.get('data', {})
+        
+        if not blog_id or not post_id:
+            return jsonify({"success": False, "error": "Blog ID and Post ID are required"}), 400
+        
+        success = analytics_service.record_page_view(blog_id, post_id, view_data)
+        return jsonify({"success": success})
+        
+    except Exception as e:
+        logger.error(f"Error recording page view: {str(e)}")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+@app.route('/api/analytics/engagement', methods=['POST'])
+def api_record_engagement():
+    """API endpoint to record an engagement event"""
+    try:
+        data = request.json
+        blog_id = data.get('blog_id')
+        post_id = data.get('post_id')
+        engagement_type = data.get('type')
+        engagement_data = data.get('data', {})
+        
+        if not blog_id or not post_id or not engagement_type:
+            return jsonify({"success": False, "error": "Blog ID, Post ID, and engagement type are required"}), 400
+        
+        success = analytics_service.record_engagement(blog_id, post_id, engagement_type, engagement_data)
+        return jsonify({"success": success})
+        
+    except Exception as e:
+        logger.error(f"Error recording engagement: {str(e)}")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+@app.route('/api/analytics/ad_click', methods=['POST'])
+def api_record_ad_click():
+    """API endpoint to record an ad click"""
+    try:
+        data = request.json
+        blog_id = data.get('blog_id')
+        post_id = data.get('post_id')
+        ad_data = data.get('data', {})
+        
+        if not blog_id or not post_id:
+            return jsonify({"success": False, "error": "Blog ID and Post ID are required"}), 400
+        
+        success = analytics_service.record_ad_click(blog_id, post_id, ad_data)
+        return jsonify({"success": success})
+        
+    except Exception as e:
+        logger.error(f"Error recording ad click: {str(e)}")
+        return jsonify({"success": False, "error": str(e)}), 500
+
 @app.route('/api/blog/<blog_id>/social-media', methods=['POST'])
 def update_blog_social_media(blog_id):
     """API endpoint to update blog-specific social media settings"""

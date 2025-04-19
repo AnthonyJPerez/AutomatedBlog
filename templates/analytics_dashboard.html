@@ -1,16 +1,18 @@
 {% extends 'base.html' %}
 
-{% block title %}Analytics Dashboard - Blog Automation Platform{% endblock %}
+{% block title %}Analytics Dashboard{% endblock %}
 
 {% block content %}
 <div class="container">
+    <h1 class="mb-4">Analytics Dashboard</h1>
+    
     <div class="row mb-4">
         <div class="col-md-12">
             <div class="card">
                 <div class="card-header d-flex justify-content-between align-items-center">
-                    <h4 class="mb-0">Analytics Dashboard</h4>
+                    <h5 class="mb-0">Blog Performance</h5>
                     <div>
-                        <select id="blogSelector" class="form-select">
+                        <select id="blog-selector" class="form-select form-select-sm">
                             <option value="all">All Blogs</option>
                             {% for blog in blogs %}
                             <option value="{{ blog.id }}">{{ blog.name }}</option>
@@ -19,145 +21,48 @@
                     </div>
                 </div>
                 <div class="card-body">
-                    <div class="row mb-4">
-                        <div class="col-md-12">
-                            <div class="btn-group period-selector" role="group">
-                                <button type="button" class="btn btn-outline-primary" data-period="day">Day</button>
-                                <button type="button" class="btn btn-outline-primary active" data-period="week">Week</button>
-                                <button type="button" class="btn btn-outline-primary" data-period="month">Month</button>
-                                <button type="button" class="btn btn-outline-primary" data-period="year">Year</button>
-                                <button type="button" class="btn btn-outline-primary" data-period="all">All Time</button>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="row mb-4">
+                    <div class="row">
                         <div class="col-md-3">
-                            <div class="card bg-primary text-white">
-                                <div class="card-body">
-                                    <h5 class="card-title">Page Views</h5>
-                                    <h2 id="totalViews" class="card-text">0</h2>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-3">
-                            <div class="card bg-success text-white">
-                                <div class="card-body">
-                                    <h5 class="card-title">Engagements</h5>
-                                    <h2 id="totalEngagements" class="card-text">0</h2>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-3">
-                            <div class="card bg-info text-white">
-                                <div class="card-body">
-                                    <h5 class="card-title">Ad Clicks</h5>
-                                    <h2 id="totalAdClicks" class="card-text">0</h2>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-3">
-                            <div class="card bg-warning text-dark">
-                                <div class="card-body">
-                                    <h5 class="card-title">Revenue</h5>
-                                    <h2 id="totalRevenue" class="card-text">$0.00</h2>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="row mb-4">
-                        <div class="col-md-12">
-                            <div class="card">
-                                <div class="card-header">
-                                    <h5 class="mb-0">Traffic Overview</h5>
-                                </div>
-                                <div class="card-body">
-                                    <canvas id="trafficChart" height="100"></canvas>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="row mb-4">
-                        <div class="col-md-6">
-                            <div class="card">
-                                <div class="card-header">
-                                    <h5 class="mb-0">Top Performing Posts</h5>
-                                </div>
-                                <div class="card-body">
-                                    <div class="table-responsive">
-                                        <table class="table table-striped" id="topPostsTable">
-                                            <thead>
-                                                <tr>
-                                                    <th>Post</th>
-                                                    <th>Views</th>
-                                                    <th>Engagements</th>
-                                                    <th>Ad Clicks</th>
-                                                    <th>Revenue</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                <!-- Populated by JavaScript -->
-                                            </tbody>
-                                        </table>
+                            <div class="analytics-card mb-3">
+                                <div class="card bg-dark">
+                                    <div class="card-body text-center">
+                                        <h6 class="text-muted">Total Views</h6>
+                                        <h3 id="total-views">0</h3>
+                                        <p id="views-trend" class="mb-0 small text-success"><i class="bi bi-arrow-up"></i> 0%</p>
                                     </div>
                                 </div>
                             </div>
                         </div>
-                        <div class="col-md-6">
-                            <div class="card">
-                                <div class="card-header">
-                                    <h5 class="mb-0">Top Referrers</h5>
-                                </div>
-                                <div class="card-body">
-                                    <div class="table-responsive">
-                                        <table class="table table-striped" id="topReferrersTable">
-                                            <thead>
-                                                <tr>
-                                                    <th>Source</th>
-                                                    <th>Views</th>
-                                                    <th>Percentage</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                <!-- Populated by JavaScript -->
-                                            </tbody>
-                                        </table>
+                        <div class="col-md-3">
+                            <div class="analytics-card mb-3">
+                                <div class="card bg-dark">
+                                    <div class="card-body text-center">
+                                        <h6 class="text-muted">Engagements</h6>
+                                        <h3 id="total-engagements">0</h3>
+                                        <p id="engagements-trend" class="mb-0 small text-success"><i class="bi bi-arrow-up"></i> 0%</p>
                                     </div>
                                 </div>
                             </div>
                         </div>
-                    </div>
-                    
-                    <div class="row mb-4">
-                        <div class="col-md-4">
-                            <div class="card">
-                                <div class="card-header">
-                                    <h5 class="mb-0">Traffic by Device</h5>
-                                </div>
-                                <div class="card-body">
-                                    <canvas id="deviceChart" height="200"></canvas>
+                        <div class="col-md-3">
+                            <div class="analytics-card mb-3">
+                                <div class="card bg-dark">
+                                    <div class="card-body text-center">
+                                        <h6 class="text-muted">Ad Clicks</h6>
+                                        <h3 id="total-ad-clicks">0</h3>
+                                        <p id="ad-clicks-trend" class="mb-0 small text-success"><i class="bi bi-arrow-up"></i> 0%</p>
+                                    </div>
                                 </div>
                             </div>
                         </div>
-                        <div class="col-md-4">
-                            <div class="card">
-                                <div class="card-header">
-                                    <h5 class="mb-0">Traffic by Country</h5>
-                                </div>
-                                <div class="card-body">
-                                    <canvas id="countryChart" height="200"></canvas>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-4">
-                            <div class="card">
-                                <div class="card-header">
-                                    <h5 class="mb-0">Engagement Types</h5>
-                                </div>
-                                <div class="card-body">
-                                    <canvas id="engagementChart" height="200"></canvas>
+                        <div class="col-md-3">
+                            <div class="analytics-card mb-3">
+                                <div class="card bg-dark">
+                                    <div class="card-body text-center">
+                                        <h6 class="text-muted">Revenue</h6>
+                                        <h3 id="total-revenue">$0.00</h3>
+                                        <p id="revenue-trend" class="mb-0 small text-success"><i class="bi bi-arrow-up"></i> 0%</p>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -167,88 +72,39 @@
         </div>
     </div>
     
-    <!-- Google Analytics Integration Section -->
-    <div class="row mb-4" id="googleAnalyticsSection">
-        <div class="col-md-12">
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Top Performing Posts</h5>
+                </div>
+                <div class="card-body">
+                    <div id="top-posts-container">
+                        <div class="alert alert-secondary">
+                            <i class="bi bi-info-circle me-2"></i> Select a blog to view top performing posts
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
             <div class="card">
                 <div class="card-header d-flex justify-content-between align-items-center">
-                    <h4 class="mb-0">Google Analytics</h4>
+                    <h5 class="mb-0">Traffic Sources</h5>
                     <div>
-                        <button class="btn btn-sm btn-outline-primary" id="refreshGoogleAnalytics">Refresh Data</button>
+                        <select id="period-selector" class="form-select form-select-sm">
+                            <option value="day">Last 24 Hours</option>
+                            <option value="week">Last Week</option>
+                            <option value="month" selected>Last Month</option>
+                            <option value="year">Last Year</option>
+                            <option value="all">All Time</option>
+                        </select>
                     </div>
                 </div>
                 <div class="card-body">
-                    <div id="googleAnalyticsDisabled" class="alert alert-warning d-none">
-                        <p>Google Analytics integration is not enabled for this blog. Please configure it in the settings.</p>
-                        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#googleAnalyticsConfigModal">Configure Google Analytics</button>
-                    </div>
-                    
-                    <div id="googleAnalyticsContent" class="d-none">
-                        <div class="row mb-4">
-                            <div class="col-md-3">
-                                <div class="card bg-light">
-                                    <div class="card-body">
-                                        <h5 class="card-title">Users</h5>
-                                        <h2 id="gaUsers" class="card-text">0</h2>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-md-3">
-                                <div class="card bg-light">
-                                    <div class="card-body">
-                                        <h5 class="card-title">Sessions</h5>
-                                        <h2 id="gaSessions" class="card-text">0</h2>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-md-3">
-                                <div class="card bg-light">
-                                    <div class="card-body">
-                                        <h5 class="card-title">Bounce Rate</h5>
-                                        <h2 id="gaBounceRate" class="card-text">0%</h2>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-md-3">
-                                <div class="card bg-light">
-                                    <div class="card-body">
-                                        <h5 class="card-title">Avg. Session</h5>
-                                        <h2 id="gaSessionDuration" class="card-text">0s</h2>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div class="row mb-4">
-                            <div class="col-md-6">
-                                <div class="card">
-                                    <div class="card-header">
-                                        <h5 class="mb-0">Demographics</h5>
-                                    </div>
-                                    <div class="card-body">
-                                        <div class="row">
-                                            <div class="col-md-6">
-                                                <h6>Age Distribution</h6>
-                                                <canvas id="gaAgeChart" height="200"></canvas>
-                                            </div>
-                                            <div class="col-md-6">
-                                                <h6>Gender Distribution</h6>
-                                                <canvas id="gaGenderChart" height="200"></canvas>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="card">
-                                    <div class="card-header">
-                                        <h5 class="mb-0">Traffic Sources</h5>
-                                    </div>
-                                    <div class="card-body">
-                                        <canvas id="gaSourcesChart" height="200"></canvas>
-                                    </div>
-                                </div>
-                            </div>
+                    <div id="traffic-sources-container">
+                        <div class="alert alert-secondary">
+                            <i class="bi bi-info-circle me-2"></i> Select a blog to view traffic sources
                         </div>
                     </div>
                 </div>
@@ -256,418 +112,112 @@
         </div>
     </div>
     
-    <!-- Google AdSense Integration Section -->
-    <div class="row mb-4" id="googleAdSenseSection">
-        <div class="col-md-12">
-            <div class="card">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <h4 class="mb-0">Google AdSense</h4>
-                    <div>
-                        <button class="btn btn-sm btn-outline-primary" id="refreshAdSense">Refresh Data</button>
-                    </div>
-                </div>
-                <div class="card-body">
-                    <div id="adsenseDisabled" class="alert alert-warning d-none">
-                        <p>Google AdSense integration is not enabled for this blog. Please configure it in the settings.</p>
-                        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#adsenseConfigModal">Configure AdSense</button>
-                    </div>
-                    
-                    <div id="adsenseContent" class="d-none">
-                        <div class="row mb-4">
-                            <div class="col-md-3">
-                                <div class="card bg-light">
-                                    <div class="card-body">
-                                        <h5 class="card-title">Page Impressions</h5>
-                                        <h2 id="adsensePageImpressions" class="card-text">0</h2>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-md-3">
-                                <div class="card bg-light">
-                                    <div class="card-body">
-                                        <h5 class="card-title">Ad Impressions</h5>
-                                        <h2 id="adsenseAdImpressions" class="card-text">0</h2>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-md-3">
-                                <div class="card bg-light">
-                                    <div class="card-body">
-                                        <h5 class="card-title">Clicks</h5>
-                                        <h2 id="adsenseClicks" class="card-text">0</h2>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-md-3">
-                                <div class="card bg-light">
-                                    <div class="card-body">
-                                        <h5 class="card-title">Revenue</h5>
-                                        <h2 id="adsenseRevenue" class="card-text">$0.00</h2>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div class="row mb-4">
-                            <div class="col-md-12">
-                                <div class="card">
-                                    <div class="card-header">
-                                        <h5 class="mb-0">Revenue Trend</h5>
-                                    </div>
-                                    <div class="card-body">
-                                        <canvas id="adsenseRevenueChart" height="100"></canvas>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div class="row mb-4">
-                            <div class="col-md-6">
-                                <div class="card">
-                                    <div class="card-header">
-                                        <h5 class="mb-0">Top Performing Ad Units</h5>
-                                    </div>
-                                    <div class="card-body">
-                                        <div class="table-responsive">
-                                            <table class="table table-striped" id="topAdUnitsTable">
-                                                <thead>
-                                                    <tr>
-                                                        <th>Ad Unit</th>
-                                                        <th>Impressions</th>
-                                                        <th>Clicks</th>
-                                                        <th>CTR</th>
-                                                        <th>Revenue</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody>
-                                                    <!-- Populated by JavaScript -->
-                                                </tbody>
-                                            </table>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="card">
-                                    <div class="card-header">
-                                        <h5 class="mb-0">Top Performing Pages</h5>
-                                    </div>
-                                    <div class="card-body">
-                                        <div class="table-responsive">
-                                            <table class="table table-striped" id="topAdPagesTable">
-                                                <thead>
-                                                    <tr>
-                                                        <th>Page</th>
-                                                        <th>Impressions</th>
-                                                        <th>Clicks</th>
-                                                        <th>Revenue</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody>
-                                                    <!-- Populated by JavaScript -->
-                                                </tbody>
-                                            </table>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-    
-    <!-- Google Search Console Integration Section -->
-    <div class="row mb-4" id="searchConsoleSection">
-        <div class="col-md-12">
-            <div class="card">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <h4 class="mb-0">Google Search Console</h4>
-                    <div>
-                        <button class="btn btn-sm btn-outline-primary" id="refreshSearchConsole">Refresh Data</button>
-                    </div>
-                </div>
-                <div class="card-body">
-                    <div id="searchConsoleDisabled" class="alert alert-warning d-none">
-                        <p>Google Search Console integration is not enabled for this blog. Please configure it in the settings.</p>
-                        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#searchConsoleConfigModal">Configure Search Console</button>
-                    </div>
-                    
-                    <div id="searchConsoleContent" class="d-none">
-                        <div class="row mb-4">
-                            <div class="col-md-3">
-                                <div class="card bg-light">
-                                    <div class="card-body">
-                                        <h5 class="card-title">Clicks</h5>
-                                        <h2 id="scTotalClicks" class="card-text">0</h2>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-md-3">
-                                <div class="card bg-light">
-                                    <div class="card-body">
-                                        <h5 class="card-title">Impressions</h5>
-                                        <h2 id="scTotalImpressions" class="card-text">0</h2>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-md-3">
-                                <div class="card bg-light">
-                                    <div class="card-body">
-                                        <h5 class="card-title">Avg. CTR</h5>
-                                        <h2 id="scAverageCTR" class="card-text">0%</h2>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-md-3">
-                                <div class="card bg-light">
-                                    <div class="card-body">
-                                        <h5 class="card-title">Avg. Position</h5>
-                                        <h2 id="scAveragePosition" class="card-text">0</h2>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div class="row mb-4">
-                            <div class="col-md-6">
-                                <div class="card">
-                                    <div class="card-header">
-                                        <h5 class="mb-0">Top Search Queries</h5>
-                                    </div>
-                                    <div class="card-body">
-                                        <div class="table-responsive">
-                                            <table class="table table-striped" id="topQueriesTable">
-                                                <thead>
-                                                    <tr>
-                                                        <th>Query</th>
-                                                        <th>Clicks</th>
-                                                        <th>Impressions</th>
-                                                        <th>CTR</th>
-                                                        <th>Position</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody>
-                                                    <!-- Populated by JavaScript -->
-                                                </tbody>
-                                            </table>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="card">
-                                    <div class="card-header">
-                                        <h5 class="mb-0">Top Pages in Search</h5>
-                                    </div>
-                                    <div class="card-body">
-                                        <div class="table-responsive">
-                                            <table class="table table-striped" id="topSearchPagesTable">
-                                                <thead>
-                                                    <tr>
-                                                        <th>Page</th>
-                                                        <th>Clicks</th>
-                                                        <th>Impressions</th>
-                                                        <th>CTR</th>
-                                                        <th>Position</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody>
-                                                    <!-- Populated by JavaScript -->
-                                                </tbody>
-                                            </table>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-    
-    <!-- Topic Performance Section -->
     <div class="row mb-4">
         <div class="col-md-12">
             <div class="card">
                 <div class="card-header">
-                    <h4 class="mb-0">Topic Performance</h4>
+                    <ul class="nav nav-tabs card-header-tabs" id="analytics-tabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" id="google-analytics-tab" data-bs-toggle="tab" data-bs-target="#google-analytics" type="button" role="tab" aria-controls="google-analytics" aria-selected="true">Google Analytics</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="adsense-tab" data-bs-toggle="tab" data-bs-target="#adsense" type="button" role="tab" aria-controls="adsense" aria-selected="false">AdSense</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="search-console-tab" data-bs-toggle="tab" data-bs-target="#search-console" type="button" role="tab" aria-controls="search-console" aria-selected="false">Search Console</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="wordpress-tab" data-bs-toggle="tab" data-bs-target="#wordpress" type="button" role="tab" aria-controls="wordpress" aria-selected="false">WordPress</button>
+                        </li>
+                    </ul>
                 </div>
                 <div class="card-body">
-                    <div class="table-responsive">
-                        <table class="table table-striped" id="topicPerformanceTable">
-                            <thead>
-                                <tr>
-                                    <th>Topic</th>
-                                    <th>Posts</th>
-                                    <th>Views</th>
-                                    <th>Avg. Views</th>
-                                    <th>Engagements</th>
-                                    <th>Ad Clicks</th>
-                                    <th>Revenue</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <!-- Populated by JavaScript -->
-                            </tbody>
-                        </table>
+                    <div class="tab-content" id="analytics-tab-content">
+                        <div class="tab-pane fade show active" id="google-analytics" role="tabpanel" aria-labelledby="google-analytics-tab">
+                            <div id="google-analytics-container">
+                                {% if google_analytics_enabled %}
+                                <div class="alert alert-secondary">
+                                    <i class="bi bi-info-circle me-2"></i> Select a blog to view Google Analytics data
+                                </div>
+                                {% else %}
+                                <div class="alert alert-warning">
+                                    <i class="bi bi-exclamation-triangle me-2"></i> Google Analytics is not configured. Configure it in the settings.
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="tab-pane fade" id="adsense" role="tabpanel" aria-labelledby="adsense-tab">
+                            <div id="adsense-container">
+                                {% if adsense_enabled %}
+                                <div class="alert alert-secondary">
+                                    <i class="bi bi-info-circle me-2"></i> Select a blog to view AdSense data
+                                </div>
+                                {% else %}
+                                <div class="alert alert-warning">
+                                    <i class="bi bi-exclamation-triangle me-2"></i> AdSense is not configured. Configure it in the settings.
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="tab-pane fade" id="search-console" role="tabpanel" aria-labelledby="search-console-tab">
+                            <div id="search-console-container">
+                                {% if search_console_enabled %}
+                                <div class="alert alert-secondary">
+                                    <i class="bi bi-info-circle me-2"></i> Select a blog to view Search Console data
+                                </div>
+                                {% else %}
+                                <div class="alert alert-warning">
+                                    <i class="bi bi-exclamation-triangle me-2"></i> Search Console is not configured. Configure it in the settings.
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="tab-pane fade" id="wordpress" role="tabpanel" aria-labelledby="wordpress-tab">
+                            <div id="wordpress-container">
+                                {% if wordpress_analytics_enabled %}
+                                <div class="alert alert-secondary">
+                                    <i class="bi bi-info-circle me-2"></i> Select a blog to view WordPress analytics
+                                </div>
+                                {% else %}
+                                <div class="alert alert-warning">
+                                    <i class="bi bi-exclamation-triangle me-2"></i> WordPress analytics integration is not enabled.
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
     
-    <!-- SEO Insights Section -->
     <div class="row mb-4">
-        <div class="col-md-12">
+        <div class="col-md-6">
             <div class="card">
                 <div class="card-header">
-                    <h4 class="mb-0">SEO Insights</h4>
+                    <h5 class="mb-0">Topic Performance</h5>
                 </div>
                 <div class="card-body">
-                    <div class="row mb-4">
-                        <div class="col-md-6">
-                            <div class="card">
-                                <div class="card-header">
-                                    <h5 class="mb-0">Top Performing Keywords</h5>
-                                </div>
-                                <div class="card-body">
-                                    <div class="table-responsive">
-                                        <table class="table table-striped" id="topKeywordsTable">
-                                            <thead>
-                                                <tr>
-                                                    <th>Keyword</th>
-                                                    <th>Traffic</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                <!-- Populated by JavaScript -->
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="card">
-                                <div class="card-header">
-                                    <h5 class="mb-0">Content Gaps</h5>
-                                </div>
-                                <div class="card-body">
-                                    <div class="table-responsive">
-                                        <table class="table table-striped" id="contentGapsTable">
-                                            <thead>
-                                                <tr>
-                                                    <th>Topic</th>
-                                                    <th>Opportunity Score</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                <!-- Populated by JavaScript -->
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                </div>
-                            </div>
+                    <div id="topic-performance-container">
+                        <div class="alert alert-secondary">
+                            <i class="bi bi-info-circle me-2"></i> Select a blog to view topic performance data
                         </div>
                     </div>
                 </div>
             </div>
         </div>
-    </div>
-</div>
-
-<!-- Configuration Modals -->
-<!-- Google Analytics Configuration Modal -->
-<div class="modal fade" id="googleAnalyticsConfigModal" tabindex="-1" aria-labelledby="googleAnalyticsConfigModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="googleAnalyticsConfigModalLabel">Configure Google Analytics</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <form id="googleAnalyticsConfigForm">
-                    <div class="mb-3">
-                        <label for="gaPropertyId" class="form-label">Google Analytics Property ID</label>
-                        <input type="text" class="form-control" id="gaPropertyId" placeholder="GA-XXXXXXXXXX">
-                        <div class="form-text">Your Google Analytics 4 Property ID</div>
-                    </div>
-                    <div class="mb-3">
-                        <label for="gaMeasurementId" class="form-label">Measurement ID</label>
-                        <input type="text" class="form-control" id="gaMeasurementId" placeholder="G-XXXXXXXXXX">
-                        <div class="form-text">Your Google Analytics 4 Measurement ID</div>
-                    </div>
-                </form>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" class="btn btn-primary" id="saveGoogleAnalyticsConfig">Save Configuration</button>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- AdSense Configuration Modal -->
-<div class="modal fade" id="adsenseConfigModal" tabindex="-1" aria-labelledby="adsenseConfigModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="adsenseConfigModalLabel">Configure Google AdSense</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <form id="adsenseConfigForm">
-                    <div class="mb-3">
-                        <label for="adsenseClientId" class="form-label">AdSense Client ID</label>
-                        <input type="text" class="form-control" id="adsenseClientId" placeholder="ca-pub-XXXXXXXXXXXXXXXX">
-                        <div class="form-text">Your Google AdSense Publisher ID</div>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Ad Units</label>
-                        <div id="adUnitContainer">
-                            <div class="ad-unit-row mb-2">
-                                <div class="input-group">
-                                    <input type="text" class="form-control ad-unit-name" placeholder="Ad Unit Name (e.g., Sidebar Top)">
-                                    <input type="text" class="form-control ad-unit-id" placeholder="Ad Unit ID">
-                                    <button class="btn btn-outline-danger remove-ad-unit" type="button">Remove</button>
-                                </div>
-                            </div>
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">SEO Insights</h5>
+                </div>
+                <div class="card-body">
+                    <div id="seo-insights-container">
+                        <div class="alert alert-secondary">
+                            <i class="bi bi-info-circle me-2"></i> Select a blog to view SEO insights
                         </div>
-                        <button type="button" class="btn btn-outline-primary btn-sm mt-2" id="addAdUnit">Add Ad Unit</button>
                     </div>
-                </form>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" class="btn btn-primary" id="saveAdsenseConfig">Save Configuration</button>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Search Console Configuration Modal -->
-<div class="modal fade" id="searchConsoleConfigModal" tabindex="-1" aria-labelledby="searchConsoleConfigModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="searchConsoleConfigModalLabel">Configure Google Search Console</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <form id="searchConsoleConfigForm">
-                    <div class="mb-3">
-                        <label for="searchConsoleSiteUrl" class="form-label">Verified Site URL</label>
-                        <input type="text" class="form-control" id="searchConsoleSiteUrl" placeholder="https://example.com">
-                        <div class="form-text">Your verified site URL in Google Search Console</div>
-                    </div>
-                </form>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" class="btn btn-primary" id="saveSearchConsoleConfig">Save Configuration</button>
+                </div>
             </div>
         </div>
     </div>
@@ -675,935 +225,577 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.1/dist/chart.min.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Get DOM elements
-    const blogSelector = document.getElementById('blogSelector');
-    const periodButtons = document.querySelectorAll('.period-selector button');
+    const blogSelector = document.getElementById('blog-selector');
+    const periodSelector = document.getElementById('period-selector');
     
-    // Initial variables
-    let currentBlogId = 'all';
-    let currentPeriod = 'week';
+    // Load initial data for all blogs
+    loadAnalyticsSummary('all', 'month');
     
-    // Charts
-    let trafficChart;
-    let deviceChart;
-    let countryChart;
-    let engagementChart;
-    
-    // Google Analytics charts
-    let gaAgeChart;
-    let gaGenderChart;
-    let gaSourcesChart;
-    
-    // AdSense charts
-    let adsenseRevenueChart;
-    
-    // Initialize the dashboard
-    initDashboard();
-    
-    // Add event listeners
+    // Event listeners for selectors
     blogSelector.addEventListener('change', function() {
-        currentBlogId = this.value;
-        fetchAnalyticsData();
+        const blogId = this.value;
+        const period = periodSelector.value;
+        loadAnalyticsSummary(blogId, period);
+        loadGoogleAnalytics(blogId, period);
+        loadAdSense(blogId, period);
+        loadSearchConsole(blogId, period);
+        loadWordPressAnalytics(blogId);
+        loadTopicPerformance(blogId);
+        loadSeoInsights(blogId);
     });
     
-    periodButtons.forEach(button => {
-        button.addEventListener('click', function() {
-            periodButtons.forEach(btn => btn.classList.remove('active'));
-            this.classList.add('active');
-            currentPeriod = this.dataset.period;
-            fetchAnalyticsData();
-        });
+    periodSelector.addEventListener('change', function() {
+        const blogId = blogSelector.value;
+        const period = this.value;
+        loadAnalyticsSummary(blogId, period);
+        loadGoogleAnalytics(blogId, period);
+        loadAdSense(blogId, period);
+        loadSearchConsole(blogId, period);
     });
     
-    document.getElementById('refreshGoogleAnalytics').addEventListener('click', () => {
-        fetchGoogleAnalyticsData();
-    });
-    
-    document.getElementById('refreshAdSense').addEventListener('click', () => {
-        fetchAdSenseData();
-    });
-    
-    document.getElementById('refreshSearchConsole').addEventListener('click', () => {
-        fetchSearchConsoleData();
-    });
-    
-    // Save configuration buttons
-    document.getElementById('saveGoogleAnalyticsConfig').addEventListener('click', () => {
-        saveGoogleAnalyticsConfig();
-    });
-    
-    document.getElementById('saveAdsenseConfig').addEventListener('click', () => {
-        saveAdsenseConfig();
-    });
-    
-    document.getElementById('saveSearchConsoleConfig').addEventListener('click', () => {
-        saveSearchConsoleConfig();
-    });
-    
-    // AdSense ad unit controls
-    document.getElementById('addAdUnit').addEventListener('click', () => {
-        addAdUnitRow();
-    });
-    
-    document.addEventListener('click', function(e) {
-        if (e.target && e.target.classList.contains('remove-ad-unit')) {
-            e.target.closest('.ad-unit-row').remove();
-        }
-    });
-    
-    function initDashboard() {
-        // Create charts
-        createCharts();
-        
-        // Fetch initial data
-        fetchAnalyticsData();
-    }
-    
-    function createCharts() {
-        // Traffic chart
-        const trafficCtx = document.getElementById('trafficChart').getContext('2d');
-        trafficChart = new Chart(trafficCtx, {
-            type: 'line',
-            data: {
-                labels: [],
-                datasets: [
-                    {
-                        label: 'Page Views',
-                        data: [],
-                        borderColor: '#007bff',
-                        backgroundColor: 'rgba(0, 123, 255, 0.1)',
-                        tension: 0.1,
-                        fill: true
-                    }
-                ]
-            },
-            options: {
-                responsive: true,
-                plugins: {
-                    legend: {
-                        position: 'top',
-                    },
-                    title: {
-                        display: true,
-                        text: 'Traffic Trend'
-                    }
-                },
-                scales: {
-                    y: {
-                        beginAtZero: true
-                    }
-                }
-            }
-        });
-        
-        // Device chart
-        const deviceCtx = document.getElementById('deviceChart').getContext('2d');
-        deviceChart = new Chart(deviceCtx, {
-            type: 'doughnut',
-            data: {
-                labels: ['Desktop', 'Mobile', 'Tablet'],
-                datasets: [{
-                    data: [0, 0, 0],
-                    backgroundColor: ['#007bff', '#28a745', '#ffc107']
-                }]
-            },
-            options: {
-                responsive: true,
-                plugins: {
-                    legend: {
-                        position: 'bottom',
-                    }
-                }
-            }
-        });
-        
-        // Country chart
-        const countryCtx = document.getElementById('countryChart').getContext('2d');
-        countryChart = new Chart(countryCtx, {
-            type: 'pie',
-            data: {
-                labels: [],
-                datasets: [{
-                    data: [],
-                    backgroundColor: [
-                        '#007bff', '#28a745', '#ffc107', '#dc3545', '#6c757d', 
-                        '#17a2b8', '#6610f2', '#fd7e14', '#20c997', '#e83e8c'
-                    ]
-                }]
-            },
-            options: {
-                responsive: true,
-                plugins: {
-                    legend: {
-                        position: 'bottom',
-                    }
-                }
-            }
-        });
-        
-        // Engagement chart
-        const engagementCtx = document.getElementById('engagementChart').getContext('2d');
-        engagementChart = new Chart(engagementCtx, {
-            type: 'bar',
-            data: {
-                labels: [],
-                datasets: [{
-                    label: 'Count',
-                    data: [],
-                    backgroundColor: [
-                        '#007bff', '#28a745', '#ffc107', '#dc3545', '#6c757d'
-                    ]
-                }]
-            },
-            options: {
-                responsive: true,
-                plugins: {
-                    legend: {
-                        display: false
-                    }
-                },
-                scales: {
-                    y: {
-                        beginAtZero: true
-                    }
-                }
-            }
-        });
-        
-        // Initialize Google Analytics charts
-        initGACharts();
-        
-        // Initialize AdSense charts
-        initAdSenseCharts();
-    }
-    
-    function initGACharts() {
-        // Age chart
-        const ageCtx = document.getElementById('gaAgeChart').getContext('2d');
-        gaAgeChart = new Chart(ageCtx, {
-            type: 'bar',
-            data: {
-                labels: ['18-24', '25-34', '35-44', '45-54', '55-64', '65+'],
-                datasets: [{
-                    label: 'Percentage',
-                    data: [0, 0, 0, 0, 0, 0],
-                    backgroundColor: '#007bff'
-                }]
-            },
-            options: {
-                responsive: true,
-                plugins: {
-                    legend: {
-                        display: false
-                    }
-                },
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        max: 100
-                    }
-                }
-            }
-        });
-        
-        // Gender chart
-        const genderCtx = document.getElementById('gaGenderChart').getContext('2d');
-        gaGenderChart = new Chart(genderCtx, {
-            type: 'pie',
-            data: {
-                labels: ['Male', 'Female'],
-                datasets: [{
-                    data: [0, 0],
-                    backgroundColor: ['#007bff', '#e83e8c']
-                }]
-            },
-            options: {
-                responsive: true,
-                plugins: {
-                    legend: {
-                        position: 'bottom',
-                    }
-                }
-            }
-        });
-        
-        // Sources chart
-        const sourcesCtx = document.getElementById('gaSourcesChart').getContext('2d');
-        gaSourcesChart = new Chart(sourcesCtx, {
-            type: 'pie',
-            data: {
-                labels: ['Organic', 'Direct', 'Referral', 'Social', 'Email'],
-                datasets: [{
-                    data: [0, 0, 0, 0, 0],
-                    backgroundColor: [
-                        '#28a745', '#007bff', '#ffc107', '#6610f2', '#20c997'
-                    ]
-                }]
-            },
-            options: {
-                responsive: true,
-                plugins: {
-                    legend: {
-                        position: 'bottom',
-                    }
-                }
-            }
-        });
-    }
-    
-    function initAdSenseCharts() {
-        // Revenue chart
-        const revenueCtx = document.getElementById('adsenseRevenueChart').getContext('2d');
-        adsenseRevenueChart = new Chart(revenueCtx, {
-            type: 'line',
-            data: {
-                labels: [],
-                datasets: [
-                    {
-                        label: 'Revenue',
-                        data: [],
-                        borderColor: '#28a745',
-                        backgroundColor: 'rgba(40, 167, 69, 0.1)',
-                        tension: 0.1,
-                        fill: true
-                    }
-                ]
-            },
-            options: {
-                responsive: true,
-                plugins: {
-                    legend: {
-                        position: 'top',
-                    },
-                    title: {
-                        display: true,
-                        text: 'AdSense Revenue Trend'
-                    }
-                },
-                scales: {
-                    y: {
-                        beginAtZero: true
-                    }
-                }
-            }
-        });
-    }
-    
-    function fetchAnalyticsData() {
-        // Show loading state
-        showLoading();
-        
-        // Fetch data from API
-        fetch(`/api/analytics/summary?blog_id=${currentBlogId}&period=${currentPeriod}`)
+    function loadAnalyticsSummary(blogId, period) {
+        fetch(`/api/analytics/summary?blog_id=${blogId}&period=${period}`)
             .then(response => response.json())
             .then(data => {
-                updateDashboard(data);
-                hideLoading();
+                // Update summary metrics
+                document.getElementById('total-views').textContent = data.total_views || 0;
+                document.getElementById('total-engagements').textContent = data.total_engagements || 0;
+                document.getElementById('total-ad-clicks').textContent = data.total_ad_clicks || 0;
+                document.getElementById('total-revenue').textContent = `$${(data.estimated_revenue || 0).toFixed(2)}`;
+                
+                // Update top posts
+                updateTopPosts(data.top_posts || []);
+                
+                // Update traffic sources
+                updateTrafficSources(data.top_referrers || []);
             })
             .catch(error => {
-                console.error('Error fetching analytics data:', error);
-                hideLoading();
-                showError('Failed to load analytics data');
-            });
-        
-        // Fetch Google Analytics data if integrated
-        fetchGoogleAnalyticsData();
-        
-        // Fetch AdSense data if integrated
-        fetchAdSenseData();
-        
-        // Fetch Search Console data if integrated
-        fetchSearchConsoleData();
-        
-        // Fetch topic performance data
-        fetchTopicPerformanceData();
-        
-        // Fetch SEO insights data
-        fetchSEOInsightsData();
-    }
-    
-    function fetchGoogleAnalyticsData() {
-        fetch(`/api/analytics/google_analytics?blog_id=${currentBlogId}&period=${currentPeriod}`)
-            .then(response => response.json())
-            .then(data => {
-                updateGoogleAnalyticsSection(data);
-            })
-            .catch(error => {
-                console.error('Error fetching Google Analytics data:', error);
+                console.error('Error loading analytics summary:', error);
             });
     }
     
-    function fetchAdSenseData() {
-        fetch(`/api/analytics/adsense?blog_id=${currentBlogId}&period=${currentPeriod}`)
+    function loadGoogleAnalytics(blogId, period) {
+        fetch(`/api/analytics/google_analytics?blog_id=${blogId}&period=${period}`)
             .then(response => response.json())
             .then(data => {
-                updateAdSenseSection(data);
+                const container = document.getElementById('google-analytics-container');
+                
+                if (data.error) {
+                    container.innerHTML = `<div class="alert alert-warning"><i class="bi bi-exclamation-triangle me-2"></i> ${data.error}</div>`;
+                    return;
+                }
+                
+                if (!data.enabled) {
+                    container.innerHTML = `<div class="alert alert-warning"><i class="bi bi-exclamation-triangle me-2"></i> Google Analytics is not configured for this blog.</div>`;
+                    return;
+                }
+                
+                // Render Google Analytics data
+                let html = '';
+                
+                if (data.pageviews || data.users || data.sessions) {
+                    html += `
+                    <div class="row mb-3">
+                        <div class="col-md-4">
+                            <div class="card bg-dark">
+                                <div class="card-body text-center">
+                                    <h6 class="text-muted">Pageviews</h6>
+                                    <h3>${data.pageviews || 0}</h3>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card bg-dark">
+                                <div class="card-body text-center">
+                                    <h6 class="text-muted">Users</h6>
+                                    <h3>${data.users || 0}</h3>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card bg-dark">
+                                <div class="card-body text-center">
+                                    <h6 class="text-muted">Sessions</h6>
+                                    <h3>${data.sessions || 0}</h3>
+                                </div>
+                            </div>
+                        </div>
+                    </div>`;
+                }
+                
+                if (data.top_pages && data.top_pages.length > 0) {
+                    html += `<h5 class="mb-3">Top Pages</h5>
+                    <div class="table-responsive">
+                        <table class="table table-sm table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Page</th>
+                                    <th>Views</th>
+                                    <th>Avg. Time</th>
+                                </tr>
+                            </thead>
+                            <tbody>`;
+                    
+                    data.top_pages.forEach(page => {
+                        html += `<tr>
+                            <td>${page.path}</td>
+                            <td>${page.pageviews}</td>
+                            <td>${page.avg_time || '0:00'}</td>
+                        </tr>`;
+                    });
+                    
+                    html += `</tbody></table></div>`;
+                } else {
+                    html += `<div class="alert alert-info">No page data available for the selected period.</div>`;
+                }
+                
+                container.innerHTML = html;
             })
             .catch(error => {
-                console.error('Error fetching AdSense data:', error);
+                console.error('Error loading Google Analytics:', error);
+                document.getElementById('google-analytics-container').innerHTML = 
+                    `<div class="alert alert-danger"><i class="bi bi-exclamation-triangle me-2"></i> Error loading Google Analytics data</div>`;
             });
     }
     
-    function fetchSearchConsoleData() {
-        fetch(`/api/analytics/search_console?blog_id=${currentBlogId}&period=${currentPeriod}`)
+    function loadAdSense(blogId, period) {
+        fetch(`/api/analytics/adsense?blog_id=${blogId}&period=${period}`)
             .then(response => response.json())
             .then(data => {
-                updateSearchConsoleSection(data);
+                const container = document.getElementById('adsense-container');
+                
+                if (data.error) {
+                    container.innerHTML = `<div class="alert alert-warning"><i class="bi bi-exclamation-triangle me-2"></i> ${data.error}</div>`;
+                    return;
+                }
+                
+                if (!data.enabled) {
+                    container.innerHTML = `<div class="alert alert-warning"><i class="bi bi-exclamation-triangle me-2"></i> AdSense is not configured for this blog.</div>`;
+                    return;
+                }
+                
+                // Render AdSense data
+                let html = '';
+                
+                if (data.earnings !== undefined) {
+                    html += `
+                    <div class="row mb-3">
+                        <div class="col-md-3">
+                            <div class="card bg-dark">
+                                <div class="card-body text-center">
+                                    <h6 class="text-muted">Earnings</h6>
+                                    <h3>$${data.earnings.toFixed(2)}</h3>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card bg-dark">
+                                <div class="card-body text-center">
+                                    <h6 class="text-muted">Impressions</h6>
+                                    <h3>${data.impressions || 0}</h3>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card bg-dark">
+                                <div class="card-body text-center">
+                                    <h6 class="text-muted">Clicks</h6>
+                                    <h3>${data.clicks || 0}</h3>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card bg-dark">
+                                <div class="card-body text-center">
+                                    <h6 class="text-muted">CTR</h6>
+                                    <h3>${data.ctr ? (data.ctr * 100).toFixed(2) + '%' : '0.00%'}</h3>
+                                </div>
+                            </div>
+                        </div>
+                    </div>`;
+                }
+                
+                if (data.ad_units && data.ad_units.length > 0) {
+                    html += `<h5 class="mb-3">Ad Unit Performance</h5>
+                    <div class="table-responsive">
+                        <table class="table table-sm table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Ad Unit</th>
+                                    <th>Impressions</th>
+                                    <th>Clicks</th>
+                                    <th>Earnings</th>
+                                </tr>
+                            </thead>
+                            <tbody>`;
+                    
+                    data.ad_units.forEach(unit => {
+                        html += `<tr>
+                            <td>${unit.name}</td>
+                            <td>${unit.impressions || 0}</td>
+                            <td>${unit.clicks || 0}</td>
+                            <td>$${(unit.earnings || 0).toFixed(2)}</td>
+                        </tr>`;
+                    });
+                    
+                    html += `</tbody></table></div>`;
+                } else {
+                    html += `<div class="alert alert-info">No ad unit data available for the selected period.</div>`;
+                }
+                
+                container.innerHTML = html;
             })
             .catch(error => {
-                console.error('Error fetching Search Console data:', error);
+                console.error('Error loading AdSense:', error);
+                document.getElementById('adsense-container').innerHTML = 
+                    `<div class="alert alert-danger"><i class="bi bi-exclamation-triangle me-2"></i> Error loading AdSense data</div>`;
             });
     }
     
-    function fetchTopicPerformanceData() {
-        fetch(`/api/analytics/topic_performance?blog_id=${currentBlogId}`)
+    function loadSearchConsole(blogId, period) {
+        fetch(`/api/analytics/search_console?blog_id=${blogId}&period=${period}`)
             .then(response => response.json())
             .then(data => {
-                updateTopicPerformanceTable(data);
+                const container = document.getElementById('search-console-container');
+                
+                if (data.error) {
+                    container.innerHTML = `<div class="alert alert-warning"><i class="bi bi-exclamation-triangle me-2"></i> ${data.error}</div>`;
+                    return;
+                }
+                
+                if (!data.enabled) {
+                    container.innerHTML = `<div class="alert alert-warning"><i class="bi bi-exclamation-triangle me-2"></i> Search Console is not configured for this blog.</div>`;
+                    return;
+                }
+                
+                // Render Search Console data
+                let html = '';
+                
+                if (data.clicks !== undefined) {
+                    html += `
+                    <div class="row mb-3">
+                        <div class="col-md-3">
+                            <div class="card bg-dark">
+                                <div class="card-body text-center">
+                                    <h6 class="text-muted">Clicks</h6>
+                                    <h3>${data.clicks || 0}</h3>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card bg-dark">
+                                <div class="card-body text-center">
+                                    <h6 class="text-muted">Impressions</h6>
+                                    <h3>${data.impressions || 0}</h3>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card bg-dark">
+                                <div class="card-body text-center">
+                                    <h6 class="text-muted">CTR</h6>
+                                    <h3>${data.ctr ? (data.ctr * 100).toFixed(2) + '%' : '0.00%'}</h3>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card bg-dark">
+                                <div class="card-body text-center">
+                                    <h6 class="text-muted">Position</h6>
+                                    <h3>${data.position ? data.position.toFixed(1) : 'N/A'}</h3>
+                                </div>
+                            </div>
+                        </div>
+                    </div>`;
+                }
+                
+                if (data.top_queries && data.top_queries.length > 0) {
+                    html += `<h5 class="mb-3">Top Search Queries</h5>
+                    <div class="table-responsive">
+                        <table class="table table-sm table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Query</th>
+                                    <th>Clicks</th>
+                                    <th>Impressions</th>
+                                    <th>Position</th>
+                                </tr>
+                            </thead>
+                            <tbody>`;
+                    
+                    data.top_queries.forEach(query => {
+                        html += `<tr>
+                            <td>${query.query}</td>
+                            <td>${query.clicks || 0}</td>
+                            <td>${query.impressions || 0}</td>
+                            <td>${query.position ? query.position.toFixed(1) : 'N/A'}</td>
+                        </tr>`;
+                    });
+                    
+                    html += `</tbody></table></div>`;
+                } else {
+                    html += `<div class="alert alert-info">No search query data available for the selected period.</div>`;
+                }
+                
+                container.innerHTML = html;
             })
             .catch(error => {
-                console.error('Error fetching topic performance data:', error);
+                console.error('Error loading Search Console:', error);
+                document.getElementById('search-console-container').innerHTML = 
+                    `<div class="alert alert-danger"><i class="bi bi-exclamation-triangle me-2"></i> Error loading Search Console data</div>`;
             });
     }
     
-    function fetchSEOInsightsData() {
-        fetch(`/api/analytics/seo_insights?blog_id=${currentBlogId}`)
+    function loadWordPressAnalytics(blogId) {
+        fetch(`/api/analytics/wordpress?blog_id=${blogId}`)
             .then(response => response.json())
             .then(data => {
-                updateSEOInsightsSection(data);
+                const container = document.getElementById('wordpress-container');
+                
+                if (data.error) {
+                    container.innerHTML = `<div class="alert alert-warning"><i class="bi bi-exclamation-triangle me-2"></i> ${data.error}</div>`;
+                    return;
+                }
+                
+                if (!data.enabled) {
+                    container.innerHTML = `<div class="alert alert-warning"><i class="bi bi-exclamation-triangle me-2"></i> WordPress analytics is not configured for this blog.</div>`;
+                    return;
+                }
+                
+                // Render WordPress data
+                let html = '';
+                
+                if (data.stats) {
+                    html += `
+                    <div class="row mb-3">
+                        <div class="col-md-3">
+                            <div class="card bg-dark">
+                                <div class="card-body text-center">
+                                    <h6 class="text-muted">Views</h6>
+                                    <h3>${data.stats.views || 0}</h3>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card bg-dark">
+                                <div class="card-body text-center">
+                                    <h6 class="text-muted">Visitors</h6>
+                                    <h3>${data.stats.visitors || 0}</h3>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card bg-dark">
+                                <div class="card-body text-center">
+                                    <h6 class="text-muted">Comments</h6>
+                                    <h3>${data.stats.comments || 0}</h3>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card bg-dark">
+                                <div class="card-body text-center">
+                                    <h6 class="text-muted">Posts</h6>
+                                    <h3>${data.stats.posts || 0}</h3>
+                                </div>
+                            </div>
+                        </div>
+                    </div>`;
+                }
+                
+                if (data.popular_posts && data.popular_posts.length > 0) {
+                    html += `<h5 class="mb-3">Popular Posts</h5>
+                    <div class="table-responsive">
+                        <table class="table table-sm table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Post</th>
+                                    <th>Views</th>
+                                    <th>Comments</th>
+                                </tr>
+                            </thead>
+                            <tbody>`;
+                    
+                    data.popular_posts.forEach(post => {
+                        html += `<tr>
+                            <td>${post.title}</td>
+                            <td>${post.views || 0}</td>
+                            <td>${post.comments || 0}</td>
+                        </tr>`;
+                    });
+                    
+                    html += `</tbody></table></div>`;
+                } else {
+                    html += `<div class="alert alert-info">No popular posts data available.</div>`;
+                }
+                
+                container.innerHTML = html;
             })
             .catch(error => {
-                console.error('Error fetching SEO insights data:', error);
+                console.error('Error loading WordPress analytics:', error);
+                document.getElementById('wordpress-container').innerHTML = 
+                    `<div class="alert alert-danger"><i class="bi bi-exclamation-triangle me-2"></i> Error loading WordPress analytics data</div>`;
             });
     }
     
-    function updateDashboard(data) {
-        // Update summary metrics
-        document.getElementById('totalViews').textContent = data.total_views.toLocaleString();
-        document.getElementById('totalEngagements').textContent = data.total_engagements.toLocaleString();
-        document.getElementById('totalAdClicks').textContent = data.total_ad_clicks.toLocaleString();
-        document.getElementById('totalRevenue').textContent = '$' + data.estimated_revenue.toFixed(2);
-        
-        // Update traffic chart (placeholder data for now)
-        const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-        const viewsData = [150, 230, 180, 290, 320, 250, 400];
-        
-        trafficChart.data.labels = days;
-        trafficChart.data.datasets[0].data = viewsData;
-        trafficChart.update();
-        
-        // Update device chart
-        const deviceData = data.traffic_by_device || { desktop: 45, mobile: 50, tablet: 5 };
-        deviceChart.data.datasets[0].data = [
-            deviceData.desktop || 0,
-            deviceData.mobile || 0,
-            deviceData.tablet || 0
-        ];
-        deviceChart.update();
-        
-        // Update country chart
-        const countryData = data.traffic_by_country || {};
-        const countryLabels = Object.keys(countryData).slice(0, 5);
-        const countryValues = countryLabels.map(label => countryData[label]);
-        
-        countryChart.data.labels = countryLabels;
-        countryChart.data.datasets[0].data = countryValues;
-        countryChart.update();
-        
-        // Update engagement chart (placeholder data)
-        const engagementTypes = ['Comments', 'Shares', 'Likes', 'Saves', 'Clicks'];
-        const engagementCounts = [45, 120, 200, 35, 90];
-        
-        engagementChart.data.labels = engagementTypes;
-        engagementChart.data.datasets[0].data = engagementCounts;
-        engagementChart.update();
-        
-        // Update top posts table
-        updateTopPostsTable(data.top_posts || []);
-        
-        // Update top referrers table
-        updateTopReferrersTable(data.top_referrers || []);
+    function loadTopicPerformance(blogId) {
+        fetch(`/api/analytics/topic_performance?blog_id=${blogId}`)
+            .then(response => response.json())
+            .then(data => {
+                const container = document.getElementById('topic-performance-container');
+                
+                if (data.error) {
+                    container.innerHTML = `<div class="alert alert-warning"><i class="bi bi-exclamation-triangle me-2"></i> ${data.error}</div>`;
+                    return;
+                }
+                
+                if (!data.topics || data.topics.length === 0) {
+                    container.innerHTML = `<div class="alert alert-info">No topic performance data available.</div>`;
+                    return;
+                }
+                
+                // Render topic performance data
+                let html = `<div class="table-responsive">
+                    <table class="table table-sm table-striped">
+                        <thead>
+                            <tr>
+                                <th>Topic</th>
+                                <th>Posts</th>
+                                <th>Views</th>
+                                <th>Avg. Engagement</th>
+                            </tr>
+                        </thead>
+                        <tbody>`;
+                
+                data.topics.forEach(topic => {
+                    html += `<tr>
+                        <td>${topic.name}</td>
+                        <td>${topic.posts || 0}</td>
+                        <td>${topic.views || 0}</td>
+                        <td>${topic.avg_engagement ? topic.avg_engagement.toFixed(2) : '0.00'}</td>
+                    </tr>`;
+                });
+                
+                html += `</tbody></table></div>`;
+                container.innerHTML = html;
+            })
+            .catch(error => {
+                console.error('Error loading topic performance:', error);
+                document.getElementById('topic-performance-container').innerHTML = 
+                    `<div class="alert alert-danger"><i class="bi bi-exclamation-triangle me-2"></i> Error loading topic performance data</div>`;
+            });
     }
     
-    function updateTopPostsTable(posts) {
-        const tbody = document.querySelector('#topPostsTable tbody');
-        tbody.innerHTML = '';
+    function loadSeoInsights(blogId) {
+        fetch(`/api/analytics/seo_insights?blog_id=${blogId}`)
+            .then(response => response.json())
+            .then(data => {
+                const container = document.getElementById('seo-insights-container');
+                
+                if (data.error) {
+                    container.innerHTML = `<div class="alert alert-warning"><i class="bi bi-exclamation-triangle me-2"></i> ${data.error}</div>`;
+                    return;
+                }
+                
+                if (!data.insights || data.insights.length === 0) {
+                    container.innerHTML = `<div class="alert alert-info">No SEO insights available.</div>`;
+                    return;
+                }
+                
+                // Render SEO insights
+                let html = `<div class="list-group">`;
+                
+                data.insights.forEach(insight => {
+                    let badgeClass = '';
+                    switch (insight.severity) {
+                        case 'high':
+                            badgeClass = 'bg-danger';
+                            break;
+                        case 'medium':
+                            badgeClass = 'bg-warning';
+                            break;
+                        case 'low':
+                            badgeClass = 'bg-info';
+                            break;
+                        default:
+                            badgeClass = 'bg-secondary';
+                    }
+                    
+                    html += `<div class="list-group-item">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <strong>${insight.title}</strong>
+                            <span class="badge ${badgeClass}">${insight.severity}</span>
+                        </div>
+                        <p class="mb-1">${insight.description}</p>
+                        <small>${insight.recommendation || ''}</small>
+                    </div>`;
+                });
+                
+                html += `</div>`;
+                container.innerHTML = html;
+            })
+            .catch(error => {
+                console.error('Error loading SEO insights:', error);
+                document.getElementById('seo-insights-container').innerHTML = 
+                    `<div class="alert alert-danger"><i class="bi bi-exclamation-triangle me-2"></i> Error loading SEO insights</div>`;
+            });
+    }
+    
+    function updateTopPosts(posts) {
+        const container = document.getElementById('top-posts-container');
         
-        if (posts.length === 0) {
-            const row = document.createElement('tr');
-            row.innerHTML = '<td colspan="5" class="text-center">No data available</td>';
-            tbody.appendChild(row);
+        if (!posts || posts.length === 0) {
+            container.innerHTML = `<div class="alert alert-info">No post data available for the selected blog/period.</div>`;
             return;
         }
+        
+        let html = `<div class="list-group">`;
         
         posts.forEach(post => {
-            const row = document.createElement('tr');
-            row.innerHTML = `
-                <td>${post.id}</td>
-                <td>${post.views.toLocaleString()}</td>
-                <td>${post.engagements.toLocaleString()}</td>
-                <td>${post.ad_clicks.toLocaleString()}</td>
-                <td>$${post.revenue.toFixed(2)}</td>
-            `;
-            tbody.appendChild(row);
-        });
-    }
-    
-    function updateTopReferrersTable(referrers) {
-        const tbody = document.querySelector('#topReferrersTable tbody');
-        tbody.innerHTML = '';
-        
-        if (referrers.length === 0) {
-            const row = document.createElement('tr');
-            row.innerHTML = '<td colspan="3" class="text-center">No data available</td>';
-            tbody.appendChild(row);
-            return;
-        }
-        
-        // Calculate total count for percentage
-        const totalCount = referrers.reduce((sum, ref) => sum + ref.count, 0);
-        
-        referrers.forEach(referrer => {
-            const row = document.createElement('tr');
-            const percentage = totalCount > 0 ? ((referrer.count / totalCount) * 100).toFixed(1) : '0.0';
-            
-            row.innerHTML = `
-                <td>${referrer.referrer}</td>
-                <td>${referrer.count.toLocaleString()}</td>
-                <td>${percentage}%</td>
-            `;
-            tbody.appendChild(row);
-        });
-    }
-    
-    function updateGoogleAnalyticsSection(data) {
-        const disabledAlert = document.getElementById('googleAnalyticsDisabled');
-        const contentSection = document.getElementById('googleAnalyticsContent');
-        
-        if (!data.enabled) {
-            disabledAlert.classList.remove('d-none');
-            contentSection.classList.add('d-none');
-            return;
-        }
-        
-        disabledAlert.classList.add('d-none');
-        contentSection.classList.remove('d-none');
-        
-        // Update metrics
-        document.getElementById('gaUsers').textContent = data.metrics.users.toLocaleString();
-        document.getElementById('gaSessions').textContent = data.metrics.sessions.toLocaleString();
-        document.getElementById('gaBounceRate').textContent = data.metrics.bounce_rate.toFixed(1) + '%';
-        document.getElementById('gaSessionDuration').textContent = formatTime(data.metrics.avg_session_duration);
-        
-        // Update age chart
-        const ageData = data.demographics.age;
-        gaAgeChart.data.datasets[0].data = [
-            ageData['18-24'], ageData['25-34'], ageData['35-44'],
-            ageData['45-54'], ageData['55-64'], ageData['65+']
-        ];
-        gaAgeChart.update();
-        
-        // Update gender chart
-        const genderData = data.demographics.gender;
-        gaGenderChart.data.datasets[0].data = [genderData.male, genderData.female];
-        gaGenderChart.update();
-        
-        // Update sources chart
-        const sourcesData = data.traffic_sources;
-        gaSourcesChart.data.datasets[0].data = [
-            sourcesData.organic, sourcesData.direct, sourcesData.referral,
-            sourcesData.social, sourcesData.email
-        ];
-        gaSourcesChart.update();
-    }
-    
-    function updateAdSenseSection(data) {
-        const disabledAlert = document.getElementById('adsenseDisabled');
-        const contentSection = document.getElementById('adsenseContent');
-        
-        if (!data.enabled) {
-            disabledAlert.classList.remove('d-none');
-            contentSection.classList.add('d-none');
-            return;
-        }
-        
-        disabledAlert.classList.add('d-none');
-        contentSection.classList.remove('d-none');
-        
-        // Update metrics
-        document.getElementById('adsensePageImpressions').textContent = data.metrics.page_impressions.toLocaleString();
-        document.getElementById('adsenseAdImpressions').textContent = data.metrics.ad_impressions.toLocaleString();
-        document.getElementById('adsenseClicks').textContent = data.metrics.clicks.toLocaleString();
-        document.getElementById('adsenseRevenue').textContent = '$' + data.metrics.revenue.toFixed(2);
-        
-        // Update revenue chart
-        const dailyData = data.daily_performance || [];
-        const labels = dailyData.map(day => day.date);
-        const revenueData = dailyData.map(day => day.revenue);
-        
-        adsenseRevenueChart.data.labels = labels;
-        adsenseRevenueChart.data.datasets[0].data = revenueData;
-        adsenseRevenueChart.update();
-        
-        // Update top ad units table
-        updateTopAdUnitsTable(data.top_performing_ads || []);
-        
-        // Update top pages table
-        updateTopAdPagesTable(data.top_performing_pages || []);
-    }
-    
-    function updateTopAdUnitsTable(adUnits) {
-        const tbody = document.querySelector('#topAdUnitsTable tbody');
-        tbody.innerHTML = '';
-        
-        if (adUnits.length === 0) {
-            const row = document.createElement('tr');
-            row.innerHTML = '<td colspan="5" class="text-center">No data available</td>';
-            tbody.appendChild(row);
-            return;
-        }
-        
-        adUnits.forEach(unit => {
-            const row = document.createElement('tr');
-            row.innerHTML = `
-                <td>${unit.ad_unit}</td>
-                <td>${unit.impressions.toLocaleString()}</td>
-                <td>${unit.clicks.toLocaleString()}</td>
-                <td>${unit.ctr.toFixed(2)}%</td>
-                <td>$${unit.revenue.toFixed(2)}</td>
-            `;
-            tbody.appendChild(row);
-        });
-    }
-    
-    function updateTopAdPagesTable(pages) {
-        const tbody = document.querySelector('#topAdPagesTable tbody');
-        tbody.innerHTML = '';
-        
-        if (pages.length === 0) {
-            const row = document.createElement('tr');
-            row.innerHTML = '<td colspan="4" class="text-center">No data available</td>';
-            tbody.appendChild(row);
-            return;
-        }
-        
-        pages.forEach(page => {
-            const row = document.createElement('tr');
-            row.innerHTML = `
-                <td>${page.path}</td>
-                <td>${page.impressions.toLocaleString()}</td>
-                <td>${page.clicks.toLocaleString()}</td>
-                <td>$${page.revenue.toFixed(2)}</td>
-            `;
-            tbody.appendChild(row);
-        });
-    }
-    
-    function updateSearchConsoleSection(data) {
-        const disabledAlert = document.getElementById('searchConsoleDisabled');
-        const contentSection = document.getElementById('searchConsoleContent');
-        
-        if (!data.enabled) {
-            disabledAlert.classList.remove('d-none');
-            contentSection.classList.add('d-none');
-            return;
-        }
-        
-        disabledAlert.classList.add('d-none');
-        contentSection.classList.remove('d-none');
-        
-        // Update metrics
-        document.getElementById('scTotalClicks').textContent = data.metrics.total_clicks.toLocaleString();
-        document.getElementById('scTotalImpressions').textContent = data.metrics.total_impressions.toLocaleString();
-        document.getElementById('scAverageCTR').textContent = data.metrics.average_ctr.toFixed(2) + '%';
-        document.getElementById('scAveragePosition').textContent = data.metrics.average_position.toFixed(1);
-        
-        // Update top queries table
-        updateTopQueriesTable(data.top_queries || []);
-        
-        // Update top pages table
-        updateTopSearchPagesTable(data.top_pages || []);
-    }
-    
-    function updateTopQueriesTable(queries) {
-        const tbody = document.querySelector('#topQueriesTable tbody');
-        tbody.innerHTML = '';
-        
-        if (queries.length === 0) {
-            const row = document.createElement('tr');
-            row.innerHTML = '<td colspan="5" class="text-center">No data available</td>';
-            tbody.appendChild(row);
-            return;
-        }
-        
-        queries.forEach(query => {
-            const row = document.createElement('tr');
-            row.innerHTML = `
-                <td>${query.query}</td>
-                <td>${query.clicks.toLocaleString()}</td>
-                <td>${query.impressions.toLocaleString()}</td>
-                <td>${query.ctr.toFixed(2)}%</td>
-                <td>${query.position.toFixed(1)}</td>
-            `;
-            tbody.appendChild(row);
-        });
-    }
-    
-    function updateTopSearchPagesTable(pages) {
-        const tbody = document.querySelector('#topSearchPagesTable tbody');
-        tbody.innerHTML = '';
-        
-        if (pages.length === 0) {
-            const row = document.createElement('tr');
-            row.innerHTML = '<td colspan="5" class="text-center">No data available</td>';
-            tbody.appendChild(row);
-            return;
-        }
-        
-        pages.forEach(page => {
-            const row = document.createElement('tr');
-            row.innerHTML = `
-                <td>${page.page}</td>
-                <td>${page.clicks.toLocaleString()}</td>
-                <td>${page.impressions.toLocaleString()}</td>
-                <td>${page.ctr.toFixed(2)}%</td>
-                <td>${page.position.toFixed(1)}</td>
-            `;
-            tbody.appendChild(row);
-        });
-    }
-    
-    function updateTopicPerformanceTable(data) {
-        const tbody = document.querySelector('#topicPerformanceTable tbody');
-        tbody.innerHTML = '';
-        
-        if (!data || Object.keys(data).length === 0) {
-            const row = document.createElement('tr');
-            row.innerHTML = '<td colspan="7" class="text-center">No data available</td>';
-            tbody.appendChild(row);
-            return;
-        }
-        
-        Object.entries(data).forEach(([topic, metrics]) => {
-            const row = document.createElement('tr');
-            row.innerHTML = `
-                <td>${topic}</td>
-                <td>${metrics.posts.toLocaleString()}</td>
-                <td>${metrics.views.toLocaleString()}</td>
-                <td>${metrics.avg_views_per_post.toFixed(1)}</td>
-                <td>${metrics.engagements.toLocaleString()}</td>
-                <td>${metrics.ad_clicks.toLocaleString()}</td>
-                <td>$${metrics.estimated_revenue.toFixed(2)}</td>
-            `;
-            tbody.appendChild(row);
-        });
-    }
-    
-    function updateSEOInsightsSection(data) {
-        // Update top keywords table
-        updateTopKeywordsTable(data.top_performing_keywords || []);
-        
-        // Update content gaps table
-        updateContentGapsTable(data.content_gaps || []);
-    }
-    
-    function updateTopKeywordsTable(keywords) {
-        const tbody = document.querySelector('#topKeywordsTable tbody');
-        tbody.innerHTML = '';
-        
-        if (keywords.length === 0) {
-            const row = document.createElement('tr');
-            row.innerHTML = '<td colspan="2" class="text-center">No data available</td>';
-            tbody.appendChild(row);
-            return;
-        }
-        
-        keywords.forEach(keyword => {
-            const row = document.createElement('tr');
-            row.innerHTML = `
-                <td>${keyword.keyword}</td>
-                <td>${keyword.traffic.toLocaleString()}</td>
-            `;
-            tbody.appendChild(row);
-        });
-    }
-    
-    function updateContentGapsTable(gaps) {
-        const tbody = document.querySelector('#contentGapsTable tbody');
-        tbody.innerHTML = '';
-        
-        if (gaps.length === 0) {
-            const row = document.createElement('tr');
-            row.innerHTML = '<td colspan="2" class="text-center">No data available</td>';
-            tbody.appendChild(row);
-            return;
-        }
-        
-        gaps.forEach(gap => {
-            const row = document.createElement('tr');
-            row.innerHTML = `
-                <td>${gap.topic}</td>
-                <td>${gap.score}</td>
-            `;
-            tbody.appendChild(row);
-        });
-    }
-    
-    function saveGoogleAnalyticsConfig() {
-        const propertyId = document.getElementById('gaPropertyId').value.trim();
-        const measurementId = document.getElementById('gaMeasurementId').value.trim();
-        
-        if (!propertyId) {
-            alert('Property ID is required');
-            return;
-        }
-        
-        const blogId = currentBlogId === 'all' ? null : currentBlogId;
-        
-        fetch('/api/analytics/configure_google_analytics', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                blog_id: blogId,
-                property_id: propertyId,
-                measurement_id: measurementId
-            })
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                alert('Google Analytics configuration saved successfully');
-                $('#googleAnalyticsConfigModal').modal('hide');
-                fetchGoogleAnalyticsData();
-            } else {
-                alert('Error: ' + data.error);
-            }
-        })
-        .catch(error => {
-            console.error('Error saving Google Analytics configuration:', error);
-            alert('Error saving configuration');
-        });
-    }
-    
-    function saveAdsenseConfig() {
-        const clientId = document.getElementById('adsenseClientId').value.trim();
-        
-        if (!clientId) {
-            alert('Client ID is required');
-            return;
-        }
-        
-        // Collect ad units
-        const adUnits = [];
-        document.querySelectorAll('.ad-unit-row').forEach(row => {
-            const name = row.querySelector('.ad-unit-name').value.trim();
-            const id = row.querySelector('.ad-unit-id').value.trim();
-            
-            if (name && id) {
-                adUnits.push({ name, id });
-            }
+            html += `<div class="list-group-item">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="mb-1">${post.title}</h6>
+                        <small class="text-muted">${post.url || ''}</small>
+                    </div>
+                    <div class="text-end">
+                        <span class="badge bg-primary rounded-pill">${post.views || 0} views</span>
+                    </div>
+                </div>
+            </div>`;
         });
         
-        const blogId = currentBlogId === 'all' ? null : currentBlogId;
-        
-        fetch('/api/analytics/configure_adsense', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                blog_id: blogId,
-                client_id: clientId,
-                ad_units: adUnits
-            })
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                alert('AdSense configuration saved successfully');
-                $('#adsenseConfigModal').modal('hide');
-                fetchAdSenseData();
-            } else {
-                alert('Error: ' + data.error);
-            }
-        })
-        .catch(error => {
-            console.error('Error saving AdSense configuration:', error);
-            alert('Error saving configuration');
-        });
+        html += `</div>`;
+        container.innerHTML = html;
     }
     
-    function saveSearchConsoleConfig() {
-        const siteUrl = document.getElementById('searchConsoleSiteUrl').value.trim();
+    function updateTrafficSources(sources) {
+        const container = document.getElementById('traffic-sources-container');
         
-        if (!siteUrl) {
-            alert('Site URL is required');
+        if (!sources || sources.length === 0) {
+            container.innerHTML = `<div class="alert alert-info">No traffic source data available for the selected blog/period.</div>`;
             return;
         }
         
-        const blogId = currentBlogId === 'all' ? null : currentBlogId;
+        let html = `<div class="list-group">`;
         
-        fetch('/api/analytics/configure_search_console', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                blog_id: blogId,
-                site_url: siteUrl
-            })
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                alert('Search Console configuration saved successfully');
-                $('#searchConsoleConfigModal').modal('hide');
-                fetchSearchConsoleData();
-            } else {
-                alert('Error: ' + data.error);
-            }
-        })
-        .catch(error => {
-            console.error('Error saving Search Console configuration:', error);
-            alert('Error saving configuration');
+        sources.forEach(source => {
+            html += `<div class="list-group-item">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="mb-0">${source.referrer || 'Direct'}</h6>
+                    </div>
+                    <div>
+                        <span class="badge bg-secondary rounded-pill">${source.count || 0}</span>
+                    </div>
+                </div>
+            </div>`;
         });
-    }
-    
-    function addAdUnitRow() {
-        const container = document.getElementById('adUnitContainer');
-        const newRow = document.createElement('div');
-        newRow.className = 'ad-unit-row mb-2';
-        newRow.innerHTML = `
-            <div class="input-group">
-                <input type="text" class="form-control ad-unit-name" placeholder="Ad Unit Name (e.g., Sidebar Top)">
-                <input type="text" class="form-control ad-unit-id" placeholder="Ad Unit ID">
-                <button class="btn btn-outline-danger remove-ad-unit" type="button">Remove</button>
-            </div>
-        `;
-        container.appendChild(newRow);
-    }
-    
-    function showLoading() {
-        // Implement loading UI as needed
-    }
-    
-    function hideLoading() {
-        // Implement loading UI as needed
-    }
-    
-    function showError(message) {
-        alert(message);
-    }
-    
-    function formatTime(seconds) {
-        const mins = Math.floor(seconds / 60);
-        const secs = Math.floor(seconds % 60);
-        return `${mins}m ${secs}s`;
+        
+        html += `</div>`;
+        container.innerHTML = html;
     }
 });
 </script>
