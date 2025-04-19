@@ -85,6 +85,26 @@ except Exception as e:
     logger.warning(f"Failed to initialize Translation service: {str(e)}")
     translation_service = None
     
+# Initialize backlink monitoring service
+try:
+    from src.shared.backlink_service import BacklinkService
+    from src.shared.backlink_controller import BacklinkController
+    
+    backlink_service = BacklinkService(
+        storage_service=storage_service,
+        analytics_service=analytics_service
+    )
+    backlink_controller = BacklinkController(
+        backlink_service=backlink_service,
+        storage_service=storage_service
+    )
+    
+    logger.info("Backlink monitoring service initialized")
+except Exception as e:
+    logger.warning(f"Failed to initialize Backlink service: {str(e)}")
+    backlink_service = None
+    backlink_controller = None
+    
 # Create API routes for translation
 @app.route('/api/translate', methods=['POST'])
 def translate_text_api():
@@ -3542,6 +3562,289 @@ def get_blog_by_id(blog_id):
     except Exception as e:
         logger.error(f"Error getting blog by ID {blog_id}: {str(e)}, traceback: {traceback.format_exc()}")
         return None
+
+# ======================================================
+# Backlink Monitoring Routes and API Endpoints
+# ======================================================
+
+@app.route('/backlinks')
+def backlink_dashboard():
+    """Backlink monitoring dashboard page (all blogs)"""
+    # Get all blogs
+    blogs = []
+    try:
+        # For now, we'll simulate getting blog configurations by listing data folders
+        blog_data_path = "data/blogs"
+        storage_service.ensure_local_directory(blog_data_path)
+        local_blog_folders = [f for f in os.listdir(blog_data_path) if os.path.isdir(os.path.join(blog_data_path, f))]
+        
+        for blog_id in local_blog_folders:
+            try:
+                blog_config_path = os.path.join(blog_data_path, blog_id, "config.json")
+                if os.path.exists(blog_config_path):
+                    with open(blog_config_path, 'r') as f:
+                        blog_config = json.load(f)
+                    
+                    blogs.append({
+                        'id': blog_id,
+                        'name': blog_config.get('name', 'Unnamed Blog'),
+                        'description': blog_config.get('description', f"A blog about {blog_config.get('theme', 'various topics')}"),
+                        'wordpress_url': blog_config.get('wordpress', {}).get('url', '')
+                    })
+            except Exception as e:
+                logger.error(f"Error loading blog config for {blog_id}: {str(e)}")
+    except Exception as e:
+        logger.error(f"Error listing blog configurations: {str(e)}")
+    
+    return render_template('backlink_dashboard.html', blogs=blogs)
+
+@app.route('/backlinks/<blog_id>')
+def blog_backlinks(blog_id):
+    """Backlink monitoring dashboard for a specific blog"""
+    # Get blog details
+    blog = get_blog_by_id(blog_id)
+    if not blog:
+        flash("Blog not found", "danger")
+        return redirect(url_for('backlink_dashboard'))
+    
+    if not backlink_controller:
+        flash("Backlink monitoring service is not available", "warning")
+        return render_template('backlink_dashboard.html', blog=blog)
+    
+    # Get backlink data
+    report = None
+    changes = None
+    competitors = []
+    competitor_comparison = []
+    
+    try:
+        # Get backlink report
+        report_data = backlink_controller.get_backlink_report(blog_id)
+        if report_data.get('success'):
+            report = report_data
+        
+        # Get backlink changes
+        changes_data = backlink_service.track_backlink_changes(blog_id)
+        if changes_data.get('success'):
+            changes = changes_data
+        
+        # Get competitors
+        competitors_data = backlink_controller.get_competitor_list(blog_id)
+        if competitors_data.get('success'):
+            competitors = competitors_data.get('competitors', [])
+            
+            # If we have competitors, get comparison data
+            if competitors:
+                competitor_urls = [comp.get('url') for comp in competitors if comp.get('url')]
+                comparison_data = backlink_controller.get_competitor_analysis(blog_id, competitor_urls)
+                if comparison_data.get('success'):
+                    competitor_comparison = comparison_data.get('competitor_comparison', [])
+    except Exception as e:
+        logger.error(f"Error getting backlink data: {str(e)}")
+        flash(f"Error retrieving backlink data: {str(e)}", "danger")
+    
+    return render_template('backlink_dashboard.html', 
+                           blog=blog, 
+                           report=report, 
+                           changes=changes, 
+                           competitors=competitors,
+                           competitor_comparison=competitor_comparison)
+
+@app.route('/backlinks/<blog_id>/opportunities')
+def backlink_opportunities(blog_id):
+    """Backlink opportunities page for a specific blog"""
+    # Get blog details
+    blog = get_blog_by_id(blog_id)
+    if not blog:
+        flash("Blog not found", "danger")
+        return redirect(url_for('backlink_dashboard'))
+    
+    if not backlink_controller:
+        flash("Backlink monitoring service is not available", "warning")
+        return render_template('backlink_dashboard.html', blog=blog)
+    
+    # Get backlink opportunities
+    opportunities = []
+    competitors = []
+    
+    try:
+        # Get competitors
+        competitors_data = backlink_controller.get_competitor_list(blog_id)
+        if competitors_data.get('success'):
+            competitors = competitors_data.get('competitors', [])
+            
+        # Get opportunities
+        opportunities_data = backlink_controller.get_backlink_opportunities(blog_id)
+        if opportunities_data.get('success'):
+            opportunities = opportunities_data.get('opportunities', [])
+    except Exception as e:
+        logger.error(f"Error getting backlink opportunities: {str(e)}")
+        flash(f"Error retrieving backlink opportunities: {str(e)}", "danger")
+    
+    return render_template('backlink_opportunities.html', 
+                           blog=blog, 
+                           opportunities=opportunities,
+                           competitors=competitors)
+
+@app.route('/backlinks/<blog_id>/export')
+def export_backlinks(blog_id):
+    """Export backlink data as JSON"""
+    # Get blog details
+    blog = get_blog_by_id(blog_id)
+    if not blog:
+        return jsonify({"error": "Blog not found"}), 404
+    
+    if not backlink_controller:
+        return jsonify({"error": "Backlink monitoring service is not available"}), 503
+    
+    export_type = request.args.get('type', 'all')
+    
+    try:
+        if export_type == 'top':
+            # Export only top backlinks
+            report_data = backlink_controller.get_backlink_report(blog_id)
+            if report_data.get('success'):
+                return jsonify({
+                    "blog_id": blog_id,
+                    "blog_name": blog.get('name'),
+                    "export_type": "top_backlinks",
+                    "timestamp": datetime.datetime.now().isoformat(),
+                    "backlinks": report_data.get('top_backlinks', [])
+                })
+            else:
+                return jsonify({"error": report_data.get('error', 'Unknown error')}), 500
+        else:
+            # Export all backlink data
+            all_data = backlink_controller.get_backlinks(blog_id)
+            if all_data.get('success'):
+                return jsonify({
+                    "blog_id": blog_id,
+                    "blog_name": blog.get('name'),
+                    "export_type": "all_backlinks",
+                    "timestamp": datetime.datetime.now().isoformat(),
+                    "backlinks": all_data.get('backlinks', []),
+                    "total_count": all_data.get('total_count', 0),
+                    "last_updated": all_data.get('last_updated')
+                })
+            else:
+                return jsonify({"error": all_data.get('error', 'Unknown error')}), 500
+    except Exception as e:
+        logger.error(f"Error exporting backlinks: {str(e)}")
+        return jsonify({"error": f"Error exporting backlinks: {str(e)}"}), 500
+
+# API Routes for Backlink Monitoring
+
+@app.route('/api/backlinks/<blog_id>/refresh', methods=['POST'])
+def api_refresh_backlinks(blog_id):
+    """API endpoint to refresh backlinks for a blog"""
+    if not backlink_controller:
+        return jsonify({"success": False, "error": "Backlink service is not available"}), 503
+    
+    try:
+        data = request.get_json() or {}
+        blog_url = data.get('blog_url')
+        
+        # Validate blog
+        blog = get_blog_by_id(blog_id)
+        if not blog:
+            return jsonify({"success": False, "error": "Blog not found"}), 404
+        
+        # Use blog URL from config if not provided
+        if not blog_url:
+            blog_url = blog.get('wordpress_url')
+            if not blog_url:
+                return jsonify({"success": False, "error": "Blog URL not found in configuration"}), 400
+        
+        # Refresh backlinks
+        result = backlink_controller.refresh_backlinks(blog_id, blog_url)
+        
+        return jsonify(result)
+    except Exception as e:
+        logger.error(f"Error refreshing backlinks: {str(e)}")
+        return jsonify({"success": False, "error": f"Error refreshing backlinks: {str(e)}"}), 500
+
+@app.route('/api/backlinks/<blog_id>/competitors', methods=['GET', 'POST'])
+def api_blog_competitors(blog_id):
+    """API endpoint to get or add competitors for a blog"""
+    if not backlink_controller:
+        return jsonify({"success": False, "error": "Backlink service is not available"}), 503
+    
+    # Validate blog
+    blog = get_blog_by_id(blog_id)
+    if not blog:
+        return jsonify({"success": False, "error": "Blog not found"}), 404
+    
+    # GET: Return competitor list
+    if request.method == 'GET':
+        try:
+            result = backlink_controller.get_competitor_list(blog_id)
+            return jsonify(result)
+        except Exception as e:
+            logger.error(f"Error getting competitors: {str(e)}")
+            return jsonify({"success": False, "error": f"Error getting competitors: {str(e)}"}), 500
+    
+    # POST: Add a new competitor
+    elif request.method == 'POST':
+        try:
+            data = request.get_json()
+            
+            # Validate required parameters
+            if not data or 'url' not in data or 'name' not in data:
+                return jsonify({
+                    "success": False,
+                    "error": "Missing required parameters: url and name"
+                }), 400
+            
+            competitor_url = data['url']
+            competitor_name = data['name']
+            
+            # Add competitor
+            result = backlink_controller.add_competitor(blog_id, competitor_url, competitor_name)
+            
+            return jsonify(result)
+        except Exception as e:
+            logger.error(f"Error adding competitor: {str(e)}")
+            return jsonify({"success": False, "error": f"Error adding competitor: {str(e)}"}), 500
+
+@app.route('/api/backlinks/<blog_id>/competitors/<path:competitor_url>', methods=['DELETE'])
+def api_competitor_delete(blog_id, competitor_url):
+    """API endpoint to delete a competitor for a blog"""
+    if not backlink_controller:
+        return jsonify({"success": False, "error": "Backlink service is not available"}), 503
+    
+    # Validate blog
+    blog = get_blog_by_id(blog_id)
+    if not blog:
+        return jsonify({"success": False, "error": "Blog not found"}), 404
+    
+    try:
+        # Remove competitor
+        result = backlink_controller.remove_competitor(blog_id, competitor_url)
+        
+        return jsonify(result)
+    except Exception as e:
+        logger.error(f"Error removing competitor: {str(e)}")
+        return jsonify({"success": False, "error": f"Error removing competitor: {str(e)}"}), 500
+
+@app.route('/api/backlinks/<blog_id>/opportunities', methods=['GET'])
+def api_backlink_opportunities(blog_id):
+    """API endpoint to get backlink opportunities for a blog"""
+    if not backlink_controller:
+        return jsonify({"success": False, "error": "Backlink service is not available"}), 503
+    
+    # Validate blog
+    blog = get_blog_by_id(blog_id)
+    if not blog:
+        return jsonify({"success": False, "error": "Blog not found"}), 404
+    
+    try:
+        # Get opportunities
+        result = backlink_controller.get_backlink_opportunities(blog_id)
+        
+        return jsonify(result)
+    except Exception as e:
+        logger.error(f"Error getting backlink opportunities: {str(e)}")
+        return jsonify({"success": False, "error": f"Error getting backlink opportunities: {str(e)}"}), 500
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)), debug=True)
