@@ -21,6 +21,15 @@ storage_service = StorageService()
 research_service = ResearchService()
 openai_service = OpenAIService()
 
+# Initialize social media service
+try:
+    from src.shared.social_media_service import SocialMediaService
+    social_media_service = SocialMediaService()
+    logger.info("Social Media service initialized")
+except Exception as e:
+    logger.warning(f"Failed to initialize Social Media service: {str(e)}")
+    social_media_service = None
+
 @app.route('/')
 def index():
     """Main dashboard page"""
@@ -683,6 +692,17 @@ def view_content(blog_id, run_id):
                 results = json.load(f)
             status = 'completed'
         
+        # Try to load promote.json if exists (social media promotion data)
+        promote = None
+        promote_path = os.path.join(run_path, "promote.json")
+        if os.path.exists(promote_path):
+            try:
+                with open(promote_path, 'r') as f:
+                    promote = json.load(f)
+                logger.debug(f"Loaded social media promotion data for {blog_id}/{run_id}")
+            except Exception as e:
+                logger.warning(f"Error loading promote.json: {str(e)}")
+        
         # Convert markdown to HTML for preview
         try:
             import markdown
@@ -706,6 +726,7 @@ def view_content(blog_id, run_id):
                               recommendations=recommendations,
                               publish=publish,
                               results=results,
+                              promote=promote,
                               status=status,
                               post_url=post_url)
     
@@ -769,8 +790,72 @@ def edit_content(blog_id, run_id):
                 
                 # In a real scenario, here we would call the actual republish function,
                 # but for demo purposes, we'll just update the publish.json file
-                logger.info(f"Content marked for republishing: {blog_id}/{run_id}")
-                flash("Content has been updated and marked for republishing", "success")
+                
+                # Create a new promote.json file to trigger social media promotion
+                promote_path = os.path.join(run_path, "promote.json")
+                
+                # Check for social media promotion if republishing
+                try:
+                    # Get blog config to check if social promotion is enabled
+                    with open(config_path, 'r') as f:
+                        blog_config = json.load(f)
+                    
+                    social_enabled = blog_config.get('social_media', {}).get('enabled', False)
+                    
+                    # If social promotion is enabled, promote the content
+                    if social_enabled and social_media_service:
+                        # Extract content data
+                        content_data = {}
+                        # Try to get title from content
+                        with open(content_path, 'r') as f:
+                            content_text = f.read()
+                            lines = content_text.strip().split('\n')
+                            if lines and lines[0].startswith('# '):
+                                content_data['title'] = lines[0][2:].strip()
+                            
+                            # Create a short excerpt
+                            paragraphs = [line for line in lines if line.strip() and not line.startswith('#')]
+                            if paragraphs:
+                                content_data['excerpt'] = paragraphs[0][:300]
+                        
+                        # Promote the content
+                        promote_result = social_media_service.promote_content(blog_id, run_id, content_data, publish_data)
+                        
+                        # Save the promotion result
+                        with open(promote_path, 'w') as f:
+                            json.dump(promote_result, f, indent=2)
+                        
+                        logger.info(f"Content auto-promoted on social media: {blog_id}/{run_id}")
+                        flash("Content has been updated, republished, and promoted on social media", "success")
+                    else:
+                        reason = "Social media promotion is disabled for this blog" if not social_enabled else "Social media service is not available"
+                        logger.info(f"Content marked for republishing ({reason}): {blog_id}/{run_id}")
+                        
+                        # Create a skipped promote.json file
+                        if not social_enabled:
+                            promote_result = {
+                                "status": "skipped",
+                                "timestamp": datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                                "reason": reason
+                            }
+                            with open(promote_path, 'w') as f:
+                                json.dump(promote_result, f, indent=2)
+                        
+                        flash("Content has been updated and marked for republishing", "success")
+                except Exception as e:
+                    logger.warning(f"Error promoting content on social media: {str(e)}")
+                    
+                    # Create an error promote.json file
+                    promote_result = {
+                        "status": "error",
+                        "timestamp": datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                        "error": str(e),
+                        "reason": "Error occurred during social media promotion"
+                    }
+                    with open(promote_path, 'w') as f:
+                        json.dump(promote_result, f, indent=2)
+                    
+                    flash("Content has been updated and marked for republishing (social promotion failed)", "success")
             else:
                 # Create a new publish.json file
                 publish_data = {

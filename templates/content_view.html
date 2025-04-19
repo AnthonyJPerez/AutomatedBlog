@@ -225,6 +225,105 @@
             </div>
             {% endif %}
             
+            <!-- Social Media Promotion -->
+            {% if promote %}
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">Social Media Promotion</h5>
+                </div>
+                <div class="card-body">
+                    <p class="mb-1"><strong>Status:</strong> 
+                        {% if promote.status == 'completed' %}
+                        <span class="badge bg-success">Completed</span>
+                        {% elif promote.status == 'partial' %}
+                        <span class="badge bg-warning text-dark">Partial</span>
+                        {% elif promote.status == 'skipped' %}
+                        <span class="badge bg-secondary">Skipped</span>
+                        {% elif promote.status == 'error' %}
+                        <span class="badge bg-danger">Failed</span>
+                        {% else %}
+                        <span class="badge bg-secondary">{{ promote.status }}</span>
+                        {% endif %}
+                    </p>
+                    
+                    {% if promote.timestamp %}
+                    <p class="mb-1"><strong>Time:</strong> {{ promote.timestamp }}</p>
+                    {% endif %}
+                    
+                    {% if promote.platforms %}
+                    <div class="mt-3">
+                        <h6>Platforms</h6>
+                        <div class="card">
+                            <ul class="list-group list-group-flush">
+                                {% if promote.platforms.twitter %}
+                                <li class="list-group-item d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <i class="bi bi-twitter me-2"></i> Twitter
+                                        {% if promote.platforms.twitter.success %}
+                                        <span class="badge bg-success ms-2">Success</span>
+                                        {% else %}
+                                        <span class="badge bg-danger ms-2">Failed</span>
+                                        {% endif %}
+                                    </div>
+                                    {% if promote.platforms.twitter.post_id %}
+                                    <span class="text-muted small">ID: {{ promote.platforms.twitter.post_id }}</span>
+                                    {% endif %}
+                                </li>
+                                {% endif %}
+                                
+                                {% if promote.platforms.linkedin %}
+                                <li class="list-group-item d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <i class="bi bi-linkedin me-2"></i> LinkedIn
+                                        {% if promote.platforms.linkedin.success %}
+                                        <span class="badge bg-success ms-2">Success</span>
+                                        {% else %}
+                                        <span class="badge bg-danger ms-2">Failed</span>
+                                        {% endif %}
+                                    </div>
+                                    {% if promote.platforms.linkedin.post_id %}
+                                    <span class="text-muted small">ID: {{ promote.platforms.linkedin.post_id }}</span>
+                                    {% endif %}
+                                </li>
+                                {% endif %}
+                                
+                                {% if promote.platforms.facebook %}
+                                <li class="list-group-item d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <i class="bi bi-facebook me-2"></i> Facebook
+                                        {% if promote.platforms.facebook.success %}
+                                        <span class="badge bg-success ms-2">Success</span>
+                                        {% else %}
+                                        <span class="badge bg-danger ms-2">Failed</span>
+                                        {% endif %}
+                                    </div>
+                                    {% if promote.platforms.facebook.post_id %}
+                                    <span class="text-muted small">ID: {{ promote.platforms.facebook.post_id }}</span>
+                                    {% endif %}
+                                </li>
+                                {% endif %}
+                            </ul>
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    {% if promote.reason %}
+                    <div class="mt-3">
+                        <h6>Reason</h6>
+                        <p class="text-muted">{{ promote.reason }}</p>
+                    </div>
+                    {% endif %}
+                    
+                    {% if promote.error %}
+                    <div class="mt-3">
+                        <h6>Error</h6>
+                        <p class="text-danger">{{ promote.error }}</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
+            
             <!-- Results -->
             {% if results %}
             <div class="card mb-4">
