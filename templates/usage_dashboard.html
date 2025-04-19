@@ -2,6 +2,10 @@
 
 {% block title %}Usage & Billing Dashboard{% endblock %}
 
+{% block head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+{% endblock %}
+
 {% block content %}
 <div class="container py-4">
     <h1 class="mb-4">Usage & Billing Dashboard</h1>
@@ -262,6 +266,53 @@
         </div>
         
         <div class="col-md-6">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Google AdWords Credentials</h5>
+                </div>
+                <div class="card-body">
+                    <form id="adwords-credentials-form">
+                        <div class="mb-3">
+                            <label for="adwords-client-id" class="form-label">Client ID</label>
+                            <div class="input-group">
+                                <input type="password" class="form-control" id="adwords-client-id">
+                                <button class="btn btn-outline-secondary toggle-password" type="button">
+                                    <i class="bi bi-eye"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="adwords-client-secret" class="form-label">Client Secret</label>
+                            <div class="input-group">
+                                <input type="password" class="form-control" id="adwords-client-secret">
+                                <button class="btn btn-outline-secondary toggle-password" type="button">
+                                    <i class="bi bi-eye"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="adwords-developer-token" class="form-label">Developer Token</label>
+                            <div class="input-group">
+                                <input type="password" class="form-control" id="adwords-developer-token">
+                                <button class="btn btn-outline-secondary toggle-password" type="button">
+                                    <i class="bi bi-eye"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="adwords-refresh-token" class="form-label">Refresh Token</label>
+                            <div class="input-group">
+                                <input type="password" class="form-control" id="adwords-refresh-token">
+                                <button class="btn btn-outline-secondary toggle-password" type="button">
+                                    <i class="bi bi-eye"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Update AdWords Credentials</button>
+                    </form>
+                </div>
+            </div>
+            
             <div class="card">
                 <div class="card-header">
                     <h5 class="card-title mb-0">Social Media Credentials</h5>
@@ -412,6 +463,42 @@
             });
         });
         
+        // AdWords credentials form
+        document.getElementById('adwords-credentials-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const clientId = document.getElementById('adwords-client-id').value;
+            const clientSecret = document.getElementById('adwords-client-secret').value;
+            const developerToken = document.getElementById('adwords-developer-token').value;
+            const refreshToken = document.getElementById('adwords-refresh-token').value;
+            
+            fetch('/api/global/credentials', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    google_adwords_client_id: clientId,
+                    google_adwords_client_secret: clientSecret,
+                    google_adwords_developer_token: developerToken,
+                    google_adwords_refresh_token: refreshToken
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('Google AdWords credentials updated successfully');
+                    fetchGlobalUsage();  // Refresh the data
+                } else {
+                    alert('Error updating Google AdWords credentials: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('An error occurred while updating credentials');
+            });
+        });
+        
         // Social media credentials form
         document.getElementById('social-media-credentials-form').addEventListener('submit', function(e) {
             e.preventDefault();
@@ -482,6 +569,37 @@
         document.getElementById('openai-usage-text').textContent = `${openAiUsage.tokens_used || 0} / ${openAiUsage.tokens_limit || 0} tokens`;
         document.getElementById('openai-credits').textContent = `$${(openAiUsage.cost || 0).toFixed(2)}`;
         
+        // Update AdWords usage
+        const adwordsUsage = data.google_adwords || {};
+        if (adwordsUsage.has_credentials && adwordsUsage.usage_available) {
+            const usage = adwordsUsage.usage || {};
+            const campaigns = usage.campaigns || [];
+            const totalBudget = campaigns.reduce((sum, campaign) => sum + (campaign.budget || 0), 0);
+            const totalSpent = campaigns.reduce((sum, campaign) => sum + (campaign.cost_month_to_date || 0), 0);
+            
+            const adwordsPercentage = Math.min(100, Math.round((totalSpent / (totalBudget || 1)) * 100));
+            document.getElementById('adwords-usage-bar').style.width = adwordsPercentage + '%';
+            document.getElementById('adwords-usage-text').textContent = `${campaigns.length} campaigns`;
+            document.getElementById('adwords-credits').textContent = `$${totalSpent.toFixed(2)}`;
+            
+            // Update daily cost data
+            if (usage.today) {
+                document.getElementById('daily-adwords-cost').textContent = `$${usage.today.cost.toFixed(2)}`;
+            }
+            
+            // Update monthly cost data
+            if (usage.this_month) {
+                document.getElementById('monthly-adwords-cost').textContent = `$${usage.this_month.cost.toFixed(2)}`;
+            }
+            
+            // Update cost charts
+            updateCostCharts(data);
+        } else {
+            document.getElementById('adwords-usage-bar').style.width = '0%';
+            document.getElementById('adwords-usage-text').textContent = 'Not configured';
+            document.getElementById('adwords-credits').textContent = '$0.00';
+        }
+        
         // Update Image usage
         const imageUsage = data.image_generation || {};
         const imagePercentage = Math.min(100, Math.round((imageUsage.images_generated || 0) / (imageUsage.images_limit || 1) * 100));
@@ -532,6 +650,201 @@
             `;
             
             tbody.appendChild(row);
+        });
+    }
+    
+    function updateCostCharts(data) {
+        // Calculate total costs for daily and monthly summaries
+        calculateCostSummaries(data);
+        
+        // Update the daily cost chart
+        updateDailyCostChart(data);
+        
+        // Update the monthly cost chart
+        updateMonthlyCostChart(data);
+    }
+    
+    function calculateCostSummaries(data) {
+        // Get OpenAI costs
+        const openAiUsage = data.openai || {};
+        const openAiCost = openAiUsage.cost || 0;
+        
+        // Get AdWords costs
+        const adwordsUsage = data.google_adwords || {};
+        let adwordsTodayCost = 0;
+        let adwordsMonthCost = 0;
+        
+        if (adwordsUsage.has_credentials && adwordsUsage.usage_available) {
+            const usage = adwordsUsage.usage || {};
+            if (usage.today) {
+                adwordsTodayCost = usage.today.cost || 0;
+            }
+            
+            if (usage.this_month) {
+                adwordsMonthCost = usage.this_month.cost || 0;
+            }
+        }
+        
+        // Get image generation costs
+        const imageUsage = data.image_generation || {};
+        const imageCost = imageUsage.cost || 0;
+        
+        // Calculate and update daily totals
+        const dailyOpenAICost = openAiCost / 30; // Approximate daily cost
+        const dailyImageCost = imageCost / 30; // Approximate daily cost
+        
+        document.getElementById('daily-openai-cost').textContent = `$${dailyOpenAICost.toFixed(2)}`;
+        document.getElementById('daily-image-cost').textContent = `$${dailyImageCost.toFixed(2)}`;
+        
+        const dailyTotalCost = dailyOpenAICost + adwordsTodayCost + dailyImageCost;
+        document.getElementById('daily-total-cost').textContent = `$${dailyTotalCost.toFixed(2)}`;
+        
+        // Calculate and update monthly totals
+        document.getElementById('monthly-openai-cost').textContent = `$${openAiCost.toFixed(2)}`;
+        document.getElementById('monthly-image-cost').textContent = `$${imageCost.toFixed(2)}`;
+        
+        const monthlyTotalCost = openAiCost + adwordsMonthCost + imageCost;
+        document.getElementById('monthly-total-cost').textContent = `$${monthlyTotalCost.toFixed(2)}`;
+    }
+    
+    function updateDailyCostChart(data) {
+        const ctx = document.getElementById('daily-cost-chart').getContext('2d');
+        
+        // Get AdWords daily cost data
+        const adwordsUsage = data.google_adwords || {};
+        let dailyCosts = [];
+        let labels = [];
+        
+        if (adwordsUsage.has_credentials && adwordsUsage.usage_available) {
+            const usage = adwordsUsage.usage || {};
+            if (usage.daily_costs && usage.daily_costs.length > 0) {
+                // Get the last 7 days or less
+                const recentCosts = usage.daily_costs.slice(-7);
+                
+                // Extract dates and costs
+                dailyCosts = recentCosts.map(day => day.cost || 0);
+                labels = recentCosts.map(day => {
+                    const date = new Date(day.date);
+                    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                });
+            }
+        }
+        
+        // If no data, provide defaults
+        if (labels.length === 0) {
+            // Generate last 7 days dates
+            const today = new Date();
+            for (let i = 6; i >= 0; i--) {
+                const date = new Date(today);
+                date.setDate(date.getDate() - i);
+                labels.push(date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
+                dailyCosts.push(0);
+            }
+        }
+        
+        // Destroy existing chart if it exists
+        if (window.dailyCostChart) {
+            window.dailyCostChart.destroy();
+        }
+        
+        // Create the chart
+        window.dailyCostChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Daily Cost ($)',
+                    data: dailyCosts,
+                    backgroundColor: 'rgba(54, 162, 235, 0.5)',
+                    borderColor: 'rgba(54, 162, 235, 1)',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: 'Cost (USD)'
+                        }
+                    },
+                    x: {
+                        title: {
+                            display: true,
+                            text: 'Date'
+                        }
+                    }
+                }
+            }
+        });
+    }
+    
+    function updateMonthlyCostChart(data) {
+        const ctx = document.getElementById('monthly-cost-chart').getContext('2d');
+        
+        // Get monthly cost breakdown
+        const openAiUsage = data.openai || {};
+        const openAiCost = openAiUsage.cost || 0;
+        
+        const adwordsUsage = data.google_adwords || {};
+        let adwordsMonthCost = 0;
+        
+        if (adwordsUsage.has_credentials && adwordsUsage.usage_available) {
+            const usage = adwordsUsage.usage || {};
+            if (usage.this_month) {
+                adwordsMonthCost = usage.this_month.cost || 0;
+            }
+        }
+        
+        const imageUsage = data.image_generation || {};
+        const imageCost = imageUsage.cost || 0;
+        
+        // Destroy existing chart if it exists
+        if (window.monthlyCostChart) {
+            window.monthlyCostChart.destroy();
+        }
+        
+        // Create the chart
+        window.monthlyCostChart = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: ['OpenAI API', 'Google AdWords', 'Image Generation'],
+                datasets: [{
+                    data: [openAiCost, adwordsMonthCost, imageCost],
+                    backgroundColor: [
+                        'rgba(54, 162, 235, 0.5)',
+                        'rgba(255, 99, 132, 0.5)',
+                        'rgba(75, 192, 192, 0.5)'
+                    ],
+                    borderColor: [
+                        'rgba(54, 162, 235, 1)',
+                        'rgba(255, 99, 132, 1)',
+                        'rgba(75, 192, 192, 1)'
+                    ],
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'right'
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                const label = context.label || '';
+                                const value = context.raw || 0;
+                                return `${label}: $${value.toFixed(2)}`;
+                            }
+                        }
+                    }
+                }
+            }
         });
     }
 </script>
