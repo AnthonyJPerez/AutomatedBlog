@@ -118,6 +118,9 @@
                                 <a href="{{ url_for('blog_detail', blog_id=blog.id) }}" class="btn btn-primary">
                                     <i class="bi bi-eye"></i> View Details
                                 </a>
+                                <a href="{{ url_for('edit_blog_config', blog_id=blog.id) }}" class="btn btn-warning">
+                                    <i class="bi bi-pencil"></i> Edit
+                                </a>
                                 <a href="{{ url_for('generate_content', blog_id=blog.id) }}" class="btn btn-success">
                                     <i class="bi bi-plus-circle"></i> Generate Content
                                 </a>

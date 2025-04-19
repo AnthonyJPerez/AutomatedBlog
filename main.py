@@ -458,6 +458,98 @@ def blog_detail(blog_id):
         flash(f"Error loading blog details: {str(e)}", "danger")
         return redirect(url_for('index'))
 
+@app.route('/edit_blog_config/<blog_id>', methods=['GET', 'POST'])
+def edit_blog_config(blog_id):
+    """Edit blog configuration page"""
+    try:
+        # Get blog configuration
+        blog_path = os.path.join("data/blogs", blog_id)
+        config_path = os.path.join(blog_path, "config.json")
+        
+        if not os.path.exists(config_path):
+            flash(f"Blog configuration not found for ID: {blog_id}", "danger")
+            return redirect(url_for('index'))
+        
+        with open(config_path, 'r') as f:
+            config = json.load(f)
+        
+        if request.method == 'POST':
+            # Update blog configuration
+            blog_name = request.form.get('blog_name', '').strip()
+            theme = request.form.get('theme', '').strip()
+            blog_description = request.form.get('blog_description', '').strip()
+            topic_keywords = request.form.get('topic_keywords', '').strip()
+            frequency = request.form.get('frequency', 'weekly').strip()
+            is_active = request.form.get('is_active') == '1'
+            wordpress_url = request.form.get('wordpress_url', '').strip()
+            
+            # Validate required fields
+            if not blog_name or not theme:
+                flash("Blog name and theme are required fields.", "danger")
+                return redirect(url_for('edit_blog_config', blog_id=blog_id))
+            
+            # Update base config
+            config['name'] = blog_name
+            config['theme'] = theme
+            config['description'] = blog_description if blog_description else f"A blog about {theme}"
+            config['is_active'] = is_active
+            config['frequency'] = frequency
+            
+            # Update WordPress configuration if provided
+            if wordpress_url:
+                if 'wordpress' not in config:
+                    config['wordpress'] = {}
+                config['wordpress']['url'] = wordpress_url
+            
+            # Update topics
+            topics_list = [kw.strip() for kw in topic_keywords.split(',') if kw.strip()]
+            config['topics'] = topics_list
+            
+            # Save config.json
+            with open(config_path, 'w') as f:
+                json.dump(config, f, indent=2)
+            
+            # Update theme.json
+            config_dir = os.path.join(blog_path, "config")
+            theme_json_path = os.path.join(config_dir, "theme.json")
+            
+            if os.path.exists(theme_json_path):
+                with open(theme_json_path, 'r') as f:
+                    theme_json = json.load(f)
+                
+                theme_json['name'] = theme
+                theme_json['description'] = blog_description if blog_description else f"A blog about {theme}"
+                
+                with open(theme_json_path, 'w') as f:
+                    json.dump(theme_json, f, indent=2)
+            
+            # Update topics.json
+            topics_json_path = os.path.join(config_dir, "topics.json")
+            with open(topics_json_path, 'w') as f:
+                json.dump(topics_list, f, indent=2)
+            
+            flash(f"Blog '{blog_name}' has been updated successfully!", "success")
+            return redirect(url_for('blog_detail', blog_id=blog_id))
+        
+        # For GET requests, display the form with current values
+        topics_str = ", ".join(config.get('topics', []))
+        wordpress_url = config.get('wordpress', {}).get('url', '')
+        
+        return render_template('edit_blog_config.html', 
+                              blog_id=blog_id, 
+                              blog_name=config.get('name', ''),
+                              theme=config.get('theme', ''),
+                              description=config.get('description', ''),
+                              topics=topics_str,
+                              frequency=config.get('frequency', 'weekly'),
+                              is_active=config.get('is_active', True),
+                              wordpress_url=wordpress_url)
+        
+    except Exception as e:
+        logger.error(f"Error editing blog configuration for {blog_id}: {str(e)}")
+        flash(f"Error editing blog configuration: {str(e)}", "danger")
+        return redirect(url_for('blog_detail', blog_id=blog_id))
+
 @app.route('/generate/<blog_id>', methods=['GET', 'POST'])
 def generate_content(blog_id):
     """Manually trigger content generation for a blog"""

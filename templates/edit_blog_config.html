@@ -1,0 +1,75 @@
+{% extends 'base.html' %}
+
+{% block title %}Edit Blog Configuration - {{ blog_name }}{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h4 class="mb-0">Edit Blog Configuration</h4>
+                <div>
+                    <a href="{{ url_for('blog_detail', blog_id=blog_id) }}" class="btn btn-secondary">Back to Blog Detail</a>
+                </div>
+            </div>
+            <div class="card-body">
+                <form id="editConfigForm" method="POST" action="{{ url_for('edit_blog_config', blog_id=blog_id) }}">
+                    <div class="mb-3">
+                        <label for="blogName" class="form-label">Blog Name</label>
+                        <input type="text" class="form-control" id="blogName" name="blog_name" required value="{{ blog_name }}">
+                        <div class="form-text">A descriptive name for your blog</div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="blogTheme" class="form-label">Blog Theme</label>
+                        <input type="text" class="form-control" id="blogTheme" name="theme" required value="{{ theme }}">
+                        <div class="form-text">The main theme of your blog (e.g., Technology, Finance, Travel)</div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="blogDescription" class="form-label">Blog Description</label>
+                        <textarea class="form-control" id="blogDescription" name="blog_description" rows="3">{{ description }}</textarea>
+                        <div class="form-text">A detailed description of your blog's purpose, target audience, and main focus</div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="topicKeywords" class="form-label">Topic Keywords</label>
+                        <input type="text" class="form-control" id="topicKeywords" name="topic_keywords" required value="{{ topics }}">
+                        <div class="form-text">Comma-separated keywords related to your blog theme</div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="contentFrequency" class="form-label">Content Generation Frequency</label>
+                        <select class="form-select" id="contentFrequency" name="frequency" required>
+                            <option value="daily" {% if frequency == 'daily' %}selected{% endif %}>Daily</option>
+                            <option value="weekly" {% if frequency == 'weekly' %}selected{% endif %}>Weekly</option>
+                            <option value="biweekly" {% if frequency == 'biweekly' %}selected{% endif %}>Bi-weekly</option>
+                            <option value="monthly" {% if frequency == 'monthly' %}selected{% endif %}>Monthly</option>
+                        </select>
+                        <div class="form-text">How often new content should be generated</div>
+                    </div>
+                    
+                    <div class="mb-3 form-check">
+                        <input type="checkbox" class="form-check-input" id="isActive" name="is_active" value="1" {% if is_active %}checked{% endif %}>
+                        <label class="form-check-label" for="isActive">Blog is Active</label>
+                        <div class="form-text">When unchecked, content generation will be paused for this blog</div>
+                    </div>
+                    
+                    <h5 class="mt-4 mb-3">WordPress Integration</h5>
+                    
+                    <div class="mb-3">
+                        <label for="wordpressUrl" class="form-label">WordPress Site URL</label>
+                        <input type="url" class="form-control" id="wordpressUrl" name="wordpress_url" value="{{ wordpress_url }}">
+                        <div class="form-text">The URL of your WordPress site (leave blank to skip WordPress integration)</div>
+                    </div>
+                    
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
+                        <a href="{{ url_for('blog_detail', blog_id=blog_id) }}" class="btn btn-secondary me-md-2">Cancel</a>
+                        <button type="submit" class="btn btn-primary">Save Changes</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
