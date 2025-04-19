@@ -1,0 +1,173 @@
+{% extends 'base.html' %}
+
+{% block title %}Multi-Blog Automation - Setup{% endblock %}
+
+{% block content %}
+<h1 class="mb-4">Create New Blog</h1>
+
+<div class="card">
+    <div class="card-header">
+        <h5 class="card-title mb-0">Blog Configuration</h5>
+    </div>
+    <div class="card-body">
+        <form method="POST" action="{{ url_for('setup') }}">
+            <h5 class="mb-3">Basic Information</h5>
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label for="blog_name" class="form-label">Blog Name <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="blog_name" name="blog_name" required>
+                        <div class="form-text">Give your blog a descriptive name</div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label for="theme" class="form-label">Blog Theme <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="theme" name="theme" required>
+                        <div class="form-text">The main topic or niche of your blog (e.g., technology, fitness, finance)</div>
+                    </div>
+                </div>
+            </div>
+
+            <h5 class="mb-3">Content Settings</h5>
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label for="tone" class="form-label">Content Tone</label>
+                        <select class="form-control" id="tone" name="tone">
+                            <option value="professional">Professional</option>
+                            <option value="casual">Casual</option>
+                            <option value="conversational">Conversational</option>
+                            <option value="educational">Educational</option>
+                            <option value="entertaining">Entertaining</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label for="target_audience" class="form-label">Target Audience</label>
+                        <input type="text" class="form-control" id="target_audience" name="target_audience" value="general">
+                        <div class="form-text">Who your content is intended for (e.g., beginners, experts, entrepreneurs)</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label class="form-label">Content Types</label>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="content_types" value="article" id="content_article" checked>
+                            <label class="form-check-label" for="content_article">Articles</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="content_types" value="listicle" id="content_listicle">
+                            <label class="form-check-label" for="content_listicle">Listicles</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="content_types" value="how_to" id="content_how_to">
+                            <label class="form-check-label" for="content_how_to">How-to Guides</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="content_types" value="review" id="content_review">
+                            <label class="form-check-label" for="content_review">Reviews</label>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label for="publishing_frequency" class="form-label">Publishing Frequency</label>
+                        <select class="form-control" id="publishing_frequency" name="publishing_frequency">
+                            <option value="daily">Daily</option>
+                            <option value="weekly" selected>Weekly</option>
+                            <option value="biweekly">Bi-weekly</option>
+                            <option value="monthly">Monthly</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="region" class="form-label">Target Region</label>
+                        <select class="form-control" id="region" name="region">
+                            <option value="US" selected>United States</option>
+                            <option value="UK">United Kingdom</option>
+                            <option value="CA">Canada</option>
+                            <option value="AU">Australia</option>
+                            <option value="Global">Global</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <h5 class="mb-3">WordPress Connection</h5>
+            <div class="row mb-3">
+                <div class="col-md-12">
+                    <div class="mb-3">
+                        <label for="wordpress_url" class="form-label">WordPress URL <span class="text-danger">*</span></label>
+                        <input type="url" class="form-control" id="wordpress_url" name="wordpress_url" placeholder="https://yourblog.com" required>
+                        <div class="form-text">Your WordPress site URL</div>
+                    </div>
+                </div>
+            </div>
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label for="wordpress_username" class="form-label">WordPress Username <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="wordpress_username" name="wordpress_username" required>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label for="wordpress_app_password" class="form-label">Application Password <span class="text-danger">*</span></label>
+                        <input type="password" class="form-control" id="wordpress_app_password" name="wordpress_app_password" required>
+                        <div class="form-text">Create an application password in your WordPress admin</div>
+                    </div>
+                </div>
+            </div>
+
+            <h5 class="mb-3">AdSense Integration (Optional)</h5>
+            <div class="row mb-3">
+                <div class="col-md-12">
+                    <div class="mb-3">
+                        <label for="adsense_publisher_id" class="form-label">AdSense Publisher ID</label>
+                        <input type="text" class="form-control" id="adsense_publisher_id" name="adsense_publisher_id" placeholder="pub-1234567890">
+                        <div class="form-text">Your AdSense publisher ID (format: pub-xxxxxxxxxx)</div>
+                    </div>
+                </div>
+            </div>
+            <div class="row mb-4">
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label for="adsense_ad_slot_1" class="form-label">Ad Slot ID (Content)</label>
+                        <input type="text" class="form-control" id="adsense_ad_slot_1" name="adsense_ad_slot_1">
+                        <div class="form-text">Ad unit to display within content</div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label for="adsense_ad_slot_2" class="form-label">Ad Slot ID (Sidebar)</label>
+                        <input type="text" class="form-control" id="adsense_ad_slot_2" name="adsense_ad_slot_2">
+                        <div class="form-text">Ad unit to display in sidebar</div>
+                    </div>
+                </div>
+            </div>
+
+            <h5 class="mb-3">Domain Configuration</h5>
+            <div class="row mb-3">
+                <div class="col-md-12">
+                    <div class="form-check mb-3">
+                        <input class="form-check-input" type="checkbox" id="needs_domain" name="needs_domain" value="true">
+                        <label class="form-check-label" for="needs_domain">
+                            I need domain suggestions for this blog
+                        </label>
+                        <div class="form-text">If checked, domain suggestions will be provided based on your theme and blog name</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="d-flex justify-content-between">
+                <a href="{{ url_for('index') }}" class="btn btn-secondary">Back to Dashboard</a>
+                <button type="submit" class="btn btn-primary">Create Blog</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,76 @@
+/* Custom styles for Multi-Blog Automation */
+
+/* Add some padding to the main content area */
+body {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.container {
+  padding-top: 1rem;
+  padding-bottom: 1rem;
+}
+
+/* Push footer to bottom */
+.footer {
+  margin-top: auto;
+}
+
+/* Card styling */
+.card {
+  box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+  margin-bottom: 1.5rem;
+}
+
+.card-header {
+  background-color: rgba(0, 0, 0, 0.03);
+}
+
+/* Status indicators */
+.status-indicator {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  display: inline-block;
+  margin-right: 5px;
+}
+
+.status-success {
+  background-color: var(--bs-success);
+}
+
+.status-warning {
+  background-color: var(--bs-warning);
+}
+
+.status-danger {
+  background-color: var(--bs-danger);
+}
+
+.status-info {
+  background-color: var(--bs-info);
+}
+
+/* Form styling */
+.form-section {
+  margin-bottom: 2rem;
+}
+
+.form-section-title {
+  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+  padding-bottom: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+/* Adjust table for mobile */
+@media (max-width: 768px) {
+  .table-responsive {
+    font-size: 0.9rem;
+  }
+  
+  .btn-sm {
+    padding: 0.2rem 0.4rem;
+    font-size: 0.75rem;
+  }
+}

@@ -1,0 +1,147 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ blog.blog_name }} - Blog Details{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>{{ blog.blog_name }}</h1>
+    <a href="{{ url_for('index') }}" class="btn btn-outline-secondary">Back to Dashboard</a>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-8">
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Blog Overview</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <p><strong>Theme:</strong> {{ blog.theme }}</p>
+                        <p><strong>Tone:</strong> {{ blog.tone|capitalize }}</p>
+                        <p><strong>Target Audience:</strong> {{ blog.target_audience|capitalize }}</p>
+                        <p><strong>Region:</strong> {{ blog.region }}</p>
+                    </div>
+                    <div class="col-md-6">
+                        <p><strong>Content Types:</strong> {{ blog.content_types|join(', ')|capitalize }}</p>
+                        <p><strong>Publishing Frequency:</strong> {{ blog.publishing_frequency|capitalize }}</p>
+                        <p><strong>Created:</strong> {{ blog.created_at.split('T')[0] if 'T' in blog.created_at else blog.created_at }}</p>
+                        <p><strong>Last Published:</strong>
+                            {% if blog.last_published_date %}
+                                {{ blog.last_published_date.split('T')[0] if 'T' in blog.last_published_date else blog.last_published_date }}
+                            {% else %}
+                                Never
+                            {% endif %}
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0">Content Generation Tasks</h5>
+                <form method="POST" action="{{ url_for('generate_content', blog_id=blog.blog_id) }}">
+                    <button type="submit" class="btn btn-primary">Generate New Content</button>
+                </form>
+            </div>
+            <div class="card-body">
+                {% if tasks and tasks|length > 0 %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Task ID</th>
+                                    <th>Created</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for task in tasks %}
+                                <tr>
+                                    <td>{{ task.id[:8] }}...</td>
+                                    <td>{{ task.created_at.split('T')[0] if 'T' in task.created_at else task.created_at }}</td>
+                                    <td>
+                                        {% if task.status == 'pending' %}
+                                            <span class="badge bg-warning">Pending</span>
+                                        {% elif task.status == 'processing' %}
+                                            <span class="badge bg-info">Processing</span>
+                                        {% elif task.status == 'completed' %}
+                                            <span class="badge bg-success">Completed</span>
+                                        {% elif task.status == 'error' %}
+                                            <span class="badge bg-danger">Error</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary">{{ task.status|capitalize }}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <button class="btn btn-sm btn-outline-info">View Details</button>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <div class="alert alert-info mb-0">
+                        <p class="mb-0">No content generation tasks have been created yet. Click "Generate New Content" to start.</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0">WordPress Connection</h5>
+            </div>
+            <div class="card-body">
+                <p><strong>Site URL:</strong> {{ blog.wordpress_url }}</p>
+                <p><strong>Username:</strong> {{ blog.wordpress_username }}</p>
+                <p><strong>Connection Status:</strong> <span class="badge bg-success">Connected</span></p>
+            </div>
+        </div>
+
+        {% if blog.adsense_publisher_id %}
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0">AdSense Integration</h5>
+            </div>
+            <div class="card-body">
+                <p><strong>Publisher ID:</strong> {{ blog.adsense_publisher_id }}</p>
+                <p><strong>Ad Slots:</strong> {{ blog.adsense_ad_slots|length }}</p>
+            </div>
+        </div>
+        {% endif %}
+
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Published Content</h5>
+            </div>
+            <div class="card-body">
+                {% if results and results|length > 0 %}
+                    <ul class="list-group">
+                        {% for result in results %}
+                            <li class="list-group-item">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <h6 class="mb-1">{{ result.title }}</h6>
+                                        <small class="text-muted">{{ result.published_at.split('T')[0] if 'T' in result.published_at else result.published_at }}</small>
+                                    </div>
+                                    {% if result.post_url %}
+                                        <a href="{{ result.post_url }}" target="_blank" class="btn btn-sm btn-outline-secondary">View</a>
+                                    {% endif %}
+                                </div>
+                            </li>
+                        {% endfor %}
+                    </ul>
+                {% else %}
+                    <p class="text-muted mb-0">No content has been published yet.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

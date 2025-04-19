@@ -1,0 +1,21 @@
+[project]
+name = "repl-nix-workspace"
+version = "0.1.0"
+description = "Add your description here"
+requires-python = ">=3.11"
+dependencies = [
+    "azure-functions>=1.23.0",
+    "azure-identity>=1.21.0",
+    "azure-keyvault-secrets>=4.9.0",
+    "azure-mgmt-resource>=23.3.0",
+    "azure-storage-blob>=12.25.1",
+    "email-validator>=2.2.0",
+    "flask>=3.1.0",
+    "flask-sqlalchemy>=3.1.1",
+    "gunicorn>=23.0.0",
+    "openai>=1.75.0",
+    "psycopg2-binary>=2.9.10",
+    "python-dateutil>=2.9.0.post0",
+    "pytrends>=4.9.2",
+    "requests>=2.32.3",
+]
