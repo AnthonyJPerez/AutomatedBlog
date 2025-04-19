@@ -23,6 +23,20 @@ The infrastructure is defined using Bicep templates for Infrastructure as Code (
 - **Azure Key Vault**: Securely stores API keys and credentials
 - **Application Insights**: Provides monitoring and logging
 
+## Documentation
+
+Comprehensive documentation for the system is available in the `/docs` directory:
+
+- [Automated Multi-Blog Content Pipeline Documentation](docs/automated_blog_system.md): Contains detailed information about system architecture, components, and workflows with interactive Mermaid diagrams.
+
+The documentation includes:
+- System architecture diagrams
+- State machine workflows
+- Component interaction sequences
+- Data storage structure
+- Integration points
+- Detailed configuration examples
+
 ## Getting Started
 
 ### Prerequisites
@@ -86,11 +100,18 @@ After deployment, you need to:
 ## Features
 
 - **Theme-aware Content Generation**: Creates content specific to each blog's theme and target audience
-- **Trending Topic Research**: Uses PyTrends to identify popular topics
-- **SEO Optimization**: Generates SEO metadata for better search engine rankings
-- **WordPress Integration**: Publishes directly to WordPress via REST API
+- **Trending Topic Research**: Uses PyTrends and web scraping to identify popular topics
+- **Competitor Analysis**: Tracks and analyzes competitors' content to identify gaps and opportunities
+- **Keyword Opportunity Finder**: Identifies high-value keywords your competitors are targeting
+- **SEO Optimization**: Generates SEO-optimized metadata and content structure
+- **WordPress Integration**: Publishes directly to WordPress via REST API with Multisite support
+- **Domain Mapping**: Advanced domain management for WordPress Multisite setups
+- **AI Cost Optimization**: Token counting, prompt refinement, and caching for efficient AI usage
+- **Social Media Integration**: Automatically promotes content on multiple platforms
+- **Analytics Dashboard**: Comprehensive tracking of traffic, engagement, and monetization
 - **AdSense Integration**: Automatically inserts AdSense ads at optimal positions
 - **Domain Suggestions**: Provides domain name recommendations via GoDaddy API
+- **Image Generation**: Creates relevant featured images for blog posts
 - **Scheduling**: Customizable publishing frequency for each blog
 
 ## Contributing
