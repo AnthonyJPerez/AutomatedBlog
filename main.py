@@ -350,32 +350,160 @@ def blog_detail(blog_id):
         flash(f"Error loading blog details: {str(e)}", "danger")
         return redirect(url_for('index'))
 
-@app.route('/generate/<blog_id>', methods=['POST'])
+@app.route('/generate/<blog_id>', methods=['GET', 'POST'])
 def generate_content(blog_id):
     """Manually trigger content generation for a blog"""
-    # Check if content.md already exists
-    if storage_service.blob_exists("generated", f"{blog_id}/content.md"):
-        flash(f"Content already exists for blog {blog_id}", "error")
-        return redirect(url_for('blog_detail', blog_id=blog_id))
-    
     try:
-        # Get research.json
-        research_json = storage_service.get_blob("generated", f"{blog_id}/research.json")
-        if not research_json:
-            flash(f"Research data not found for blog {blog_id}", "error")
-            return redirect(url_for('blog_detail', blog_id=blog_id))
+        # Get blog configuration
+        blog_path = os.path.join("data/blogs", blog_id)
+        config_path = os.path.join(blog_path, "config.json")
         
-        research = json.loads(research_json)
+        if not os.path.exists(config_path):
+            flash(f"Blog configuration not found for ID: {blog_id}", "danger")
+            return redirect(url_for('index'))
         
-        # Generate content using ContentGenerator
-        from src.ContentGenerator import main as content_generator
+        with open(config_path, 'r') as f:
+            config = json.load(f)
         
-        # TODO: Actually implement the generation
-        flash(f"Content generation for blog {blog_id} has been triggered", "success")
+        # Create a new run ID
+        run_id = storage_service.get_run_id()
+        run_path = os.path.join(blog_path, "runs", run_id)
+        storage_service.ensure_local_directory(run_path)
+        
+        # Step 1: Research trending topics related to the blog theme
+        theme = config.get('theme', '')
+        topics = config.get('topics', [])
+        
+        # Research trending topics related to the blog theme and focus topics
+        research_results = {
+            "theme": theme,
+            "timestamp": datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+            "trending_topics": []
+        }
+        
+        try:
+            trending_topics = research_service.research_topics(theme)
+            research_results["trending_topics"] = trending_topics[:5]  # Get top 5 trending topics
+            
+            # Add blog-specific topics
+            if topics:
+                research_results["blog_topics"] = topics
+        except Exception as e:
+            logger.warning(f"Error researching trending topics: {str(e)}. Using backup topics.")
+            # Fallback - use the blog's predefined topics
+            if topics:
+                research_results["trending_topics"] = [{"title": topic, "query": topic} for topic in topics[:5]]
+            else:
+                research_results["trending_topics"] = [
+                    {"title": f"{theme} news", "query": f"{theme} news"},
+                    {"title": f"{theme} trends", "query": f"{theme} trends"},
+                    {"title": f"{theme} guide", "query": f"{theme} guide"},
+                    {"title": f"{theme} tips", "query": f"{theme} tips"},
+                    {"title": f"{theme} examples", "query": f"{theme} examples"}
+                ]
+        
+        # Save research.json
+        with open(os.path.join(run_path, "research.json"), 'w') as f:
+            json.dump(research_results, f, indent=2)
+        
+        # Step 2: Generate content based on research
+        # Select a topic from research results
+        selected_topic = None
+        if research_results["trending_topics"]:
+            selected_topic = research_results["trending_topics"][0]["title"]
+        elif "blog_topics" in research_results and research_results["blog_topics"]:
+            selected_topic = research_results["blog_topics"][0]
+        else:
+            selected_topic = f"{theme} guide"
+        
+        # Generate content using OpenAI
+        try:
+            content_settings = config.get('content_settings', {})
+            content_length = content_settings.get('length', 1000)
+            content_style = content_settings.get('style', 'informative')
+            
+            prompt = f"""
+            Create a comprehensive blog post about "{selected_topic}" in the context of "{theme}".
+            
+            The blog post should be approximately {content_length} words long and written in a {content_style} style.
+            
+            Include the following sections:
+            1. An engaging introduction that hooks the reader
+            2. Main content with 3-5 key points or sections
+            3. A conclusion that summarizes the main points
+            
+            Format the post using Markdown with appropriate headers, lists, and emphasis.
+            Start with a # Title heading that's catchy and SEO-friendly.
+            """
+            
+            # Generate content
+            content = openai_service.generate_content(prompt)
+            
+            # Save content.md
+            with open(os.path.join(run_path, "content.md"), 'w') as f:
+                f.write(content)
+            
+            # Generate SEO recommendations
+            seo_prompt = f"""
+            Based on the blog post about "{selected_topic}" in the context of "{theme}", 
+            provide SEO recommendations in JSON format with the following structure:
+            
+            {{
+                "meta_title": "Suggested meta title, maximum 60 characters",
+                "meta_description": "Suggested meta description, maximum 160 characters",
+                "keywords": ["keyword1", "keyword2", "keyword3", ...],
+                "suggestions": [
+                    "Suggestion 1 to improve SEO",
+                    "Suggestion 2 to improve SEO",
+                    ...
+                ]
+            }}
+            
+            Ensure the meta title and description are compelling and include the main keyword.
+            """
+            
+            seo_recommendations = openai_service.generate_json(seo_prompt)
+            
+            # Save recommendations.json
+            with open(os.path.join(run_path, "recommendations.json"), 'w') as f:
+                f.write(seo_recommendations)
+            
+            # If WordPress integration is enabled, create a publish.json stub
+            if "wordpress" in config and config["wordpress"].get("url"):
+                publish_data = {
+                    "status": "pending",
+                    "wordpress_url": config["wordpress"].get("url"),
+                    "scheduled_time": datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                }
+                
+                # Save publish.json
+                with open(os.path.join(run_path, "publish.json"), 'w') as f:
+                    json.dump(publish_data, f, indent=2)
+            
+            # Create results.json with overall status
+            results_data = {
+                "status": "completed",
+                "timestamp": datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                "topic": selected_topic,
+                "theme": theme,
+                "content_length": len(content.split()),
+                "has_seo_recommendations": True,
+                "wordpress_publishing": "pending" if "wordpress" in config else "disabled"
+            }
+            
+            # Save results.json
+            with open(os.path.join(run_path, "results.json"), 'w') as f:
+                json.dump(results_data, f, indent=2)
+            
+            flash(f"Content for '{selected_topic}' has been successfully generated!", "success")
+            
+        except Exception as e:
+            logger.error(f"Error generating content: {str(e)}")
+            flash(f"Error generating content: {str(e)}", "danger")
         
     except Exception as e:
-        logger.error(f"Error generating content: {str(e)}")
-        flash(f"Error generating content: {str(e)}", "error")
+        logger.error(f"Error in content generation process: {str(e)}")
+        flash(f"Error in content generation process: {str(e)}", "danger")
     
     return redirect(url_for('blog_detail', blog_id=blog_id))
 

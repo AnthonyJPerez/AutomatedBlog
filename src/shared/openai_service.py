@@ -9,6 +9,7 @@ class OpenAIService:
     """
     Service for generating content using OpenAI's models.
     Supports both direct OpenAI API and Azure OpenAI Service.
+    Provides methods for generating blog content, SEO recommendations, and outlines.
     """
     
     def __init__(self):
@@ -172,14 +173,14 @@ class OpenAIService:
                 ]
             }
     
-    def generate_content(self, topic, outline, theme, tone="professional", target_audience="general", content_type="article"):
+    def generate_content(self, prompt, outline=None, theme=None, tone="professional", target_audience="general", content_type="article"):
         """
-        Generate content based on an outline.
+        Generate content based on a prompt or outline.
         
         Args:
-            topic (str): The topic for the content
-            outline (dict): The outline structure to follow
-            theme (str): The blog theme for context
+            prompt (str): The prompt or topic for content generation
+            outline (dict, optional): The outline structure to follow
+            theme (str, optional): The blog theme for context
             tone (str): The desired tone of content
             target_audience (str): The target audience
             content_type (str): Type of content to generate (article, draft, polish)
@@ -187,17 +188,6 @@ class OpenAIService:
         Returns:
             str: The generated content
         """
-        # Format the outline as text
-        outline_text = f"Title: {outline.get('title', topic)}\n\n"
-        
-        for i, section in enumerate(outline.get('sections', [])):
-            outline_text += f"{i+1}. {section.get('title', 'Section')}\n"
-            
-            for point in section.get('points', []):
-                outline_text += f"   - {point}\n"
-            
-            outline_text += "\n"
-        
         # Select the appropriate model based on content type
         if content_type == "polish":
             model = self.polish_model
@@ -215,14 +205,32 @@ class OpenAIService:
             temperature = 0.7
             polish_guidance = ""
         
-        prompt = f"""
-        Write a comprehensive blog post about "{topic}".
+        # Format the outline as text if provided
+        outline_text = ""
+        if outline:
+            outline_text = f"\nPlease follow this outline:\n"
+            
+            if isinstance(outline, dict):
+                outline_text += f"Title: {outline.get('title', 'Main Topic')}\n\n"
+                
+                for i, section in enumerate(outline.get('sections', [])):
+                    outline_text += f"{i+1}. {section.get('title', 'Section')}\n"
+                    
+                    for point in section.get('points', []):
+                        outline_text += f"   - {point}\n"
+                    
+                    outline_text += "\n"
+            elif isinstance(outline, str):
+                outline_text += outline
         
-        Theme/context: {theme}
+        # Create the full prompt
+        theme_context = f"\nTheme/context: {theme}" if theme else ""
+        
+        full_prompt = f"""
+        {prompt}
+        {theme_context}
         Tone: {tone}
         Target audience: {target_audience}
-        
-        Please follow this outline:
         {outline_text}
         
         {polish_guidance}
@@ -230,7 +238,7 @@ class OpenAIService:
         Format the article in Markdown with proper headings (#, ##, ###),
         and include:
         - Engaging introduction that hooks the reader
-        - Well-structured content following the outline
+        - Well-structured content with clear sections
         - SEO-optimized headings and subheadings
         - Conclusion with key takeaways
         - Proper transitions between sections
@@ -239,20 +247,23 @@ class OpenAIService:
         """
         
         try:
-            content = self._get_completion(prompt, model, max_tokens=max_tokens, temperature=temperature)
+            content = self._get_completion(full_prompt, model, max_tokens=max_tokens, temperature=temperature)
             return content
             
         except Exception as e:
             self.logger.error(f"Error generating content: {str(e)}")
             # Return a basic error message as content
+            topic = prompt.strip()[:50]  # Use the beginning of the prompt as the topic
+            theme_text = f"related to {theme}" if theme else ""
+            
             return f"""
-            # {topic}
+            # About {topic}
             
             *Content generation is temporarily unavailable. Please try again later.*
             
             ## About this topic
             
-            {topic} is an important subject related to {theme}.
+            {topic} is an important subject {theme_text}.
             
             *[This is a placeholder due to content generation error]*
             """

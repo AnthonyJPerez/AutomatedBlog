@@ -1,76 +1,106 @@
-/* Custom styles for Multi-Blog Automation */
+/* Custom styles for Blog Automation Platform */
 
-/* Add some padding to the main content area */
+/* Add some padding to the top of the body to account for the fixed navbar */
 body {
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
+    padding-top: 10px;
 }
 
-.container {
-  padding-top: 1rem;
-  padding-bottom: 1rem;
-}
-
-/* Push footer to bottom */
-.footer {
-  margin-top: auto;
-}
-
-/* Card styling */
+/* Custom card styling */
 .card {
-  box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
-  margin-bottom: 1.5rem;
+    border-radius: 0.5rem;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    margin-bottom: 1.5rem;
 }
 
 .card-header {
-  background-color: rgba(0, 0, 0, 0.03);
+    border-radius: 0.5rem 0.5rem 0 0 !important;
+    font-weight: 500;
 }
 
-/* Status indicators */
-.status-indicator {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  display: inline-block;
-  margin-right: 5px;
+/* Custom styling for buttons */
+.btn {
+    border-radius: 0.3rem;
+    font-weight: 500;
 }
 
-.status-success {
-  background-color: var(--bs-success);
+/* Improve badge styling */
+.badge {
+    font-weight: 500;
+    padding: 0.4rem 0.6rem;
 }
 
-.status-warning {
-  background-color: var(--bs-warning);
+/* Custom styles for the dashboard stats */
+.stats-card {
+    transition: all 0.3s ease;
 }
 
-.status-danger {
-  background-color: var(--bs-danger);
+.stats-card:hover {
+    transform: translateY(-5px);
 }
 
-.status-info {
-  background-color: var(--bs-info);
+/* Improve table readability */
+.table th {
+    border-top: none;
+    font-weight: 600;
 }
 
-/* Form styling */
-.form-section {
-  margin-bottom: 2rem;
+/* Custom styling for the blog configuration status indicators */
+.config-status {
+    width: 15px;
+    height: 15px;
+    border-radius: 50%;
+    display: inline-block;
+    margin-right: 10px;
 }
 
-.form-section-title {
-  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
-  padding-bottom: 0.5rem;
-  margin-bottom: 1rem;
+.config-status.active {
+    background-color: var(--bs-success);
 }
 
-/* Adjust table for mobile */
-@media (max-width: 768px) {
-  .table-responsive {
-    font-size: 0.9rem;
-  }
-  
-  .btn-sm {
-    padding: 0.2rem 0.4rem;
-    font-size: 0.75rem;
-  }
+.config-status.pending {
+    background-color: var(--bs-warning);
+}
+
+.config-status.missing {
+    background-color: var(--bs-danger);
+}
+
+/* Custom scrollbar for code blocks and long text areas */
+pre, textarea {
+    scrollbar-width: thin;
+    scrollbar-color: var(--bs-gray-600) var(--bs-gray-800);
+}
+
+pre::-webkit-scrollbar, textarea::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+pre::-webkit-scrollbar-track, textarea::-webkit-scrollbar-track {
+    background: var(--bs-gray-800);
+}
+
+pre::-webkit-scrollbar-thumb, textarea::-webkit-scrollbar-thumb {
+    background-color: var(--bs-gray-600);
+    border-radius: 10px;
+}
+
+/* Transitions for all elements */
+.btn, .card, .list-group-item, .nav-link {
+    transition: all 0.2s ease-in-out;
+}
+
+/* Hero banner for the welcome section */
+.hero-banner {
+    background: linear-gradient(135deg, var(--bs-primary) 0%, var(--bs-dark) 100%);
+    color: white;
+    padding: 3rem 0;
+    border-radius: 0.5rem;
+    margin-bottom: 2rem;
+}
+
+/* Better focus states for accessibility */
+:focus {
+    outline: 3px solid var(--bs-primary);
+    outline-offset: 2px;
 }
