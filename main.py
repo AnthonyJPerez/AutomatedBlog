@@ -2725,6 +2725,11 @@ def serve_documentation(filename):
         with open(file_path, 'r') as file:
             content = file.read()
         
+        # Process Mermaid code blocks for proper rendering
+        import re
+        # Replace ```mermaid blocks with a special div for the Mermaid library
+        content = re.sub(r'```mermaid\n(.*?)\n```', r'<div class="mermaid">\n\1\n</div>', content, flags=re.DOTALL)
+        
         # Convert markdown to HTML
         html_content = markdown.markdown(
             content,

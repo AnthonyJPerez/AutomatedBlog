@@ -106,13 +106,21 @@
 
         // Render Mermaid diagrams after page load
         document.addEventListener('DOMContentLoaded', () => {
+            // Handle code blocks with mermaid class
             document.querySelectorAll('.language-mermaid').forEach((el) => {
                 const content = el.textContent;
-                el.classList.add('mermaid');
-                el.classList.remove('language-mermaid');
-                el.textContent = content;
+                const mermaidDiv = document.createElement('div');
+                mermaidDiv.className = 'mermaid';
+                mermaidDiv.textContent = content;
+                el.parentNode.replaceChild(mermaidDiv, el);
             });
-            mermaid.init(undefined, '.mermaid');
+            
+            // Initialize mermaid on all elements
+            try {
+                mermaid.init(undefined, '.mermaid');
+            } catch (e) {
+                console.error('Error initializing Mermaid:', e);
+            }
         });
     </script>
 </body>
