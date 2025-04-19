@@ -150,7 +150,7 @@ class OpenAIService:
             self.logger.error(f"Error in OpenAI API call: {str(e)}")
             raise
     
-    def generate_outline(self, topic, theme, tone="professional", target_audience="general"):
+    def generate_outline(self, topic, theme, tone="professional", target_audience="general", theme_info=None):
         """
         Generate a content outline for a given topic.
         
@@ -159,15 +159,41 @@ class OpenAIService:
             theme (str): The blog theme for context
             tone (str): The desired tone of content
             target_audience (str): The target audience
+            theme_info (dict, optional): Enhanced theme information from theme.json
             
         Returns:
             dict: An outline structure with sections
         """
+        # Base prompt
+        theme_guidance = f"Theme/context: {theme}"
+        tone_info = tone
+        audience_info = target_audience
+        content_types = ""
+        
+        # Enhance with detailed theme information if available
+        if theme_info:
+            if "theme_prompt" in theme_info:
+                theme_guidance = f"Theme guidance: {theme_info['theme_prompt']}"
+            
+            if "tone" in theme_info:
+                tone_info = theme_info["tone"]
+                
+            if "target_audience" in theme_info:
+                if isinstance(theme_info["target_audience"], list):
+                    audience_info = ", ".join(theme_info["target_audience"])
+                else:
+                    audience_info = theme_info["target_audience"]
+                    
+            # Include content types if available
+            if "content_types" in theme_info and theme_info["content_types"]:
+                content_types = "Preferred content types: " + ", ".join(theme_info["content_types"])
+        
         prompt = f"""
         Create a detailed outline for a blog post about "{topic}".
-        Theme/context: {theme}
-        Tone: {tone}
-        Target audience: {target_audience}
+        {theme_guidance}
+        Tone: {tone_info}
+        Target audience: {audience_info}
+        {content_types}
         
         Return the outline in the following JSON structure:
         {{
@@ -220,7 +246,7 @@ class OpenAIService:
                 ]
             }
     
-    def generate_content(self, prompt, outline=None, theme=None, tone="professional", target_audience="general", content_type="article"):
+    def generate_content(self, prompt, outline=None, theme=None, tone="professional", target_audience="general", content_type="article", theme_info=None):
         """
         Generate content based on a prompt or outline.
         
@@ -231,6 +257,7 @@ class OpenAIService:
             tone (str): The desired tone of content
             target_audience (str): The target audience
             content_type (str): Type of content to generate (article, draft, polish)
+            theme_info (dict, optional): Enhanced theme information from theme.json
             
         Returns:
             str: The generated content
@@ -270,18 +297,11 @@ class OpenAIService:
             elif isinstance(outline, str):
                 outline_text += outline
         
-        # Create the full prompt
+        # Base prompt elements
         theme_context = f"\nTheme/context: {theme}" if theme else ""
-        
-        full_prompt = f"""
-        {prompt}
-        {theme_context}
-        Tone: {tone}
-        Target audience: {target_audience}
-        {outline_text}
-        
-        {polish_guidance}
-        
+        tone_info = tone
+        audience_info = target_audience
+        style_guide = """
         Format the article in Markdown with proper headings (#, ##, ###),
         and include:
         - Engaging introduction that hooks the reader
@@ -289,6 +309,68 @@ class OpenAIService:
         - SEO-optimized headings and subheadings
         - Conclusion with key takeaways
         - Proper transitions between sections
+        """
+        keywords_text = ""
+        
+        # Enhance with detailed theme information if available
+        if theme_info:
+            if "theme_prompt" in theme_info:
+                theme_context = f"\nTheme guidance: {theme_info['theme_prompt']}"
+            
+            if "tone" in theme_info:
+                tone_info = theme_info["tone"]
+                
+            if "target_audience" in theme_info:
+                if isinstance(theme_info["target_audience"], list):
+                    audience_info = ", ".join(theme_info["target_audience"])
+                else:
+                    audience_info = theme_info["target_audience"]
+            
+            # Include style guide if available
+            if "style_guide" in theme_info and isinstance(theme_info["style_guide"], dict):
+                sg = theme_info["style_guide"]
+                style_guide = "Style guide:\n"
+                
+                if "paragraph_length" in sg:
+                    style_guide += f"- Paragraph length: {sg['paragraph_length']}\n"
+                if "heading_style" in sg:
+                    style_guide += f"- Heading style: {sg['heading_style']}\n"
+                if "bullet_points" in sg:
+                    style_guide += f"- Bullet points: {sg['bullet_points']}\n"
+                if "language_complexity" in sg:
+                    style_guide += f"- Language complexity: {sg['language_complexity']}\n"
+                if "visual_elements" in sg:
+                    style_guide += f"- Visual elements: {sg['visual_elements']}\n"
+                if "citations" in sg:
+                    style_guide += f"- Citations: {sg['citations']}\n"
+                
+                style_guide += """
+                Format the article in Markdown with proper headings (#, ##, ###),
+                and include:
+                - Engaging introduction that hooks the reader
+                - Well-structured content with clear sections
+                - SEO-optimized headings and subheadings
+                - Conclusion with key takeaways
+                - Proper transitions between sections
+                """
+            
+            # Include keywords if available
+            if "keywords" in theme_info and theme_info["keywords"]:
+                if isinstance(theme_info["keywords"], list):
+                    keywords_text = "\nKeywords to incorporate: " + ", ".join(theme_info["keywords"])
+        
+        # Create the full prompt
+        full_prompt = f"""
+        {prompt}
+        {theme_context}
+        Tone: {tone_info}
+        Target audience: {audience_info}
+        {outline_text}
+        {keywords_text}
+        
+        {polish_guidance}
+        
+        {style_guide}
         
         The content should be authoritative, factual, and valuable to the reader.
         """
@@ -446,7 +528,7 @@ class OpenAIService:
             # Return empty JSON as fallback
             return '{}'
     
-    def generate_image(self, prompt, size="1024x1024", style="natural", quality="standard"):
+    def generate_image(self, prompt, size="1024x1024", style="natural", quality="standard", theme_info=None):
         """
         Generate an image using DALL-E 3.
         
@@ -455,6 +537,7 @@ class OpenAIService:
             size (str): Image size (1024x1024, 1792x1024, or 1024x1792)
             style (str): Image style (natural, vivid, illustration, 3d-render, painting, minimalist)
             quality (str): Image quality (standard or hd)
+            theme_info (dict, optional): Enhanced theme information from theme.json
             
         Returns:
             dict: A dictionary containing image data:
