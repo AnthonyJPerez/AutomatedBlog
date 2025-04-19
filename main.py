@@ -1371,6 +1371,329 @@ def update_social_media_credentials():
         logger.error(f"Error updating social media credentials: {str(e)}")
         return jsonify({"success": False, "message": f"Error: {str(e)}"}), 500
 
+@app.route('/api/scrape-url', methods=['POST'])
+def scrape_url():
+    """API endpoint to scrape content from a URL"""
+    try:
+        data = request.json
+        if not data or 'url' not in data:
+            return jsonify({"success": False, "message": "URL is required"}), 400
+        
+        url = data['url']
+        logger.info(f"Scraping content from URL: {url}")
+        
+        # Check if web scraper service is available
+        if not web_scraper_service:
+            return jsonify({
+                "success": False, 
+                "message": "Web scraper service is not available"
+            }), 500
+        
+        # Choose extraction method based on the type of content
+        if data.get('method') == 'article':
+            # Use newspaper3k for article extraction (better for news articles and blogs)
+            content = web_scraper_service.extract_with_newspaper(url)
+        else:
+            # Use trafilatura for general content extraction (better for general websites)
+            content = web_scraper_service.extract_content_from_url(url)
+        
+        if not content:
+            return jsonify({
+                "success": False, 
+                "message": "Failed to extract content from the provided URL"
+            }), 400
+        
+        return jsonify({
+            "success": True, 
+            "data": content
+        })
+    except Exception as e:
+        logger.error(f"Error scraping URL: {str(e)}")
+        return jsonify({"success": False, "message": f"Error: {str(e)}"}), 500
+
+@app.route('/api/research-topic', methods=['POST'])
+def research_topic_api():
+    """API endpoint to research a topic using the web scraper service"""
+    try:
+        data = request.json
+        if not data or 'topic' not in data:
+            return jsonify({"success": False, "message": "Topic is required"}), 400
+        
+        topic = data['topic']
+        num_sources = int(data.get('num_sources', 5))
+        logger.info(f"Researching topic: {topic} with {num_sources} sources")
+        
+        # Check if web scraper service is available
+        if not web_scraper_service:
+            return jsonify({
+                "success": False, 
+                "message": "Web scraper service is not available"
+            }), 500
+        
+        # Research the topic
+        research_data = web_scraper_service.research_topic(topic, num_sources)
+        
+        if not research_data:
+            return jsonify({
+                "success": False, 
+                "message": "Failed to research the provided topic"
+            }), 400
+        
+        return jsonify({
+            "success": True, 
+            "data": research_data
+        })
+    except Exception as e:
+        logger.error(f"Error researching topic: {str(e)}")
+        return jsonify({"success": False, "message": f"Error: {str(e)}"}), 500
+
+@app.route('/api/trending-topics', methods=['GET'])
+def trending_topics_api():
+    """API endpoint to get trending topics"""
+    try:
+        category = request.args.get('category')
+        limit = int(request.args.get('limit', 10))
+        
+        # Check if web scraper service is available
+        if not web_scraper_service:
+            return jsonify({
+                "success": False, 
+                "message": "Web scraper service is not available"
+            }), 500
+        
+        # Get trending topics
+        topics = web_scraper_service.get_trending_topics(category, limit)
+        
+        return jsonify({
+            "success": True, 
+            "data": topics
+        })
+    except Exception as e:
+        logger.error(f"Error getting trending topics: {str(e)}")
+        return jsonify({"success": False, "message": f"Error: {str(e)}"}), 500
+
+@app.route('/content-research', methods=['GET'])
+def content_research():
+    """Content research tools page for scraping and analysis"""
+    return render_template('content_research.html')
+
+@app.route('/scrape-url', methods=['POST'])
+def scrape_url_page():
+    """Handle form submission for URL scraping and display results"""
+    try:
+        url = request.form.get('url')
+        method = request.form.get('method')
+        
+        if not url:
+            flash("URL is required", "danger")
+            return redirect(url_for('content_research'))
+        
+        logger.info(f"Scraping content from URL: {url} using method: {method}")
+        
+        # Check if web scraper service is available
+        if not web_scraper_service:
+            flash("Web scraper service is not available", "danger")
+            return redirect(url_for('content_research'))
+        
+        # Choose extraction method based on the form input
+        if method == 'newspaper':
+            # Use newspaper3k for article extraction
+            content_data = web_scraper_service.extract_with_newspaper(url)
+        else:
+            # Use trafilatura for general content extraction
+            content_data = web_scraper_service.extract_content_from_url(url)
+        
+        if not content_data:
+            flash("Failed to extract content from the provided URL", "danger")
+            return redirect(url_for('content_research'))
+        
+        # Process the extracted content for display
+        text = ""
+        title = ""
+        summary = ""
+        keywords = []
+        sentiment = None
+        image = None
+        
+        if method == 'newspaper':
+            text = content_data.get('text', '')
+            title = content_data.get('title', 'Untitled Article')
+            summary = content_data.get('summary', '')
+            keywords = content_data.get('keywords', [])
+            image = content_data.get('top_image')
+            
+            # Perform sentiment analysis if not already done
+            if 'sentiment' not in content_data and text:
+                from textblob import TextBlob
+                analysis = TextBlob(text)
+                sentiment = {
+                    'polarity': analysis.sentiment.polarity,
+                    'subjectivity': analysis.sentiment.subjectivity
+                }
+            else:
+                sentiment = content_data.get('sentiment')
+        else:
+            # For trafilatura extraction
+            text = content_data.get('content', '')
+            if not text and 'text' in content_data:
+                text = content_data.get('text', '')
+                
+            title = content_data.get('title', 'Untitled Page')
+            
+            # Extract summary and keywords if available
+            if 'analysis' in content_data:
+                analysis = content_data.get('analysis', {})
+                summary = analysis.get('summary', '')
+                keywords = analysis.get('keywords', [])
+                sentiment = analysis.get('sentiment')
+        
+        # Generate visualizations if possible
+        wordcloud = None
+        sentiment_chart = None
+        try:
+            from src.shared.content_visualizer import ContentVisualizer
+            visualizer = ContentVisualizer()
+            
+            if text:
+                wordcloud = visualizer.generate_wordcloud(text)
+            
+            if sentiment:
+                sentiment_chart = visualizer.visualize_sentiment_analysis(sentiment)
+        except Exception as viz_error:
+            logger.warning(f"Failed to generate visualizations: {str(viz_error)}")
+        
+        # Prepare the results object
+        results = {
+            'type': 'scraped_content',
+            'url': url,
+            'title': title,
+            'text': text,
+            'summary': summary,
+            'keywords': keywords,
+            'sentiment': sentiment,
+            'image': image,
+            'wordcloud': wordcloud,
+            'sentiment_chart': sentiment_chart,
+            'raw_data': content_data
+        }
+        
+        return render_template('content_research.html', results=results)
+        
+    except Exception as e:
+        logger.error(f"Error scraping URL: {str(e)}")
+        flash(f"Error: {str(e)}", "danger")
+        return redirect(url_for('content_research'))
+
+@app.route('/get-trending-topics', methods=['POST'])
+def get_trending_topics():
+    """Handle form submission for trending topics and display results"""
+    try:
+        category = request.form.get('category')
+        limit = int(request.form.get('limit', 10))
+        
+        logger.info(f"Getting trending topics for category: {category} with limit: {limit}")
+        
+        # Check if web scraper service is available
+        if not web_scraper_service:
+            flash("Web scraper service is not available", "danger")
+            return redirect(url_for('content_research'))
+        
+        # Get trending topics
+        topics = web_scraper_service.get_trending_topics(category, limit)
+        
+        if not topics:
+            flash("No trending topics found", "warning")
+            return redirect(url_for('content_research'))
+        
+        # Prepare the results object
+        results = {
+            'type': 'trending_topics',
+            'category': category,
+            'topics': topics
+        }
+        
+        return render_template('content_research.html', results=results)
+        
+    except Exception as e:
+        logger.error(f"Error getting trending topics: {str(e)}")
+        flash(f"Error: {str(e)}", "danger")
+        return redirect(url_for('content_research'))
+
+@app.route('/parse-rss-feed', methods=['POST'])
+def parse_rss_feed():
+    """Handle form submission for RSS feed parsing and display results"""
+    try:
+        feed_url = request.form.get('feed_url')
+        limit = int(request.form.get('limit', 10))
+        
+        if not feed_url:
+            flash("Feed URL is required", "danger")
+            return redirect(url_for('content_research'))
+        
+        logger.info(f"Parsing RSS feed: {feed_url} with limit: {limit}")
+        
+        # Check if web scraper service is available
+        if not web_scraper_service:
+            flash("Web scraper service is not available", "danger")
+            return redirect(url_for('content_research'))
+        
+        # Fetch RSS feed
+        feed_entries = web_scraper_service.fetch_rss_feed(feed_url, limit)
+        
+        if not feed_entries or len(feed_entries) == 0:
+            flash("No entries found in the RSS feed", "warning")
+            return redirect(url_for('content_research'))
+        
+        # Prepare the results object
+        results = {
+            'type': 'rss_feed',
+            'feed_url': feed_url,
+            'entries': feed_entries
+        }
+        
+        return render_template('content_research.html', results=results)
+        
+    except Exception as e:
+        logger.error(f"Error parsing RSS feed: {str(e)}")
+        flash(f"Error: {str(e)}", "danger")
+        return redirect(url_for('content_research'))
+
+@app.route('/api/rss-feed', methods=['POST'])
+def rss_feed_api():
+    """API endpoint to fetch and parse an RSS feed"""
+    try:
+        data = request.json
+        if not data or 'feed_url' not in data:
+            return jsonify({"success": False, "message": "Feed URL is required"}), 400
+        
+        feed_url = data['feed_url']
+        limit = int(data.get('limit', 10))
+        logger.info(f"Fetching RSS feed: {feed_url} with limit {limit}")
+        
+        # Check if web scraper service is available
+        if not web_scraper_service:
+            return jsonify({
+                "success": False, 
+                "message": "Web scraper service is not available"
+            }), 500
+        
+        # Fetch RSS feed
+        feed_entries = web_scraper_service.fetch_rss_feed(feed_url, limit)
+        
+        if feed_entries is None:
+            return jsonify({
+                "success": False, 
+                "message": "Failed to fetch the RSS feed"
+            }), 400
+        
+        return jsonify({
+            "success": True, 
+            "data": feed_entries
+        })
+    except Exception as e:
+        logger.error(f"Error fetching RSS feed: {str(e)}")
+        return jsonify({"success": False, "message": f"Error: {str(e)}"}), 500
+
 @app.errorhandler(404)
 def page_not_found(e):
     return render_template('404.html'), 404

@@ -1,0 +1,309 @@
+{% extends "base.html" %}
+
+{% block title %}Content Research Tool{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-12">
+            <h1>Content Research Tool</h1>
+            <p class="lead">Use this tool to research topics, extract content from websites, and analyze sentiment.</p>
+        </div>
+    </div>
+
+    <div class="row mt-3">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header">
+                    <ul class="nav nav-tabs card-header-tabs" id="researchTabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" id="web-scraper-tab" data-bs-toggle="tab" data-bs-target="#web-scraper" type="button" role="tab" aria-controls="web-scraper" aria-selected="true">Web Scraper</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="trend-research-tab" data-bs-toggle="tab" data-bs-target="#trend-research" type="button" role="tab" aria-controls="trend-research" aria-selected="false">Trend Research</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="rss-feed-tab" data-bs-toggle="tab" data-bs-target="#rss-feed" type="button" role="tab" aria-controls="rss-feed" aria-selected="false">RSS Feed Reader</button>
+                        </li>
+                    </ul>
+                </div>
+                <div class="card-body">
+                    <div class="tab-content" id="researchTabsContent">
+                        <!-- Web Scraper Tab Content -->
+                        <div class="tab-pane fade show active" id="web-scraper" role="tabpanel" aria-labelledby="web-scraper-tab">
+                            <h5 class="card-title">Extract Content from URL</h5>
+                            <form id="scraper-form" action="{{ url_for('scrape_url') }}" method="post">
+                                <div class="mb-3">
+                                    <label for="scrape-url" class="form-label">Website URL</label>
+                                    <input type="url" class="form-control" id="scrape-url" name="url" placeholder="https://example.com/article" required>
+                                    <div class="form-text">Enter the URL of the article or webpage you want to analyze.</div>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="scrape-method" class="form-label">Extraction Method</label>
+                                    <select class="form-select" id="scrape-method" name="method">
+                                        <option value="trafilatura" selected>Trafilatura (Best for general content)</option>
+                                        <option value="newspaper">Newspaper3k (Best for news articles)</option>
+                                    </select>
+                                </div>
+                                <div class="d-grid">
+                                    <button type="submit" class="btn btn-primary">Extract Content</button>
+                                </div>
+                            </form>
+                        </div>
+
+                        <!-- Trend Research Tab Content -->
+                        <div class="tab-pane fade" id="trend-research" role="tabpanel" aria-labelledby="trend-research-tab">
+                            <h5 class="card-title">Research Trending Topics</h5>
+                            <form id="trends-form" action="{{ url_for('get_trending_topics') }}" method="post">
+                                <div class="mb-3">
+                                    <label for="trend-category" class="form-label">Category</label>
+                                    <select class="form-select" id="trend-category" name="category">
+                                        <option value="" selected>All Categories</option>
+                                        <option value="technology">Technology</option>
+                                        <option value="health">Health & Wellness</option>
+                                        <option value="business">Business</option>
+                                        <option value="lifestyle">Lifestyle</option>
+                                    </select>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="trend-limit" class="form-label">Number of Trends</label>
+                                    <input type="number" class="form-control" id="trend-limit" name="limit" value="10" min="5" max="20">
+                                </div>
+                                <div class="d-grid">
+                                    <button type="submit" class="btn btn-primary">Get Trending Topics</button>
+                                </div>
+                            </form>
+                        </div>
+
+                        <!-- RSS Feed Tab Content -->
+                        <div class="tab-pane fade" id="rss-feed" role="tabpanel" aria-labelledby="rss-feed-tab">
+                            <h5 class="card-title">Parse RSS Feed</h5>
+                            <form id="rss-form" action="{{ url_for('parse_rss_feed') }}" method="post">
+                                <div class="mb-3">
+                                    <label for="rss-url" class="form-label">RSS Feed URL</label>
+                                    <input type="url" class="form-control" id="rss-url" name="feed_url" placeholder="https://example.com/feed.xml" required>
+                                    <div class="form-text">Enter the URL of the RSS feed you want to parse.</div>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="rss-limit" class="form-label">Number of Entries</label>
+                                    <input type="number" class="form-control" id="rss-limit" name="limit" value="10" min="1" max="50">
+                                </div>
+                                <div class="d-grid">
+                                    <button type="submit" class="btn btn-primary">Parse Feed</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Results Section (initially hidden) -->
+    <div class="row mt-4 {% if not results %}d-none{% endif %}" id="results-section">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Results</h5>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" id="toggle-raw-data">
+                        <i class="bi bi-code-slash"></i> Toggle Raw Data
+                    </button>
+                </div>
+                <div class="card-body">
+                    {% if results %}
+                    <div id="formatted-results">
+                        {% if results.type == 'scraped_content' %}
+                            <h3>{{ results.title }}</h3>
+                            <p class="text-muted">Source: <a href="{{ results.url }}" target="_blank">{{ results.url }}</a></p>
+                            
+                            {% if results.image %}
+                            <div class="text-center mb-3">
+                                <img src="{{ results.image }}" alt="Article image" class="img-fluid rounded">
+                            </div>
+                            {% endif %}
+                            
+                            <div class="row mb-4">
+                                <div class="col-md-6">
+                                    <div class="card bg-light">
+                                        <div class="card-body">
+                                            <h5 class="card-title">Summary</h5>
+                                            <p>{{ results.summary }}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="card bg-light">
+                                        <div class="card-body">
+                                            <h5 class="card-title">Sentiment Analysis</h5>
+                                            {% if results.sentiment %}
+                                                <p><strong>Polarity:</strong> {{ results.sentiment.polarity|round(2) }} 
+                                                    {% if results.sentiment.polarity > 0.3 %}
+                                                        <span class="badge bg-success">Positive</span>
+                                                    {% elif results.sentiment.polarity < -0.3 %}
+                                                        <span class="badge bg-danger">Negative</span>
+                                                    {% else %}
+                                                        <span class="badge bg-secondary">Neutral</span>
+                                                    {% endif %}
+                                                </p>
+                                                <p><strong>Subjectivity:</strong> {{ results.sentiment.subjectivity|round(2) }}</p>
+                                                {% if results.sentiment_chart %}
+                                                <div class="text-center">
+                                                    <img src="data:image/png;base64,{{ results.sentiment_chart }}" alt="Sentiment Analysis" class="img-fluid">
+                                                </div>
+                                                {% endif %}
+                                            {% else %}
+                                                <p>No sentiment analysis available.</p>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <h5>Keywords</h5>
+                            <div class="mb-4">
+                                {% if results.keywords %}
+                                    <div class="d-flex flex-wrap">
+                                        {% for keyword in results.keywords %}
+                                        <span class="badge bg-primary me-2 mb-2">{{ keyword }}</span>
+                                        {% endfor %}
+                                    </div>
+                                    {% if results.wordcloud %}
+                                    <div class="text-center mt-3">
+                                        <img src="data:image/png;base64,{{ results.wordcloud }}" alt="Word Cloud" class="img-fluid">
+                                    </div>
+                                    {% endif %}
+                                {% else %}
+                                    <p>No keywords available.</p>
+                                {% endif %}
+                            </div>
+                            
+                            <h5>Content</h5>
+                            <div class="content-text bg-light p-3 rounded">
+                                {% for paragraph in results.text.split('\n\n') %}
+                                    <p>{{ paragraph }}</p>
+                                {% endfor %}
+                            </div>
+                            
+                        {% elif results.type == 'trending_topics' %}
+                            <h3>Trending Topics</h3>
+                            {% if results.category %}
+                            <p class="text-muted">Category: {{ results.category }}</p>
+                            {% else %}
+                            <p class="text-muted">All Categories</p>
+                            {% endif %}
+                            
+                            <div class="table-responsive">
+                                <table class="table table-hover">
+                                    <thead>
+                                        <tr>
+                                            <th>#</th>
+                                            <th>Topic</th>
+                                            <th>Trend Score</th>
+                                            <th>24h Change</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for topic in results.topics %}
+                                        <tr>
+                                            <td>{{ loop.index }}</td>
+                                            <td>{{ topic.topic }}</td>
+                                            <td>{{ topic.score }}</td>
+                                            <td>
+                                                {% if topic.change > 0 %}
+                                                <span class="text-success">↑ {{ topic.change }}%</span>
+                                                {% elif topic.change < 0 %}
+                                                <span class="text-danger">↓ {{ topic.change|abs }}%</span>
+                                                {% else %}
+                                                <span class="text-secondary">0%</span>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                            
+                        {% elif results.type == 'rss_feed' %}
+                            <h3>RSS Feed Entries</h3>
+                            <p class="text-muted">Source: {{ results.feed_url }}</p>
+                            
+                            <div class="list-group">
+                                {% for entry in results.entries %}
+                                <div class="list-group-item">
+                                    <div class="d-flex w-100 justify-content-between">
+                                        <h5 class="mb-1">{{ entry.title }}</h5>
+                                        {% if entry.published %}
+                                        <small>{{ entry.published }}</small>
+                                        {% endif %}
+                                    </div>
+                                    {% if entry.summary %}
+                                    <p class="mb-1">{{ entry.summary|striptags|truncate(200) }}</p>
+                                    {% endif %}
+                                    <a href="{{ entry.link }}" target="_blank" class="btn btn-sm btn-outline-primary mt-2">Read More</a>
+                                </div>
+                                {% endfor %}
+                            </div>
+                            
+                        {% endif %}
+                    </div>
+                    
+                    <div id="raw-data" class="d-none">
+                        <div class="card bg-dark text-light">
+                            <div class="card-body">
+                                <pre><code class="json">{{ results|tojson(indent=2) }}</code></pre>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Toggle between formatted results and raw data
+        const toggleButton = document.getElementById('toggle-raw-data');
+        const formattedResults = document.getElementById('formatted-results');
+        const rawData = document.getElementById('raw-data');
+        
+        if (toggleButton) {
+            toggleButton.addEventListener('click', function() {
+                formattedResults.classList.toggle('d-none');
+                rawData.classList.toggle('d-none');
+                
+                // Update button text
+                if (formattedResults.classList.contains('d-none')) {
+                    toggleButton.innerHTML = '<i class="bi bi-card-text"></i> Show Formatted';
+                } else {
+                    toggleButton.innerHTML = '<i class="bi bi-code-slash"></i> Toggle Raw Data';
+                }
+            });
+        }
+        
+        // Show results section when form is submitted
+        const forms = [
+            document.getElementById('scraper-form'),
+            document.getElementById('trends-form'),
+            document.getElementById('rss-form')
+        ];
+        
+        forms.forEach(form => {
+            if (form) {
+                form.addEventListener('submit', function() {
+                    // Add loading state
+                    const submitButton = form.querySelector('button[type="submit"]');
+                    submitButton.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Processing...';
+                    submitButton.disabled = true;
+                    
+                    // Show results section
+                    document.getElementById('results-section').classList.remove('d-none');
+                });
+            }
+        });
+    });
+</script>
+{% endblock %}
