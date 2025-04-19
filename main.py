@@ -80,6 +80,7 @@ def index():
                         'id': blog_id,
                         'name': blog_config.get('name', 'Unnamed Blog'),
                         'theme': blog_config.get('theme', 'No theme'),
+                        'description': blog_config.get('description', f"A blog about {blog_config.get('theme', 'various topics')}"),
                         'created_at': blog_config.get('created_at', 'Unknown'),
                         'is_active': blog_config.get('is_active', True),
                         'frequency': blog_config.get('frequency', 'weekly'),

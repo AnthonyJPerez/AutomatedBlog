@@ -98,6 +98,9 @@
                             </div>
                             <div class="card-body">
                                 <h6 class="card-subtitle mb-2 text-muted">Theme: {{ blog.theme }}</h6>
+                                {% if blog.description %}
+                                <p class="card-text mb-3">{{ blog.description }}</p>
+                                {% endif %}
                                 <p class="card-text">Created: {{ blog.created_at }}</p>
                                 <div class="d-flex mb-2">
                                     {% if blog.is_active %}
