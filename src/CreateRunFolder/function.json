@@ -11,7 +11,7 @@
       "name": "outputBlob",
       "type": "blob",
       "direction": "out",
-      "path": "generated/{DateTime:yyyyMMdd_HHmmss}_{rand-guid}/.run",
+      "path": "generated/{rand-guid}/.run",
       "connection": "AzureWebJobsStorage"
     }
   ]

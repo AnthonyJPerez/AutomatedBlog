@@ -12,7 +12,7 @@
       "name": "outputBlob",
       "type": "blob",
       "direction": "out",
-      "path": "generated/bootstrap.done.json",
+      "path": "bootstrap.done.json",
       "connection": "AzureWebJobsStorage"
     }
   ]

@@ -12,7 +12,7 @@
       "name": "outputBlob",
       "type": "blob",
       "direction": "out",
-      "path": "generated/DomainNames.json",
+      "path": "DomainNames.json",
       "connection": "AzureWebJobsStorage"
     }
   ]
