@@ -2,6 +2,10 @@ import os
 import json
 import logging
 import openai
+import base64
+import requests
+import datetime
+from io import BytesIO
 from azure.identity import DefaultAzureCredential
 from azure.keyvault.secrets import SecretClient
 
@@ -398,3 +402,126 @@ class OpenAIService:
             self.logger.error(f"Error generating JSON: {str(e)}")
             # Return empty JSON as fallback
             return '{}'
+    
+    def generate_image(self, prompt, size="1024x1024", style="natural", quality="standard"):
+        """
+        Generate an image using DALL-E 3.
+        
+        Args:
+            prompt (str): The text prompt to generate an image from
+            size (str): Image size (1024x1024, 1792x1024, or 1024x1792)
+            style (str): Image style (natural or vivid)
+            quality (str): Image quality (standard or hd)
+            
+        Returns:
+            dict: A dictionary containing image data:
+                - 'success': Boolean indicating success
+                - 'url': URL of the generated image (if available) 
+                - 'b64_json': Base64 encoded image (if available)
+                - 'error': Error message (if applicable)
+        """
+        try:
+            # Validate parameters
+            valid_sizes = ["1024x1024", "1792x1024", "1024x1792"]
+            valid_styles = ["natural", "vivid"]
+            valid_qualities = ["standard", "hd"]
+            
+            if size not in valid_sizes:
+                size = "1024x1024"
+            if style not in valid_styles:
+                style = "natural"
+            if quality not in valid_qualities:
+                quality = "standard"
+            
+            # Enhance the prompt for better results
+            enhanced_prompt = f"""
+            Create a high-quality, professional image for a blog post with the following description:
+            
+            {prompt}
+            
+            The image should be visually appealing, relevant to the topic, and suitable for a professional blog.
+            Do not include any text in the image unless specifically requested.
+            """
+            
+            # Generate the image
+            if self.use_azure:
+                # For Azure OpenAI
+                response = openai.Image.create(
+                    prompt=enhanced_prompt,
+                    n=1,
+                    size=size,
+                    quality=quality,
+                    style=style,
+                    response_format="b64_json"
+                )
+                b64_data = response.data[0].b64_json
+                
+                # Save image locally
+                image_path = self._save_base64_image(b64_data, "blog_image")
+                
+                return {
+                    "success": True,
+                    "b64_json": b64_data,
+                    "local_path": image_path
+                }
+            else:
+                # For direct OpenAI API
+                response = openai.images.generate(
+                    model="dall-e-3",
+                    prompt=enhanced_prompt,
+                    n=1,
+                    size=size,
+                    quality=quality,
+                    style=style,
+                    response_format="b64_json"
+                )
+                b64_data = response.data[0].b64_json
+                
+                # Save image locally
+                image_path = self._save_base64_image(b64_data, "blog_image")
+                
+                return {
+                    "success": True,
+                    "b64_json": b64_data,
+                    "local_path": image_path
+                }
+                
+        except Exception as e:
+            error_msg = f"Error generating image: {str(e)}"
+            self.logger.error(error_msg)
+            return {
+                "success": False,
+                "error": error_msg
+            }
+    
+    def _save_base64_image(self, b64_data, prefix="image"):
+        """
+        Save a base64 encoded image to disk.
+        
+        Args:
+            b64_data (str): Base64 encoded image data
+            prefix (str): Prefix for the image filename
+            
+        Returns:
+            str: Path to the saved image
+        """
+        try:
+            # Create static/images directory if it doesn't exist
+            images_dir = os.path.join("static", "images")
+            os.makedirs(images_dir, exist_ok=True)
+            
+            # Generate a unique filename
+            timestamp = datetime.datetime.now().strftime("%Y%m%d%H%M%S")
+            filename = f"{prefix}_{timestamp}.png"
+            file_path = os.path.join(images_dir, filename)
+            
+            # Decode and save the image
+            image_data = base64.b64decode(b64_data)
+            with open(file_path, "wb") as f:
+                f.write(image_data)
+            
+            return file_path
+            
+        except Exception as e:
+            self.logger.error(f"Error saving base64 image: {str(e)}")
+            return None

@@ -156,16 +156,57 @@ def main(inputBlob: func.InputStream, outputContent: func.Out[str], outputRecomm
             "slug": topic_keyword.lower().replace(' ', '-')
         }
     
-    # Prepare final content with metadata
+    # Generate a featured image for the content
+    image_info = None
+    try:
+        logger.info(f'Generating featured image for topic: {topic_title}')
+        # Create an image prompt based on the topic and theme
+        image_prompt = f"Create a professional featured image for a blog post about '{topic_title}'."
+        if theme:
+            image_prompt += f" The blog's theme is '{theme}'."
+        
+        # Generate the image
+        image_info = openai_service.generate_image(
+            prompt=image_prompt,
+            size="1024x1024",
+            style="natural",
+            quality="standard"
+        )
+        
+        logger.info(f'Image generation result: {image_info.get("success", False)}')
+    except Exception as e:
+        logger.error(f'Error generating image: {str(e)}')
+        image_info = {"success": False, "error": str(e)}
+    
+    # Prepare featured image metadata
+    featured_image_path = None
+    if image_info and image_info.get("success", False):
+        # Store relative path to be used in the Markdown file
+        featured_image_path = image_info.get("local_path", "")
+        # Get just the filename part
+        if featured_image_path:
+            featured_image_path = featured_image_path.replace("\\", "/")  # Normalize path separators
+            featured_image_filename = os.path.basename(featured_image_path)
+            featured_image_path = f"/static/images/{featured_image_filename}"
+    
+    # Prepare final content with metadata and featured image
+    image_section = ""
+    if featured_image_path:
+        image_section = f"""
+![Featured image for {topic_title}]({featured_image_path})
+
+"""
+    
     final_content = f"""---
 title: "{topic_title}"
 description: "{seo_metadata.get('meta_description', '')}"
 keywords: {', '.join(seo_metadata.get('keywords', [topic_keyword]))}
 slug: {seo_metadata.get('slug', topic_keyword.lower().replace(' ', '-'))}
 date: {time.strftime('%Y-%m-%d')}
+featured_image: "{featured_image_path if featured_image_path else ""}"
 ---
 
-{optimized_content}
+{image_section}{optimized_content}
 """
     
     # Prepare recommendations JSON
