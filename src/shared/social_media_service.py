@@ -32,6 +32,8 @@ class SocialMediaService:
         self._init_facebook()
         self._init_reddit()
         self._init_medium()
+        self._init_bluesky()
+        self._init_truth_social()
         
         logger.info("Social Media service initialized.")
     
@@ -155,6 +157,52 @@ class SocialMediaService:
         except Exception as e:
             self.platforms["medium"] = {"enabled": False}
             logger.warning(f"Failed to initialize Medium: {str(e)}")
+            
+    def _init_bluesky(self):
+        """Initialize Bluesky configuration"""
+        try:
+            # Try to get Bluesky credentials
+            identifier = self._get_secret("BLUESKY-IDENTIFIER")  # username/handle
+            app_password = self._get_secret("BLUESKY-APP-PASSWORD")
+            pds_url = self._get_secret("BLUESKY-PDS-URL") or "https://bsky.social"
+            
+            if identifier and app_password:
+                self.platforms["bluesky"] = {
+                    "enabled": True,
+                    "identifier": identifier,
+                    "app_password": app_password,
+                    "pds_url": pds_url
+                }
+                logger.info("Bluesky configuration loaded.")
+            else:
+                self.platforms["bluesky"] = {"enabled": False}
+                logger.warning("Bluesky credentials incomplete, platform disabled.")
+        except Exception as e:
+            self.platforms["bluesky"] = {"enabled": False}
+            logger.warning(f"Failed to initialize Bluesky: {str(e)}")
+            
+    def _init_truth_social(self):
+        """Initialize Truth Social configuration"""
+        try:
+            # Try to get Truth Social credentials
+            username = self._get_secret("TRUTH-SOCIAL-USERNAME")
+            password = self._get_secret("TRUTH-SOCIAL-PASSWORD")
+            api_token = self._get_secret("TRUTH-SOCIAL-API-TOKEN")
+            
+            if (username and password) or api_token:
+                self.platforms["truth_social"] = {
+                    "enabled": True,
+                    "username": username,
+                    "password": password,
+                    "api_token": api_token
+                }
+                logger.info("Truth Social configuration loaded.")
+            else:
+                self.platforms["truth_social"] = {"enabled": False}
+                logger.warning("Truth Social credentials incomplete, platform disabled.")
+        except Exception as e:
+            self.platforms["truth_social"] = {"enabled": False}
+            logger.warning(f"Failed to initialize Truth Social: {str(e)}")
     
     def _get_secret(self, secret_name):
         """
