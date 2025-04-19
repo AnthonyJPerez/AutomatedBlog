@@ -133,6 +133,28 @@ def main(inputBlob: func.InputStream, outputContent: func.Out[str], outputRecomm
         logger.error(f'Error generating outline: {str(e)}')
         outline = {"sections": [{"title": "Introduction"}, {"title": "Main Content"}, {"title": "Conclusion"}]}
     
+    # Get competitor analysis data if available
+    competitor_recommendations = None
+    try:
+        if blog_id:
+            logger.info(f'Getting competitor analysis for blog {blog_id} and topic {topic_keyword}')
+            # Import here to avoid circular dependencies
+            from ..shared.competitor_analysis_service import CompetitorAnalysisService
+            competitor_analysis_service = CompetitorAnalysisService()
+            
+            # Get content recommendations for this topic
+            competitor_recommendations = competitor_analysis_service.get_content_recommendations(
+                blog_id=blog_id,
+                topic=topic_keyword
+            )
+            
+            if competitor_recommendations and competitor_recommendations.get('success'):
+                logger.info(f'Successfully retrieved competitor analysis')
+            else:
+                logger.info(f'No competitor analysis available')
+    except Exception as e:
+        logger.warning(f'Error getting competitor analysis: {str(e)}')
+    
     # Generate content draft using OpenAI (GPT-3.5 equivalent)
     try:
         logger.info(f'Generating content draft for topic: {topic_title}')
@@ -219,6 +241,47 @@ def main(inputBlob: func.InputStream, outputContent: func.Out[str], outputRecomm
                     values_str = ', '.join(values[:3])
                     prompt += f" that reflects these values: {values_str}"
                     
+        # Add competitor analysis information if available
+        if competitor_recommendations and competitor_recommendations.get('success'):
+            recommendations = competitor_recommendations.get('recommendations', {})
+            
+            # Add keyword recommendations
+            keyword_recommendations = recommendations.get('keyword_recommendations', [])
+            if keyword_recommendations:
+                keywords_to_use = [k.get('keyword') for k in keyword_recommendations[:10] if k.get('keyword')]
+                if keywords_to_use:
+                    prompt += f"\n\nBased on competitor analysis, include these keywords in the content: {', '.join(keywords_to_use)}"
+                    logger.info(f"Added {len(keywords_to_use)} competitor keywords to content prompt")
+            
+            # Add content structure recommendations
+            content_structure = recommendations.get('content_structure', [])
+            if content_structure:
+                prompt += "\n\nConsider using elements from these successful competitor article structures:"
+                
+                for i, structure in enumerate(content_structure[:2]):
+                    if structure.get('title') and (structure.get('h1_tags') or structure.get('h2_tags')):
+                        prompt += f"\n- Article {i+1}: {structure.get('title')}"
+                        
+                        if structure.get('h1_tags'):
+                            h1_tags = [h for h in structure.get('h1_tags', []) if h][:3]
+                            if h1_tags:
+                                prompt += f"\n  Main sections: {', '.join(h1_tags)}"
+                                
+                        if structure.get('h2_tags'):
+                            h2_tags = [h for h in structure.get('h2_tags', []) if h][:5]
+                            if h2_tags:
+                                prompt += f"\n  Subsections: {', '.join(h2_tags)}"
+                
+                logger.info(f"Added competitor content structure recommendations to prompt")
+            
+            # Add topic focus recommendations
+            topic_focus = recommendations.get('topic_focus', [])
+            if topic_focus:
+                focus_points = [p for p in topic_focus[:3] if p]
+                if focus_points:
+                    prompt += f"\n\nBe sure to address these key aspects based on competitor content: {', '.join(focus_points)}"
+                    logger.info(f"Added competitor topic focus recommendations to prompt")
+        
         prompt += "."
         logger.info(f"Enhanced content prompt created using theme information")
         
@@ -295,6 +358,40 @@ def main(inputBlob: func.InputStream, outputContent: func.Out[str], outputRecomm
                 if messaging and len(messaging) > 0:
                     messaging_str = ', '.join(messaging[:2])
                     polish_prompt += f". Incorporate this key messaging if relevant: {messaging_str}"
+        
+        # Add competitor analysis insights for polishing
+        if competitor_recommendations and competitor_recommendations.get('success'):
+            recommendations = competitor_recommendations.get('recommendations', {})
+            
+            # Add SEO optimization recommendations based on competitors
+            seo_recommendations = recommendations.get('seo_recommendations', {})
+            if seo_recommendations:
+                # Add density recommendations
+                keyword_density = seo_recommendations.get('keyword_density', {})
+                if keyword_density:
+                    top_keywords = []
+                    for keyword, density in keyword_density.items():
+                        if keyword and density:
+                            top_keywords.append(f"{keyword} ({density})")
+                    if top_keywords:
+                        polish_prompt += f"\n\nOptimize keyword density for these terms used by competitors: {', '.join(top_keywords[:5])}"
+                
+                # Add content length recommendation
+                avg_length = seo_recommendations.get('average_content_length')
+                if avg_length:
+                    polish_prompt += f"\n\nCompetitor analysis shows successful content is approximately {avg_length} words in length."
+                
+                # Add readability recommendation
+                readability = seo_recommendations.get('readability_level')
+                if readability:
+                    polish_prompt += f"\n\nTarget a {readability} readability level based on competitor analysis."
+            
+            # Add competitor gap analysis if available
+            content_gaps = recommendations.get('content_gaps', [])
+            if content_gaps:
+                gaps_to_include = [gap for gap in content_gaps[:3] if gap]
+                if gaps_to_include:
+                    polish_prompt += f"\n\nFill these content gaps that competitors miss: {', '.join(gaps_to_include)}"
         
         # Add general quality requirements
         polish_prompt += ". Make sure the content is well-structured, engaging, factually accurate, and has a logical flow. Improve transitions between sections, enhance clarity, and ensure a strong opening and conclusion."
@@ -457,9 +554,20 @@ featured_image: "{featured_image_path if featured_image_path else ""}"
             "theme_info_available": theme_info is not None,
             "web_research_available": web_research_data is not None,
             "sources_count": len(web_research_data.get('sources', [])) if web_research_data else 0,
-            "related_keywords_count": len(web_research_data.get('related_keywords', [])) if web_research_data else 0
+            "related_keywords_count": len(web_research_data.get('related_keywords', [])) if web_research_data else 0,
+            "competitor_analysis_used": competitor_recommendations is not None and competitor_recommendations.get('success', False)
         }
     }
+    
+    # Include competitor analysis data if available
+    if competitor_recommendations and competitor_recommendations.get('success'):
+        recommendations_data["competitor_analysis"] = {
+            "keywords_used": competitor_recommendations.get('recommendations', {}).get('keyword_recommendations', [])[:5],
+            "content_structure": competitor_recommendations.get('recommendations', {}).get('content_structure', [])[:2],
+            "content_gaps": competitor_recommendations.get('recommendations', {}).get('content_gaps', [])[:3],
+            "competitor_count": competitor_recommendations.get('competitor_count', 0),
+            "analyzed_urls": competitor_recommendations.get('analyzed_urls', [])[:5]
+        }
     
     # Write to output bindings
     outputContent.set(final_content)
@@ -471,4 +579,10 @@ featured_image: "{featured_image_path if featured_image_path else ""}"
     theme_info_status = "with theme-specific styling" if theme_info else "with default styling"
     research_status = "with web research data" if web_research_data else "without web research data"
     sources_info = f"using {len(web_research_data.get('sources', []))} reference sources" if web_research_data else "without external sources"
-    logger.info(f"Completed theme-aware content generation for blog '{blog_id}' {theme_info_status}, {research_status}, {sources_info}")
+    competitor_status = ""
+    if competitor_recommendations and competitor_recommendations.get('success'):
+        keyword_count = len(competitor_recommendations.get('recommendations', {}).get('keyword_recommendations', []))
+        competitor_count = competitor_recommendations.get('competitor_count', 0)
+        competitor_status = f", with competitor analysis data from {competitor_count} competitors and {keyword_count} keyword recommendations"
+    
+    logger.info(f"Completed theme-aware content generation for blog '{blog_id}' {theme_info_status}, {research_status}, {sources_info}{competitor_status}")
