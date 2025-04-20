@@ -246,27 +246,44 @@ resource wordpressPluginSetup 'Microsoft.Resources/deploymentScripts@2020-10-01'
       echo "Waiting for WordPress to be fully deployed..."
       sleep 180
       
-      # Install essential plugins only - move most configuration to container creation time
+      # Create a temporary bash script to run inside the container
+      cat > /tmp/wp_setup.sh << 'WPSETUP'
+      #!/bin/bash
+      
+      # Install essential plugins
       echo "Installing WordPress plugins..."
-      az webapp ssh --resource-group $RESOURCE_GROUP --name $SITE_NAME --command "wp plugin install wordpress-seo jetpack contact-form-7 wordfence google-analytics-for-wordpress --activate"
+      wp plugin install wordpress-seo jetpack contact-form-7 wordfence google-analytics-for-wordpress --activate
       
       # Configure permalink structure for SEO
       echo "Configuring permalink structure..."
-      az webapp ssh --resource-group $RESOURCE_GROUP --name $SITE_NAME --command "wp rewrite structure '/%postname%/'"
+      wp rewrite structure '/%postname%/'
       
-      if [ "$ENABLE_MULTISITE" = "true" ]; then
-        # Configure multisite if not already done through environment variables
+      # Multisite configuration if enabled
+      if [ "$1" = "true" ]; then
         echo "Configuring WordPress Multisite..."
-        az webapp ssh --resource-group $RESOURCE_GROUP --name $SITE_NAME --command "wp core multisite-convert --subdomains=false --title='Blog Network' --base='/'"
+        wp core multisite-convert --subdomains=false --title='Blog Network' --base='/'
         
         # Install domain mapping plugin for custom domains
         echo "Installing domain mapping plugin..."
-        az webapp ssh --resource-group $RESOURCE_GROUP --name $SITE_NAME --command "wp plugin install mercator --activate --network"
+        wp plugin install mercator --activate --network
       fi
       
       # Create WordPress application password for API access
       echo "Creating WordPress application password..."
-      WP_APP_PASSWORD=$(az webapp ssh --resource-group $RESOURCE_GROUP --name $SITE_NAME --command "wp user application-password create $WP_ADMIN_USERNAME 'Content-API' --porcelain" | tr -d '\r\n')
+      wp user application-password create "$2" 'Content-API' --porcelain
+      
+      exit 0
+      WPSETUP
+      
+      # Make the script executable
+      chmod +x /tmp/wp_setup.sh
+      
+      # Upload the script to the container
+      echo "Uploading WordPress setup script to the web app..."
+      az webapp ssh --resource-group $RESOURCE_GROUP --name $SITE_NAME --command-file /tmp/wp_setup.sh $ENABLE_MULTISITE $WP_ADMIN_USERNAME > /tmp/wp_output.txt
+      
+      # Check if we got an application password
+      WP_APP_PASSWORD=$(cat /tmp/wp_output.txt | tail -1 | tr -d '\r\n')
       
       # Store the app password in Key Vault if we got a valid one
       if [ -n "$WP_APP_PASSWORD" ]; then
