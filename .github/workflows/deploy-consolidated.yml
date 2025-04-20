@@ -153,26 +153,131 @@ jobs:
         # Copy admin portal files
         cp -r templates static deploy-package/
         
+        # Ensure data directory exists
+        mkdir -p deploy-package/data
+        # Create data directories if they don't exist
+        if [ -d data ]; then
+          cp -r data/* deploy-package/data/
+        fi
+        
         # Copy main application files
         cp main.py deploy-package/
         cp wsgi.py deploy-package/
+        cp minimal_app.py deploy-package/  # Add fallback app
         
         # Copy web configuration files
         cp web.config deploy-package/
         chmod +x startup.sh
         cp startup.sh deploy-package/
         
+        # Copy troubleshooting scripts
+        chmod +x fix-webapp-directly.sh deploy-static-test.sh direct-fix.sh deploy-admin-portal.sh
+        cp fix-webapp-directly.sh deploy-static-test.sh direct-fix.sh deploy-admin-portal.sh deploy-package/
+        
+        # Create error pages
+        mkdir -p deploy-package/errors
+        
+        # Create 404 page
+        cat > deploy-package/404.html << EOF
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>404 - Page Not Found</title>
+            <style>
+                body { font-family: Arial, sans-serif; margin: 40px; line-height: 1.6; text-align: center; }
+                h1 { color: #0066cc; }
+                .container { border: 1px solid #ddd; padding: 20px; border-radius: 5px; max-width: 600px; margin: 0 auto; }
+            </style>
+        </head>
+        <body>
+            <h1>404 - Page Not Found</h1>
+            <div class="container">
+                <p>The page you requested could not be found.</p>
+                <p><a href="/">Return to Dashboard</a></p>
+            </div>
+        </body>
+        </html>
+        EOF
+        
+        # Create 500 page
+        cat > deploy-package/500.html << EOF
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>500 - Server Error</title>
+            <style>
+                body { font-family: Arial, sans-serif; margin: 40px; line-height: 1.6; text-align: center; }
+                h1 { color: #cc0000; }
+                .container { border: 1px solid #ddd; padding: 20px; border-radius: 5px; max-width: 600px; margin: 0 auto; }
+            </style>
+        </head>
+        <body>
+            <h1>500 - Server Error</h1>
+            <div class="container">
+                <p>The server encountered an internal error and was unable to complete your request.</p>
+                <p>Please try again later or contact the administrator.</p>
+                <p><a href="/">Return to Dashboard</a></p>
+            </div>
+        </body>
+        </html>
+        EOF
+        
+        # Create hostingstart.html (fallback page)
+        cat > deploy-package/hostingstart.html << EOF
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Blog Automation Admin Portal</title>
+            <style>
+                body { font-family: Arial, sans-serif; margin: 40px; line-height: 1.6; }
+                h1 { color: #0066cc; }
+                .container { border: 1px solid #ddd; padding: 20px; border-radius: 5px; }
+                .info { color: #0066cc; background-color: #e7f9f9; padding: 15px; border-radius: 5px; margin-bottom: 20px; }
+            </style>
+        </head>
+        <body>
+            <h1>Blog Automation Admin Portal</h1>
+            
+            <div class="info">
+                <strong>Startup in Progress:</strong> The Blog Automation Admin Portal is starting up. If this page persists, check the application logs.
+            </div>
+            
+            <div class="container">
+                <h2>Quick Links</h2>
+                <ul>
+                    <li><a href="/admin">Admin Dashboard</a></li>
+                    <li><a href="/api">API Endpoints</a></li>
+                    <li><a href="/docs">Documentation</a></li>
+                </ul>
+            </div>
+        </body>
+        </html>
+        EOF
+        
         # Make script files executable
         find deploy-package -name "*.sh" -exec chmod +x {} \;
         
-        # Copy requirements file
+        # Copy or create requirements file
         if [ -f requirements.txt ]; then
           cp requirements.txt deploy-package/
         else
-          # Create minimal requirements if none exists
-          echo "flask==2.0.1" > deploy-package/requirements.txt
-          echo "gunicorn==20.1.0" >> deploy-package/requirements.txt
-          echo "werkzeug==2.0.1" >> deploy-package/requirements.txt
+          # Create comprehensive requirements if none exists
+          cat > deploy-package/requirements.txt << EOF
+        flask>=2.0.0
+        gunicorn>=20.1.0
+        wfastcgi>=3.0.0
+        python-dotenv>=0.19.0
+        werkzeug>=2.0.1
+        azure-functions>=1.11.0
+        azure-identity>=1.10.0
+        azure-keyvault-secrets>=4.5.0
+        azure-storage-blob>=12.13.0
+        requests>=2.27.1
+        markdown>=3.3.7
+        pygments>=2.13.0
+        langdetect>=1.0.9
+        trafilatura>=1.4.0
+        EOF
         fi
         
         # Create required Azure configuration files
@@ -220,15 +325,35 @@ jobs:
           echo "You may need to manually check the admin portal configuration."
         fi
         
+    - name: Prepare Fallback Mechanism
+      run: |
+        echo "Setting up fallback mechanisms for maximum reliability..."
+        
+        # Create minimal app and error pages for fallback
+        chmod +x ./fix-webapp-directly.sh
+        ./fix-webapp-directly.sh "${{ env.RESOURCE_GROUP }}" "${{ env.AZURE_FUNCTIONAPP_NAME }}" || true
+        
+        # Deploy static test as a backup option
+        chmod +x ./deploy-static-test.sh
+        ./deploy-static-test.sh "${{ env.RESOURCE_GROUP }}" "${{ env.AZURE_FUNCTIONAPP_NAME }}" || true
+        
     - name: Final Web App Configuration
       run: |
         echo "Performing final crucial web app configuration steps..."
+        
+        # Configure the app as a web app (not a function app)
+        az resource update \
+          --resource-group "${{ env.RESOURCE_GROUP }}" \
+          --name "${{ env.AZURE_FUNCTIONAPP_NAME }}" \
+          --resource-type "Microsoft.Web/sites" \
+          --set kind="app,linux" \
+          --api-version "2021-02-01"
         
         # Force the app to be a web app and set the right startup command
         az webapp config set \
           --resource-group "${{ env.RESOURCE_GROUP }}" \
           --name "${{ env.AZURE_FUNCTIONAPP_NAME }}" \
-          --startup-file "python -m flask run --host=0.0.0.0 --port=5000"
+          --startup-file "gunicorn --bind=0.0.0.0:5000 --timeout 600 wsgi:application"
         
         # Set crucial app settings that make Flask work as a web app
         az webapp config appsettings set \
@@ -237,7 +362,21 @@ jobs:
           --settings \
           FLASK_APP=main.py \
           WEBSITES_PORT=5000 \
-          SCM_DO_BUILD_DURING_DEPLOYMENT=true
+          PORT=5000 \
+          SCM_DO_BUILD_DURING_DEPLOYMENT=true \
+          WSGI_LOG=D:\\home\\LogFiles\\application.log
+        
+        # Force HTTPS
+        az webapp update \
+          --resource-group "${{ env.RESOURCE_GROUP }}" \
+          --name "${{ env.AZURE_FUNCTIONAPP_NAME }}" \
+          --https-only true
+        
+        # Configure default documents to handle both scenarios
+        az webapp config set \
+          --resource-group "${{ env.RESOURCE_GROUP }}" \
+          --name "${{ env.AZURE_FUNCTIONAPP_NAME }}" \
+          --generic-configurations "{'defaultDocuments': ['index.html','default.htm','hostingstart.html']}"
         
         # Final restart to apply all settings
         az webapp restart \
@@ -246,8 +385,19 @@ jobs:
           
         # Wait for the app to become available
         echo "Waiting for the web app to become available..."
-        sleep 30
+        sleep 60
         
         # Check if the app is accessible
         HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" "https://${{ env.AZURE_FUNCTIONAPP_NAME }}.azurewebsites.net/")
         echo "Web app responded with HTTP code: $HTTP_CODE"
+        
+        if [ "$HTTP_CODE" != "200" ]; then
+          echo "Warning: Web app not returning 200 OK. Attempting emergency direct fix..."
+          chmod +x ./direct-fix.sh
+          ./direct-fix.sh "${{ env.RESOURCE_GROUP }}" "${{ env.AZURE_FUNCTIONAPP_NAME }}" || true
+          
+          # Wait a bit more and check again
+          sleep 30
+          FINAL_HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" "https://${{ env.AZURE_FUNCTIONAPP_NAME }}.azurewebsites.net/")
+          echo "Final HTTP code after emergency fix: $FINAL_HTTP_CODE"
+        fi
