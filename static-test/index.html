@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Admin Portal - Static Test Page</title>
+    <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; max-width: 800px; margin: 0 auto; padding: 20px; }
+        h1 { color: #2c3e50; }
+        .success { color: green; background-color: #e7f9e7; padding: 10px; border-radius: 5px; }
+        .warning { color: orange; background-color: #fff8e7; padding: 10px; border-radius: 5px; margin-top: 20px; }
+        .container { border: 1px solid #ddd; padding: 20px; border-radius: 5px; margin-top: 20px; }
+    </style>
+</head>
+<body>
+    <h1>Admin Portal - Static Test Page</h1>
+    <div class="success">
+        <strong>Success!</strong> Your static HTML file is being served correctly from Azure App Service.
+    </div>
+    
+    <div class="warning">
+        <strong>Note:</strong> This is only a static test page. Your actual Flask application may still need configuration.
+    </div>
+    
+    <div class="container">
+        <h2>Deployment Verification</h2>
+        <p>If you're seeing this page, it means:</p>
+        <ol>
+            <li>Your Azure App Service can serve static content correctly</li>
+            <li>The web server configuration is working for basic file serving</li>
+            <li>The deployment process is correctly uploading files to the server</li>
+        </ol>
+        
+        <hr>
+        
+        <h3>Troubleshooting Next Steps:</h3>
+        <ol>
+            <li>Verify Python/Flask is properly configured in App Service</li>
+            <li>Check the startup command in App Service Configuration</li>
+            <li>Review application logs for any Flask/Python errors</li>
+            <li>Ensure WEBSITES_PORT matches the port in your Flask app</li>
+        </ol>
+    </div>
+</body>
+</html>
