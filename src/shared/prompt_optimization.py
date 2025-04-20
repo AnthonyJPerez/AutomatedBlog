@@ -115,6 +115,7 @@ class AIOptimizationService:
     
     def _update_cache_metrics(self, hit: bool):
         """Update cache hit/miss metrics."""
+        global _cache_info
         if hit:
             _cache_info["hits"] += 1
         else:
@@ -122,6 +123,7 @@ class AIOptimizationService:
     
     def _clean_cache_if_needed(self):
         """Remove old entries if cache is too large."""
+        global _response_cache, _cache_info
         
         if len(_response_cache) > _cache_info["max_size"]:
             self.logger.info(f"Cache cleanup triggered. Size: {len(_response_cache)}")
@@ -146,7 +148,6 @@ class AIOptimizationService:
                 )
                 
                 # Keep only the newest entries
-                global _response_cache
                 _response_cache = dict(sorted_entries[:_cache_info["max_size"]])
                 
             _cache_info["size"] = len(_response_cache)
@@ -186,6 +187,7 @@ class AIOptimizationService:
         Returns:
             dict or None: The cached response or None if not found/invalid
         """
+        global _response_cache
         
         if not self.enable_caching:
             self._update_cache_metrics(False)
@@ -215,6 +217,7 @@ class AIOptimizationService:
             response (any): The response object to cache
             tokens_used (int): Number of tokens used for this response
         """
+        global _response_cache, _token_usage, _cache_info
         
         if not self.enable_caching:
             return
@@ -364,6 +367,7 @@ class AIOptimizationService:
         Returns:
             dict: Cache statistics
         """
+        global _response_cache, _cache_info, _token_usage
         
         # Update the size in case it's stale
         _cache_info["size"] = len(_response_cache)
@@ -382,6 +386,7 @@ class AIOptimizationService:
     
     def clear_cache(self):
         """Clear the response cache."""
+        global _response_cache, _cache_info
         
         _response_cache.clear()
         _cache_info["size"] = 0
