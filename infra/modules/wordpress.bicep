@@ -50,7 +50,11 @@ param enableMultisite bool = true
 param keyVaultName string
 
 // Variables
-var mysqlServerName = '${toLower(siteName)}-mysql'
+// Ensure MySQL server name is within length limits (max 63 chars)
+var sqlSuffix = '-sql' // shorter than '-mysql' to save characters
+var mysqlServerName = length(toLower(siteName)) > 58 
+  ? '${take(toLower(siteName), 58)}${sqlSuffix}' 
+  : '${toLower(siteName)}${sqlSuffix}'
 var databaseName = 'wordpress'
 var wpPlanName = !empty(appServicePlanName) ? appServicePlanName : '${siteName}-plan'
 var multisiteConfig = enableMultisite ? 'define(\'WP_ALLOW_MULTISITE\', true);define(\'SUBDOMAIN_INSTALL\', false);define(\'DOMAIN_CURRENT_SITE\', \\$_SERVER["HTTP_HOST"]);define(\'PATH_CURRENT_SITE\', \'/\');define(\'SITE_ID_CURRENT_SITE\', 1);define(\'BLOG_ID_CURRENT_SITE\', 1);' : ''
@@ -69,7 +73,7 @@ resource appServicePlan 'Microsoft.Web/serverfarms@2022-03-01' = {
 
 // Create MySQL using the modular template
 module mysqlModule 'mysql.bicep' = {
-  name: 'mysqlDeployment-${siteName}'
+  name: 'mysqlDeploy' // Shortened name to avoid length warnings
   params: {
     serverName: mysqlServerName
     location: location

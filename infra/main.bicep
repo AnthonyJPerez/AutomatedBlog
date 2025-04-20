@@ -26,10 +26,10 @@ param dbAdminLogin string = 'wpdbadmin'
 @minLength(8)
 @description('Database administrator password (min 8 chars)')
 @secure()
-param dbAdminPassword string = ''
+param dbAdminPassword string
 
 @description('WordPress admin email address')
-param wpAdminEmail string = ''
+param wpAdminEmail string
 
 @minLength(4)
 @description('WordPress admin username (min 4 chars)')
@@ -38,7 +38,7 @@ param wpAdminUsername string = 'admin'
 @minLength(8)
 @description('WordPress admin password (min 8 chars)')
 @secure()
-param wpAdminPassword string = ''
+param wpAdminPassword string
 
 // Name prefix for resources
 var namePrefix = '${projectName}-${environment}'
@@ -148,9 +148,7 @@ module keyVaultAccessPoliciesModule 'modules/keyvault-access-policies.bicep' = {
     adminPortalPrincipalId: adminPortalModule.outputs.adminPortalPrincipalId
   }
   dependsOn: [
-    keyVaultModule
-    functionApp
-    adminPortalModule
+    keyVaultModule // Only Key Vault is required as a dependency
   ]
 }
 
