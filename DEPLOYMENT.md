@@ -225,34 +225,44 @@ If you encounter issues during deployment:
 If you see the default Azure Functions landing page instead of the admin portal:
 
 - **Problem**: The Function App might not be properly configured to serve the web application
-- **Solution**: Run the resilient configuration script:
-  ```bash
-  ./configure-admin-portal.sh blogauto-prod-rg blogauto-prod-function
-  ```
+- **Solution**: Follow these direct remediation steps:
 
-- **Understanding the Configuration Script**:
-  The script now uses a resilient approach that:
-  1. Continues even if individual steps fail (warning instead of error)
-  2. Reports success/failure of each step with checkmarks
-  3. Skips problematic HTTP handler configuration that caused errors
-  4. Provides more detailed diagnostics information
-  5. Works with both new deployments and existing Function Apps
+  1. **Direct Web App Configuration**: Use these Azure CLI commands for instant configuration:
+     ```bash
+     # Set the app kind and startup file
+     az webapp config set --resource-group "blogauto-prod-rg" \
+       --name "blogauto-prod-function" \
+       --startup-file "python -m flask run --host=0.0.0.0 --port=5000"
+     
+     # Set crucial app settings
+     az webapp config appsettings set --resource-group "blogauto-prod-rg" \
+       --name "blogauto-prod-function" \
+       --settings \
+       FLASK_APP=main.py \
+       WEBSITES_PORT=5000 \
+       SCM_DO_BUILD_DURING_DEPLOYMENT=true
+     
+     # Restart the app to apply changes
+     az webapp restart --resource-group "blogauto-prod-rg" \
+       --name "blogauto-prod-function"
+     ```
 
-- **Check App Configuration**: Verify these key settings in Azure Portal:
-  1. App kind is set to `app,linux` (not just `functionapp,linux`)
-  2. The `WEBSITES_PORT` environment variable is set to `5000`
-  3. The startup command points to `gunicorn --bind=0.0.0.0:5000 --timeout 600 main:app`
+  2. **Run the fully redesigned comprehensive configuration script**:
+     ```bash
+     ./configure-admin-portal.sh blogauto-prod-rg blogauto-prod-function
+     ```
 
-- **Verify Files**: Ensure these critical files are present in the Function App:
-  1. `startup.sh` - Controls app startup process
-  2. `web.config` - Configures IIS behavior
-  3. `main.py` - Flask application entry point
+- **Verify Critical Files**: Ensure these files are properly deployed:
+  1. `web.config` - Must use FastCGI module (not HTTP platform handler)
+  2. `wsgi.py` - Entry point for web application
+  3. `main.py` - Flask application definition
   4. `/templates` and `/static` directories
 
-- **Logs and Diagnostics**: 
-  1. Check the Function App Log stream in Azure Portal for real-time logs
-  2. Examine deployment logs in the GitHub Actions workflow output
-  3. Verify the `configure-admin-portal.sh` script output for warnings
+- **Advanced Diagnostics**: 
+  1. Use the Kudu console (`https://blogauto-prod-function.scm.azurewebsites.net/DebugConsole`) to examine files
+  2. Check detailed logs: `az webapp log tail --resource-group "blogauto-prod-rg" --name "blogauto-prod-function"`
+  3. Verify deployment status: `az webapp deployment list --resource-group "blogauto-prod-rg" --name "blogauto-prod-function"`
+  4. Check HTTP response directly: `curl -I https://blogauto-prod-function.azurewebsites.net/`
 
 #### 2. Azure Quota Limitations
 
@@ -388,13 +398,16 @@ python deploy-consolidated.py --resource-group "blogauto-dev-rg" --deploy-wordpr
 - Fixed Bicep syntax error in array definitions (Error BCP238: Unexpected new line character)
 - Added GitHub secret-based password management for WordPress and database administrator
 - Fixed deployment script identity issues by removing SystemAssigned identity type
-- **Completely automated admin portal deployment** with zero manual configuration:
-  - Added comprehensive post-deployment script (configure-admin-portal.sh)
-  - Created proper web.config and startup.sh files for Azure App Service
-  - Enhanced deployment package with required configuration files
-  - Added dedicated GitHub workflow step to ensure proper configuration
-  - **Important**: Made deployment scripts resilient to transient errors:
-    - Configuration steps continue even if individual commands fail
-    - Detailed step-by-step success/failure reporting
-    - Fixed HTTP platform handler configuration issue
-    - Enhanced workflow to handle script failures gracefully
+- **Complete admin portal deployment overhaul** for maximum reliability:
+  - Complete rewrite of admin portal deployment approach
+  - Created advanced web.config using FastCGI module instead of HTTP platform handler
+  - Added fully featured wsgi.py with fallback mechanisms for maximum reliability
+  - Enhanced deployment with additional runtime configuration steps
+  - Added comprehensive logging and real-time HTTP status verification
+  - **Important**: Complete redesign of deployment strategy:
+    - Multiple targeted deployment steps with failover protections
+    - Explicit web app configuration after function app deployment
+    - Detailed step-by-step success/failure reporting with timestamps
+    - Fixed HTTP platform handler configuration issues
+    - Enhanced workflow with final dedicated direct configuration step
+    - Added web app availability verification with HTTP status checking

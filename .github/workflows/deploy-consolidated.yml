@@ -146,31 +146,53 @@ jobs:
       run: |
         echo "Preparing web application deployment package"
         mkdir -p deploy-package
+        
         # Copy function code
         cp -r src/* deploy-package/
+        
         # Copy admin portal files
         cp -r templates static deploy-package/
-        # Copy main application file
+        
+        # Copy main application files
         cp main.py deploy-package/
-        # Copy web.config and startup.sh for Azure App Service
+        cp wsgi.py deploy-package/
+        
+        # Copy web configuration files
         cp web.config deploy-package/
         chmod +x startup.sh
         cp startup.sh deploy-package/
-        # Copy requirements file if it exists
+        
+        # Make script files executable
+        find deploy-package -name "*.sh" -exec chmod +x {} \;
+        
+        # Copy requirements file
         if [ -f requirements.txt ]; then
           cp requirements.txt deploy-package/
+        else
+          # Create minimal requirements if none exists
+          echo "flask==2.0.1" > deploy-package/requirements.txt
+          echo "gunicorn==20.1.0" >> deploy-package/requirements.txt
+          echo "werkzeug==2.0.1" >> deploy-package/requirements.txt
         fi
-        # Create a simple wsgi.py if it doesn't exist
-        if [ ! -f deploy-package/wsgi.py ]; then
-          echo "from main import app as application" > deploy-package/wsgi.py
-        fi
-        # Create 'host.json' file to indicate this is also a function app
+        
+        # Create required Azure configuration files
         echo '{"version":"2.0","extensionBundle":{"id":"Microsoft.Azure.Functions.ExtensionBundle","version":"[2.*, 3.0.0)"}}' > deploy-package/host.json
+        
         # Create a '.deployment' file to control deployment behavior
         echo '[config]' > deploy-package/.deployment
         echo 'SCM_DO_BUILD_DURING_DEPLOYMENT=true' >> deploy-package/.deployment
+        
+        # Create a simple route.json file to indicate this is a web app
+        echo '{"routes":[{"route":"/*","serve":"/"}]}' > deploy-package/routes.json
+        
+        # Ensure proper file permissions
+        chmod -R 755 deploy-package
+        
         # List the contents of the deploy package
+        echo "Deploy package contents:"
         ls -la deploy-package
+        echo "Web config file:"
+        cat deploy-package/web.config
 
     - name: Deploy Function App and Web App
       uses: Azure/functions-action@v1
@@ -197,3 +219,35 @@ jobs:
           echo "Admin portal configuration had some warnings, but deployment will continue."
           echo "You may need to manually check the admin portal configuration."
         fi
+        
+    - name: Final Web App Configuration
+      run: |
+        echo "Performing final crucial web app configuration steps..."
+        
+        # Force the app to be a web app and set the right startup command
+        az webapp config set \
+          --resource-group "${{ env.RESOURCE_GROUP }}" \
+          --name "${{ env.AZURE_FUNCTIONAPP_NAME }}" \
+          --startup-file "python -m flask run --host=0.0.0.0 --port=5000"
+        
+        # Set crucial app settings that make Flask work as a web app
+        az webapp config appsettings set \
+          --resource-group "${{ env.RESOURCE_GROUP }}" \
+          --name "${{ env.AZURE_FUNCTIONAPP_NAME }}" \
+          --settings \
+          FLASK_APP=main.py \
+          WEBSITES_PORT=5000 \
+          SCM_DO_BUILD_DURING_DEPLOYMENT=true
+        
+        # Final restart to apply all settings
+        az webapp restart \
+          --resource-group "${{ env.RESOURCE_GROUP }}" \
+          --name "${{ env.AZURE_FUNCTIONAPP_NAME }}"
+          
+        # Wait for the app to become available
+        echo "Waiting for the web app to become available..."
+        sleep 30
+        
+        # Check if the app is accessible
+        HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" "https://${{ env.AZURE_FUNCTIONAPP_NAME }}.azurewebsites.net/")
+        echo "Web app responded with HTTP code: $HTTP_CODE"
