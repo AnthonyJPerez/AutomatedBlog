@@ -35,10 +35,10 @@ param wpAdminPassword string = ''
 var namePrefix = '${projectName}-${environment}'
 
 // Tags for resources
-var tags = {
+var deploymentTags = {
   Environment: environment
   Application: 'BlogAutomation'
-  DeploymentDate: utcNow('yyyy-MM-dd')
+  DeployDate: '${environment}-deployment'
 }
 
 // Storage account settings
@@ -62,7 +62,7 @@ module storageModule 'storage.bicep' = {
   params: {
     storageAccountName: storageName
     location: location
-    tags: tags
+    tags: deploymentTags
     sku: storageSku
   }
 }
@@ -73,7 +73,7 @@ module keyVaultModule 'keyvault.bicep' = {
   params: {
     keyVaultName: keyVaultName
     location: location
-    tags: tags
+    tags: deploymentTags
     functionAppPrincipalId: functionApp.outputs.functionAppPrincipalId
   }
 }
@@ -84,7 +84,7 @@ module monitoringModule 'monitoring.bicep' = {
   params: {
     appInsightsName: appInsightsName
     location: location
-    tags: tags
+    tags: deploymentTags
   }
 }
 
@@ -95,7 +95,7 @@ module functionApp 'functions.bicep' = {
     functionAppName: functionAppName
     appServicePlanName: appServicePlanName
     location: location
-    tags: tags
+    tags: deploymentTags
     storageAccountName: storageModule.outputs.storageAccountName
     appInsightsInstrumentationKey: monitoringModule.outputs.instrumentationKey
     keyVaultName: keyVaultName
