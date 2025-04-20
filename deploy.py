@@ -118,11 +118,12 @@ def main():
     parser.add_argument("--resource-group", "-g", type=str, required=True, help="Resource group name")
     parser.add_argument("--location", "-l", type=str, default="eastus", help="Azure region (default: eastus)")
     parser.add_argument("--environment", "-e", type=str, default="dev", help="Environment name (default: dev)")
+    parser.add_argument("--project-name", "-p", type=str, default="blogauto", help="Project name for resource naming (default: blogauto)")
     
     args = parser.parse_args()
     
     # Deploy resources
-    success = deploy_resources(args.resource_group, args.location, args.environment)
+    success = deploy_resources(args.resource_group, args.location, args.environment, args.project_name)
     
     # Exit with appropriate status code
     if success:
