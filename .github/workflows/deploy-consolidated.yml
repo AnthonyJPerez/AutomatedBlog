@@ -13,7 +13,9 @@ env:
   AZURE_FUNCTIONAPP_NAME: "blogauto-${{ vars.ENVIRONMENT || 'dev' }}-function"
   PYTHON_VERSION: '3.11'
   RESOURCE_GROUP: "blogauto-${{ vars.ENVIRONMENT || 'dev' }}-rg"
-  LOCATION: 'eastus'
+  # Default location for production is westus2 due to quota availability
+  # For other environments, use eastus
+  LOCATION: ${{ vars.ENVIRONMENT == 'prod' && 'westus2' || vars.LOCATION || 'eastus' }}
   ENVIRONMENT: ${{ vars.ENVIRONMENT || 'dev' }}
   PROJECT_NAME: "blogauto"
 

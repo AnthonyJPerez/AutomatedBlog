@@ -50,6 +50,12 @@ var storageSku = environment == 'prod' ? 'Standard_GRS' : 'Standard_LRS'
 var functionAppName = '${namePrefix}-function'
 var appServicePlanName = '${namePrefix}-plan'
 var appInsightsName = '${namePrefix}-insights'
+// Use B1 SKU for all environments to avoid quota issues
+var appServicePlanSku = 'B1'
+
+// Use a region with available quota
+// westus2 and eastus2 often have better availability than eastus
+var deploymentRegion = location == 'eastus' && environment == 'prod' ? 'westus2' : location
 
 // Key Vault settings
 var keyVaultName = '${namePrefix}-vault'
@@ -95,11 +101,12 @@ module functionApp 'functions.bicep' = {
   params: {
     functionAppName: functionAppName
     appServicePlanName: appServicePlanName
-    location: location
+    location: deploymentRegion
     tags: deploymentTags
     storageAccountName: storageModule.outputs.storageAccountName
     appInsightsInstrumentationKey: monitoringModule.outputs.instrumentationKey
     keyVaultName: keyVaultName
+    appServicePlanSku: appServicePlanSku
   }
   // No explicit dependsOn needed, implicit through parameter references
 }
@@ -110,8 +117,8 @@ module wordpressModule 'wordpress.bicep' = if (deployWordPress) {
   params: {
     siteName: wordPressSiteName
     appServicePlanName: wpAppServicePlanName
-    location: location
-    sku: environment == 'prod' ? 'P1v2' : 'B1'
+    location: deploymentRegion
+    sku: environment == 'prod' ? 'B2' : 'B1'  // Scale down to avoid quota issues
     administratorLogin: dbAdminLogin
     administratorLoginPassword: dbAdminPassword
     wpAdminEmail: wpAdminEmail

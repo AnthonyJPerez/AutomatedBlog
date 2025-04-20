@@ -25,14 +25,20 @@ resource storageAccount 'Microsoft.Storage/storageAccounts@2021-09-01' existing 
   name: storageAccountName
 }
 
-// Create App Service Plan (consumption)
+@description('The SKU of the App Service Plan')
+param appServicePlanSku string = 'B1' // Default to Basic tier
+
+// Create App Service Plan
 resource appServicePlan 'Microsoft.Web/serverfarms@2022-03-01' = {
   name: appServicePlanName
   location: location
   tags: tags
   sku: {
-    name: 'Y1'
-    tier: 'Dynamic'
+    name: appServicePlanSku
+    tier: appServicePlanSku == 'Y1' ? 'Dynamic' : 
+          startsWith(appServicePlanSku, 'B') ? 'Basic' : 
+          startsWith(appServicePlanSku, 'S') ? 'Standard' : 
+          startsWith(appServicePlanSku, 'P') ? 'Premium' : 'Free'
   }
   properties: {
     reserved: true // Required for Linux

@@ -80,6 +80,32 @@ If you encounter issues during deployment:
 3. Ensure resource names are valid and not already in use
 4. Check for any Bicep validation errors in the templates
 
+### Common Issues
+
+#### Azure Quota Limitations
+
+If you encounter an error like:
+```
+"code":"SubscriptionIsOverQuotaForSku","message":"This region has quota of 0 instances for your subscription. Try selecting different region or SKU."
+```
+
+This indicates your Azure subscription has reached its quota limit for the specified SKU in that region. To resolve this:
+
+1. Use a different region by changing the `location` parameter
+   ```bash
+   python deploy-consolidated.py --resource-group "blogauto-dev-rg" --location "westus2"
+   ```
+
+2. Use a different SKU tier by modifying the Bicep templates
+   - The templates now default to `B1` (Basic) SKU instead of premium tiers
+   - For production, consider requesting a quota increase from Azure Support
+
+3. Update GitHub Actions workflow with a supported region:
+   ```yaml
+   env:
+     LOCATION: westus2
+   ```
+
 For persistent issues, run deployment with verbose logging:
 ```bash
 python deploy-consolidated.py --resource-group "blogauto-dev-rg" --verbose
