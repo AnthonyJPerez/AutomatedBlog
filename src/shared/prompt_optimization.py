@@ -217,7 +217,8 @@ class AIOptimizationService:
             response (any): The response object to cache
             tokens_used (int): Number of tokens used for this response
         """
-        global _token_usage  # Only needed for assignment on line 234
+        # No global declaration needed - we're not reassigning the variable itself
+        # We're only modifying its contents (_token_usage[today] = {})
         
         if not self.enable_caching:
             return
@@ -231,7 +232,7 @@ class AIOptimizationService:
         # Track token usage by day
         today = datetime.datetime.utcnow().strftime("%Y-%m-%d")
         if today not in _token_usage:
-            _token_usage[today] = {}  # Assignment to _token_usage
+            _token_usage[today] = {}  # This is modifying _token_usage, not reassigning it
             
         # Aggregate by model
         model = "unknown"  # Default
