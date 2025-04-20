@@ -94,12 +94,14 @@ jobs:
     - name: Deploy Azure infrastructure
       run: |
         # Deploy Azure infrastructure using Bicep template
+        # Always deploy WordPress (deployWordPress=true)
         az deployment group create \
           --resource-group "${{ env.RESOURCE_GROUP }}" \
           --template-file ./infra/main.bicep \
           --parameters projectName="${{ env.PROJECT_NAME }}" \
           --parameters environment="${{ env.ENVIRONMENT }}" \
           --parameters location="${{ env.LOCATION }}" \
+          --parameters deployWordPress=true \
           --name "github-${{ github.run_number }}"
 
   deploy-function:

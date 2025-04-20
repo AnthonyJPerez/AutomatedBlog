@@ -14,6 +14,7 @@ Options:
   --project-name, -p    Project name for resource naming (default: blogauto)
   --use-azure-sdk       Use Azure SDK instead of CLI (useful for CI/CD)
   --verbose, -v         Enable verbose logging
+  --deploy-wordpress    Flag to deploy WordPress with multisite capabilities
 """
 
 import os
@@ -142,7 +143,7 @@ def deploy_with_sdk(resource_group_name, location="eastus", env_name="dev", proj
         logger.error(f"Deployment error: {e}")
         return False
 
-def deploy_with_cli(resource_group_name, location="eastus", env_name="dev", project_name="blogauto", verbose=False):
+def deploy_with_cli(resource_group_name, location="eastus", env_name="dev", project_name="blogauto", verbose=False, deploy_wordpress=False):
     """
     Deploy Azure resources using az CLI and Bicep templates.
     
@@ -151,6 +152,8 @@ def deploy_with_cli(resource_group_name, location="eastus", env_name="dev", proj
         location: Azure region (default: eastus)
         env_name: Environment name for naming resources (default: dev)
         project_name: Project name for resource naming (default: blogauto)
+        verbose: Enable verbose logging (default: False)
+        deploy_wordpress: Flag to deploy WordPress (default: False)
     
     Returns:
         bool: True if deployment successful, False otherwise
@@ -165,6 +168,7 @@ def deploy_with_cli(resource_group_name, location="eastus", env_name="dev", proj
     logger.info(f"Project name: {project_name}")
     logger.info(f"Environment: {env_name}")
     logger.info(f"Location: {location}")
+    logger.info(f"Deploy WordPress: {deploy_wordpress}")
     
     # Ensure resource group exists
     try:
@@ -203,6 +207,11 @@ def deploy_with_cli(resource_group_name, location="eastus", env_name="dev", proj
             "--parameters", f"location={location}"
         ]
         
+        # Add WordPress deployment parameter if enabled
+        if deploy_wordpress:
+            cmd.extend(["--parameters", "deployWordPress=true"])
+            logger.info("WordPress deployment enabled")
+        
         # Add debug flag for verbose mode
         if verbose:
             cmd.append("--debug")
@@ -230,6 +239,8 @@ def main():
                         help='Use Azure SDK instead of CLI (useful for CI/CD)')
     parser.add_argument('--verbose', '-v', action='store_true',
                         help='Enable verbose output for debugging')
+    parser.add_argument('--deploy-wordpress', action='store_true',
+                        help='Deploy WordPress with multisite capabilities')
     
     args = parser.parse_args()
     
@@ -243,6 +254,9 @@ def main():
             logger.error("Azure SDK not available but --use-azure-sdk was specified.")
             logger.error("Install required packages with: pip install azure-identity azure-mgmt-resource")
             sys.exit(1)
+        # Note: SDK method doesn't yet support WordPress deployment
+        if args.deploy_wordpress:
+            logger.warning("WordPress deployment not supported with Azure SDK method. Please use CLI method instead.")
         success = deploy_with_sdk(
             resource_group_name=args.resource_group,
             location=args.location,
@@ -255,7 +269,8 @@ def main():
             location=args.location,
             env_name=args.environment,
             project_name=args.project_name,
-            verbose=args.verbose
+            verbose=args.verbose,
+            deploy_wordpress=args.deploy_wordpress
         )
     
     sys.exit(0 if success else 1)
