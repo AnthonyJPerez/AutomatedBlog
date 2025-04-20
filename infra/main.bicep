@@ -1,4 +1,7 @@
 // Main deployment template for the blog automation infrastructure
+@description('Project name used as prefix for resource naming')
+param projectName string = 'blogauto'
+
 @description('Environment name (dev, test, prod)')
 param environment string = 'dev'
 
@@ -29,7 +32,7 @@ param wpAdminUsername string = 'admin'
 param wpAdminPassword string = ''
 
 // Name prefix for resources
-var namePrefix = 'blogauto-${environment}'
+var namePrefix = '${projectName}-${environment}'
 
 // Tags for resources
 var tags = {

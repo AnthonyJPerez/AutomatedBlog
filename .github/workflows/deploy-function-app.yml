@@ -30,6 +30,10 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install flake8 pytest azure-functions
+        # Create empty requirements file if it doesn't exist
+        if [ ! -f requirements.txt ]; then
+          touch requirements.txt
+        fi
         pip install -r requirements.txt
         
     - name: Lint with flake8
@@ -104,7 +108,12 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
+        # Create empty requirements file if it doesn't exist
+        if [ ! -f requirements.txt ]; then
+          touch requirements.txt
+        fi
         pip install -r requirements.txt
+        pip install azure-functions
         
     - name: Azure login
       uses: azure/login@v1

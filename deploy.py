@@ -28,7 +28,7 @@ def get_credentials():
         client_secret=client_secret
     )
 
-def deploy_resources(resource_group_name, location="eastus", env_name="dev"):
+def deploy_resources(resource_group_name, location="eastus", env_name="dev", project_name="blogauto"):
     """
     Deploy Azure resources using Bicep templates.
     
@@ -36,6 +36,7 @@ def deploy_resources(resource_group_name, location="eastus", env_name="dev"):
         resource_group_name: Name of the resource group
         location: Azure region (default: eastus)
         env_name: Environment name for naming resources (default: dev)
+        project_name: Project name for resource naming (default: blogauto)
     
     Returns:
         bool: True if deployment successful, False otherwise
@@ -68,6 +69,7 @@ def deploy_resources(resource_group_name, location="eastus", env_name="dev"):
         
         # Prepare the deployment properties
         params = {
+            "projectName": {"value": project_name},
             "environment": {"value": env_name},
             "location": {"value": location}
         }
