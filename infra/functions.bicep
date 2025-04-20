@@ -20,13 +20,19 @@ param appInsightsInstrumentationKey string
 @description('Name of the Key Vault')
 param keyVaultName string
 
+@description('The SKU of the App Service Plan')
+param appServicePlanSku string = 'B1' // Default to Basic tier
+
+// Determine the tier based on SKU name
+var tier = appServicePlanSku == 'Y1' ? 'Dynamic' : 
+          (appServicePlanSku == 'B1' || appServicePlanSku == 'B2' || appServicePlanSku == 'B3') ? 'Basic' : 
+          (appServicePlanSku == 'S1' || appServicePlanSku == 'S2' || appServicePlanSku == 'S3') ? 'Standard' : 
+          (appServicePlanSku == 'P1' || appServicePlanSku == 'P2' || appServicePlanSku == 'P3') ? 'Premium' : 'Free'
+
 // Get reference to storage account
 resource storageAccount 'Microsoft.Storage/storageAccounts@2021-09-01' existing = {
   name: storageAccountName
 }
-
-@description('The SKU of the App Service Plan')
-param appServicePlanSku string = 'B1' // Default to Basic tier
 
 // Create App Service Plan
 resource appServicePlan 'Microsoft.Web/serverfarms@2022-03-01' = {
@@ -35,10 +41,7 @@ resource appServicePlan 'Microsoft.Web/serverfarms@2022-03-01' = {
   tags: tags
   sku: {
     name: appServicePlanSku
-    tier: appServicePlanSku == 'Y1' ? 'Dynamic' : (
-          startsWith(appServicePlanSku, 'B') ? 'Basic' : (
-          startsWith(appServicePlanSku, 'S') ? 'Standard' : (
-          startsWith(appServicePlanSku, 'P') ? 'Premium' : 'Free')))
+    tier: tier
   }
   properties: {
     reserved: true // Required for Linux
