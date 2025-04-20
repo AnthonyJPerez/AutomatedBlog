@@ -144,7 +144,7 @@ except Exception as e:
 
 # Initialize bootstrapping service
 try:
-    from src.shared.bootstrapping_service import BootstrappingService
+    from shared.bootstrapping_service import BootstrappingService
     
     bootstrapping_service = BootstrappingService(
         storage_service=storage_service,
@@ -2711,7 +2711,7 @@ def scrape_url_page():
         wordcloud = None
         sentiment_chart = None
         try:
-            from src.shared.content_visualizer import ContentVisualizer
+            from shared.content_visualizer import ContentVisualizer
             visualizer = ContentVisualizer()
             
             if text:
@@ -3010,7 +3010,7 @@ def test_wordpress_connection():
     """Test endpoint for WordPress connection with Key Vault integration"""
     try:
         # Import the WordPressService
-        from src.shared.wordpress_service import WordPressService
+        from shared.wordpress_service import WordPressService
         
         # Initialize the service
         wordpress_service = WordPressService()
@@ -3094,7 +3094,7 @@ def test_wordpress_multisite():
     """Test endpoint for WordPress Multisite configuration"""
     try:
         # Import the WordPressService
-        from src.shared.wordpress_service import WordPressService
+        from shared.wordpress_service import WordPressService
         
         # Initialize the service
         wordpress_service = WordPressService()
@@ -3139,7 +3139,7 @@ def wordpress_domain_mapping():
     """Page to manage WordPress Multisite domain mapping"""
     try:
         # Import the WordPressService
-        from src.shared.wordpress_service import WordPressService
+        from shared.wordpress_service import WordPressService
         
         # Initialize the service
         wordpress_service = WordPressService()
