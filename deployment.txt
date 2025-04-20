@@ -46,6 +46,23 @@ The deployment can be triggered from GitHub Actions using the consolidated workf
 Required secrets for GitHub Actions:
 - AZURE_CREDENTIALS: JSON containing Service Principal credentials
 
+COMMON DEPLOYMENT ERRORS AND FIXES
+1. "Duplicate command" error in GitHub Actions
+   - Issue: The `az deployment group create` command appears twice
+   - Fix: Remove the duplicate line and format parameters with one per line
+
+2. Bicep syntax errors with complex expressions
+   - Issue: Nested ternary operators and complex conditionals cause validation failures
+   - Fix: Simplified tier determination with hardcoded values matching the default parameters
+
+3. "DeploymentNotFound" error
+   - Issue: This can occur when there's a syntax error in the workflow command
+   - Fix: Ensure proper formatting of multi-line commands in YAML
+
+4. Storage account naming errors
+   - Issue: Azure requires lowercase alphanumeric storage account names
+   - Fix: Use toLower() function on storage account names and remove hyphens
+
 KEY VAULT CONFIGURATION
 The deployment creates a Key Vault to store sensitive information:
 - WordPress credentials
@@ -59,12 +76,14 @@ IMPORTANT NOTES
 4. Function app uses Python 3.11 runtime
 5. Storage account names are automatically converted to lowercase to ensure validity
 
-CHANGES FROM PREVIOUS DEPLOYMENT
-- Simplified SKU tier determination in Bicep templates
-- Fixed issues with nested ternary expressions by using simpler conditionals
-- Improved error handling and logging in deployment scripts
+RECENT CHANGES (April 20, 2025)
+- Fixed GitHub Actions workflow to avoid duplicate command execution
+- Simplified SKU tier determination in Bicep templates by using a hardcoded tier
+- Removed complex nested ternary expressions that were causing syntax errors
+- Reformatted parameters in deployment commands for better readability
 - Enhanced security by removing storage key exposure from output properties
-- Added support for custom region configuration to address quota limitations
+- Updated region configuration to use westus instead of eastus to address quota limitations
+- Added clearer error descriptions and troubleshooting steps to documentation
 
 TESTING DEPLOYED RESOURCES
 After deployment completes, verify the following:
