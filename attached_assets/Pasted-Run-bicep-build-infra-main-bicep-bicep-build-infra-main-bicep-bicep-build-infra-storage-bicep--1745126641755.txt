@@ -1,0 +1,30 @@
+Run bicep build infra/main.bicep
+  bicep build infra/main.bicep
+  bicep build infra/storage.bicep
+  bicep build infra/functions.bicep
+  bicep build infra/keyvault.bicep
+  bicep build infra/monitoring.bicep
+  if [ -f infra/wordpress.bicep ]; then
+    bicep build infra/wordpress.bicep
+  fi
+  shell: /usr/bin/bash -e {0}
+  env:
+    AZURE_FUNCTIONAPP_NAME: blogauto-prod-function
+    PYTHON_VERSION: 3.11
+    RESOURCE_GROUP: blogauto-prod-rg
+    LOCATION: westus
+    ENVIRONMENT: prod
+    PROJECT_NAME: blogauto
+/home/runner/work/AutomatedBlog/AutomatedBlog/infra/main.bicep(99,20) : Error BCP104: The referenced module has errors. [https://aka.ms/bicep/core-diagnostics#BCP104]
+/home/runner/work/AutomatedBlog/AutomatedBlog/infra/storage.bicep(112,170) : Warning outputs-should-not-contain-secrets: Outputs should not contain secrets. Found possible secret: function 'listKeys' [https://aka.ms/bicep/linter/outputs-should-not-contain-secrets]
+/home/runner/work/AutomatedBlog/AutomatedBlog/infra/functions.bicep(38,51) : Error BCP009: Expected a literal value, an array, an object, a parenthesized expression, or a function call at this location. [https://aka.ms/bicep/core-diagnostics#BCP009]
+/home/runner/work/AutomatedBlog/AutomatedBlog/infra/functions.bicep(39,11) : Error BCP025: The property "startsWith" is declared multiple times in this object. Remove or rename the duplicate properties. [https://aka.ms/bicep/core-diagnostics#BCP025]
+/home/runner/work/AutomatedBlog/AutomatedBlog/infra/functions.bicep(39,21) : Error BCP018: Expected the ":" character at this location. [https://aka.ms/bicep/core-diagnostics#BCP018]
+/home/runner/work/AutomatedBlog/AutomatedBlog/infra/functions.bicep(39,58) : Error BCP009: Expected a literal value, an array, an object, a parenthesized expression, or a function call at this location. [https://aka.ms/bicep/core-diagnostics#BCP009]
+/home/runner/work/AutomatedBlog/AutomatedBlog/infra/functions.bicep(40,11) : Error BCP025: The property "startsWith" is declared multiple times in this object. Remove or rename the duplicate properties. [https://aka.ms/bicep/core-diagnostics#BCP025]
+/home/runner/work/AutomatedBlog/AutomatedBlog/infra/functions.bicep(40,21) : Error BCP018: Expected the ":" character at this location. [https://aka.ms/bicep/core-diagnostics#BCP018]
+/home/runner/work/AutomatedBlog/AutomatedBlog/infra/functions.bicep(40,61) : Error BCP009: Expected a literal value, an array, an object, a parenthesized expression, or a function call at this location. [https://aka.ms/bicep/core-diagnostics#BCP009]
+/home/runner/work/AutomatedBlog/AutomatedBlog/infra/functions.bicep(41,11) : Error BCP025: The property "startsWith" is declared multiple times in this object. Remove or rename the duplicate properties. [https://aka.ms/bicep/core-diagnostics#BCP025]
+/home/runner/work/AutomatedBlog/AutomatedBlog/infra/functions.bicep(41,21) : Error BCP018: Expected the ":" character at this location. [https://aka.ms/bicep/core-diagnostics#BCP018]
+/home/runner/work/AutomatedBlog/AutomatedBlog/infra/functions.bicep(41,66) : Error BCP009: Expected a literal value, an array, an object, a parenthesized expression, or a function call at this location. [https://aka.ms/bicep/core-diagnostics#BCP009]
+Error: Process completed with exit code 1.

@@ -35,10 +35,10 @@ resource appServicePlan 'Microsoft.Web/serverfarms@2022-03-01' = {
   tags: tags
   sku: {
     name: appServicePlanSku
-    tier: appServicePlanSku == 'Y1' ? 'Dynamic' : 
-          startsWith(appServicePlanSku, 'B') ? 'Basic' : 
-          startsWith(appServicePlanSku, 'S') ? 'Standard' : 
-          startsWith(appServicePlanSku, 'P') ? 'Premium' : 'Free'
+    tier: appServicePlanSku == 'Y1' ? 'Dynamic' : (
+          startsWith(appServicePlanSku, 'B') ? 'Basic' : (
+          startsWith(appServicePlanSku, 'S') ? 'Standard' : (
+          startsWith(appServicePlanSku, 'P') ? 'Premium' : 'Free')))
   }
   properties: {
     reserved: true // Required for Linux

@@ -106,7 +106,6 @@ resource lifecycleManagementPolicy 'Microsoft.Storage/storageAccounts/management
 // Outputs
 output storageAccountName string = storageAccount.name
 output storageAccountId string = storageAccount.id
-// Note: Bicep linter advises against outputting secrets directly
-// This output is used by function app and is essential; consider securing this in production
-@description('Connection string for the storage account')
-output storageConnectionString string = 'DefaultEndpointsProtocol=https;AccountName=${storageAccount.name};EndpointSuffix=${environment().suffixes.storage};AccountKey=${storageAccount.listKeys().keys[0].value}'
+
+// Note: We're no longer outputting storage keys directly
+// Connection strings are constructed in the function app using references
