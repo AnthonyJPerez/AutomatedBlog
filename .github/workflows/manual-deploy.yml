@@ -50,12 +50,8 @@ jobs:
         subscriptionId: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
         resourceGroupName: "${{ github.event.inputs.resource_group }}"
         template: ./infra/main.bicep
-        parameters: >
-          projectName="${{ github.event.inputs.project_name }}" 
-          environment="${{ github.event.inputs.environment }}" 
-          location="${{ github.event.inputs.location }}"
-        deploymentName: 'github-manual-${{ github.run_number }}'
-        failOnStdErr: false
+        parameters: projectName="${{ github.event.inputs.project_name }}" environment="${{ github.event.inputs.environment }}"
+        failOnStdErr: true
 
   deploy-function:
     runs-on: ubuntu-latest

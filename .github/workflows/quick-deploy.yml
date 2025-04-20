@@ -1,0 +1,29 @@
+name: Quick Azure Deploy
+
+on:
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+      
+    - name: Azure login
+      uses: azure/login@v1
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS }}
+        
+    - name: Deploy Bicep Templates
+      uses: azure/arm-deploy@v1
+      with:
+        subscriptionId: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+        resourceGroupName: my-blog-rg-dev  # Hard-coded resource group name
+        template: ./infra/main.bicep
+        parameters: projectName="blogauto" environment="dev"
+        failOnStdErr: true
+
+    # Additional steps for Function App deployment if needed
+    # - name: Deploy Function App
+    #   ...
