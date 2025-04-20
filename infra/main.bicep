@@ -77,7 +77,7 @@ var wordPressSiteName = !empty(wordPressSiteNameSuffix) ? 'wp-${wordPressSiteNam
 var wpAppServicePlanName = '${wordPressSiteName}-plan'
 
 // Deploy storage account
-module storageModule 'storage.bicep' = {
+module storageModule 'modules/storage.bicep' = {
   name: 'storageDeployment'
   params: {
     storageAccountName: storageName
@@ -88,7 +88,7 @@ module storageModule 'storage.bicep' = {
 }
 
 // Deploy monitoring resources
-module monitoringModule 'monitoring.bicep' = {
+module monitoringModule 'modules/monitoring.bicep' = {
   name: 'monitoringDeployment'
   params: {
     appInsightsName: appInsightsName
@@ -98,7 +98,7 @@ module monitoringModule 'monitoring.bicep' = {
 }
 
 // Deploy Key Vault first (without access policies)
-module keyVaultModule 'keyvault.bicep' = {
+module keyVaultModule 'modules/keyvault.bicep' = {
   name: 'keyVaultDeployment'
   params: {
     keyVaultName: keyVaultName
@@ -109,7 +109,7 @@ module keyVaultModule 'keyvault.bicep' = {
 }
 
 // Deploy Function App
-module functionApp 'functions.bicep' = {
+module functionApp 'modules/functions.bicep' = {
   name: 'functionAppDeployment'
   params: {
     functionAppName: functionAppName
@@ -124,7 +124,7 @@ module functionApp 'functions.bicep' = {
 }
 
 // Deploy Admin Portal Web App
-module adminPortalModule 'admin-portal.bicep' = {
+module adminPortalModule 'modules/admin-portal.bicep' = {
   name: 'adminPortalDeployment'
   params: {
     adminPortalName: adminPortalName
@@ -140,7 +140,7 @@ module adminPortalModule 'admin-portal.bicep' = {
 }
 
 // Update Key Vault access policies after apps are created
-module keyVaultAccessPoliciesModule 'keyvault-access-policies.bicep' = {
+module keyVaultAccessPoliciesModule 'modules/keyvault-access-policies.bicep' = {
   name: 'keyVaultAccessPoliciesDeployment'
   params: {
     keyVaultName: keyVaultName
@@ -155,7 +155,7 @@ module keyVaultAccessPoliciesModule 'keyvault-access-policies.bicep' = {
 }
 
 // Deploy WordPress if enabled
-module wordpressModule 'wordpress.bicep' = if (deployWordPress) {
+module wordpressModule 'modules/wordpress.bicep' = if (deployWordPress) {
   name: 'wordpressDeployment'
   params: {
     siteName: wordPressSiteName
@@ -169,7 +169,9 @@ module wordpressModule 'wordpress.bicep' = if (deployWordPress) {
     wpAdminPassword: wpAdminPassword
     keyVaultName: keyVaultName
   }
-  // No explicit dependsOn needed, implicit through parameter references
+  dependsOn: [
+    keyVaultModule // Ensure Key Vault exists for WordPress to store its secrets
+  ]
 }
 
 // Outputs

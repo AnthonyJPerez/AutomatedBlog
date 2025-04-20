@@ -1,0 +1,26 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "projectName": {
+      "value": "blogauto"
+    },
+    "environment": {
+      "value": "dev"
+    },
+    "location": {
+      "value": "eastus"
+    },
+    "deployWordPress": {
+      "value": false
+    },
+    "wordPressSiteNameSuffix": {
+      "value": ""
+    },
+    "dbAdminLogin": {
+      "value": "wpdbadmin"
+    }
+    // Note: secure parameters like dbAdminPassword should be provided at deployment time
+    // or retrieved from Azure Key Vault using a reference
+  }
+}
