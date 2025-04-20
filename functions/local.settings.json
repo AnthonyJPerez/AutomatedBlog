@@ -1,0 +1,25 @@
+{
+  "IsEncrypted": false,
+  "Values": {
+    "AzureWebJobsStorage": "UseDevelopmentStorage=true",
+    "FUNCTIONS_WORKER_RUNTIME": "python",
+    "KEY_VAULT_NAME": "",
+    "AZURE_CLIENT_ID": "",
+    "AZURE_TENANT_ID": "",
+    "AZURE_CLIENT_SECRET": "",
+    "OPENAI_API_KEY": "",
+    "ANTHROPIC_API_KEY": "",
+    "STORAGE_ACCOUNT_NAME": "",
+    "STORAGE_ACCOUNT_KEY": "",
+    "STORAGE_CONNECTION_STRING": "",
+    "SENDGRID_API_KEY": "",
+    "EMAIL_FROM": "notification@blogautomation.azure.com",
+    "EMAIL_TO": "",
+    "FUNCTIONS_EXTENSION_VERSION": "~4",
+    "WEBSITE_CONTENTAZUREFILECONNECTIONSTRING": "UseDevelopmentStorage=true",
+    "WEBSITE_CONTENTSHARE": "blog-automation-function",
+    "WEBSITE_RUN_FROM_PACKAGE": "1",
+    "SCM_DO_BUILD_DURING_DEPLOYMENT": "true",
+    "ENABLE_ORYX_BUILD": "true"
+  }
+}
