@@ -64,11 +64,12 @@ var multisiteConfig = enableMultisite ? 'define(\'WP_ALLOW_MULTISITE\', true);de
 resource appServicePlan 'Microsoft.Web/serverfarms@2022-03-01' = {
   name: wpPlanName
   location: location
+  kind: 'linux' // Required for Linux
   sku: {
     name: sku
   }
   properties: {
-    reserved: true // For Linux
+    reserved: true // Required for Linux
   }
 }
 
@@ -94,6 +95,7 @@ module mysqlModule 'mysql.bicep' = {
 resource wordpressApp 'Microsoft.Web/sites@2022-03-01' = {
   name: siteName
   location: location
+  kind: 'app,linux' // Specify Linux app type
   identity: {
     type: 'SystemAssigned'
   }

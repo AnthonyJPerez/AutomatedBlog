@@ -36,6 +36,7 @@ resource appServicePlan 'Microsoft.Web/serverfarms@2022-03-01' = {
   name: appServicePlanName
   location: location
   tags: tags
+  kind: 'linux' // Required for Linux
   sku: {
     name: appServicePlanSku
     tier: tier
