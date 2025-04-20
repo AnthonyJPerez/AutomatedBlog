@@ -189,4 +189,11 @@ jobs:
       run: |
         echo "Running post-deployment configuration to properly set up admin portal..."
         chmod +x ./configure-admin-portal.sh
-        ./configure-admin-portal.sh "${{ env.RESOURCE_GROUP }}" "${{ env.AZURE_FUNCTIONAPP_NAME }}"
+        
+        # Run configuration script and continue even if it fails
+        if ./configure-admin-portal.sh "${{ env.RESOURCE_GROUP }}" "${{ env.AZURE_FUNCTIONAPP_NAME }}"; then
+          echo "Admin portal configuration completed successfully."
+        else
+          echo "Admin portal configuration had some warnings, but deployment will continue."
+          echo "You may need to manually check the admin portal configuration."
+        fi

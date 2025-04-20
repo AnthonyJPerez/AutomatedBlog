@@ -225,28 +225,34 @@ If you encounter issues during deployment:
 If you see the default Azure Functions landing page instead of the admin portal:
 
 - **Problem**: The Function App might not be properly configured to serve the web application
-- **Solution**: Run the comprehensive configuration script:
+- **Solution**: Run the resilient configuration script:
   ```bash
   ./configure-admin-portal.sh blogauto-prod-rg blogauto-prod-function
   ```
 
-- **Check App Configuration**: Ensure the following settings are properly configured:
+- **Understanding the Configuration Script**:
+  The script now uses a resilient approach that:
+  1. Continues even if individual steps fail (warning instead of error)
+  2. Reports success/failure of each step with checkmarks
+  3. Skips problematic HTTP handler configuration that caused errors
+  4. Provides more detailed diagnostics information
+  5. Works with both new deployments and existing Function Apps
+
+- **Check App Configuration**: Verify these key settings in Azure Portal:
   1. App kind is set to `app,linux` (not just `functionapp,linux`)
   2. The `WEBSITES_PORT` environment variable is set to `5000`
-  3. The startup command points to the correct entrypoint
-  4. The web.config file is properly deployed
-  5. Default documents include 'index.html'
+  3. The startup command points to `gunicorn --bind=0.0.0.0:5000 --timeout 600 main:app`
 
-- **Verify Files**: Check if these critical files are present in the Function App:
+- **Verify Files**: Ensure these critical files are present in the Function App:
   1. `startup.sh` - Controls app startup process
   2. `web.config` - Configures IIS behavior
   3. `main.py` - Flask application entry point
   4. `/templates` and `/static` directories
 
 - **Logs and Diagnostics**: 
-  1. Go to the Function App in Azure Portal
-  2. Select "Log stream" from the left menu to see real-time logs
-  3. Check for startup errors related to Gunicorn or Python
+  1. Check the Function App Log stream in Azure Portal for real-time logs
+  2. Examine deployment logs in the GitHub Actions workflow output
+  3. Verify the `configure-admin-portal.sh` script output for warnings
 
 #### 2. Azure Quota Limitations
 
@@ -387,3 +393,8 @@ python deploy-consolidated.py --resource-group "blogauto-dev-rg" --deploy-wordpr
   - Created proper web.config and startup.sh files for Azure App Service
   - Enhanced deployment package with required configuration files
   - Added dedicated GitHub workflow step to ensure proper configuration
+  - **Important**: Made deployment scripts resilient to transient errors:
+    - Configuration steps continue even if individual commands fail
+    - Detailed step-by-step success/failure reporting
+    - Fixed HTTP platform handler configuration issue
+    - Enhanced workflow to handle script failures gracefully

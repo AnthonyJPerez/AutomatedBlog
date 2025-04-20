@@ -60,42 +60,61 @@ The documentation includes:
    az login
    ```
 
-3. Run the deployment script:
+3. Run the consolidated deployment script:
    ```bash
-   python deploy.py
+   # For development environment
+   python deploy-consolidated.py --resource-group "blogauto-dev-rg" --deploy-wordpress
+   
+   # For production environment (westus region recommended)
+   python deploy-consolidated.py --resource-group "blogauto-prod-rg" --location "westus" --environment "prod" --deploy-wordpress
    ```
-
-4. Deploy the Azure Functions and infrastructure:
-   ```bash
-   cd infra
-   az deployment group create --resource-group my-replit-rg --template-file main.bicep
+   
+4. Access the admin portal:
+   ```
+   https://blogauto-{env}-function.azurewebsites.net/
    ```
 
 ### Configuration
 
-After deployment, you need to:
+After deployment, you can use either the admin portal or API for configuration:
 
-1. Configure API keys in Azure Key Vault:
-   - OpenAI API key
-   - GoDaddy API credentials (if domain suggestions are needed)
+1. **Admin Portal Interface** (Recommended):
+   - Navigate to `https://blogauto-{env}-function.azurewebsites.net/`
+   - Use the web interface to:
+     - Configure API keys and credentials
+     - Set up new blogs
+     - Manage existing blogs
+     - Monitor content generation
+     - View analytics data
+     - Edit JSON configuration files directly
 
-2. Set up your first blog by making a POST request to the setup function:
-   ```bash
-   curl -X POST https://your-function-app.azurewebsites.net/api/setup \
-     -H "Content-Type: application/json" \
-     -d '{
-       "blog_name": "My Tech Blog",
-       "theme": "technology",
-       "wordpress_url": "https://mytechblog.com",
-       "wordpress_username": "admin",
-       "wordpress_app_password": "xxxx xxxx xxxx xxxx",
-       "tone": "professional",
-       "target_audience": "tech enthusiasts",
-       "publishing_frequency": "weekly",
-       "adsense_publisher_id": "pub-1234567890",
-       "adsense_ad_slots": ["1234567890", "0987654321"]
-     }'
-   ```
+2. **API Configuration** (Advanced):
+   - Configure API keys in Azure Key Vault:
+     - OpenAI API key
+     - Anthropic API key (if using Claude models)
+     - Social media credentials
+     - WordPress credentials
+
+3. **Set up your first blog** through either:
+   - Admin portal form (recommended)
+   - API request:
+     ```bash
+     curl -X POST https://blogauto-{env}-function.azurewebsites.net/api/blog \
+       -H "Content-Type: application/json" \
+       -d '{
+         "blog_name": "My Tech Blog",
+         "description": "A blog about the latest in technology",
+         "theme": "technology",
+         "wordpress_url": "https://mytechblog.com",
+         "wordpress_username": "admin",
+         "wordpress_app_password": "xxxx xxxx xxxx xxxx",
+         "tone": "professional",
+         "target_audience": "tech enthusiasts",
+         "publishing_frequency": "weekly",
+         "adsense_publisher_id": "pub-1234567890",
+         "adsense_ad_slots": ["1234567890", "0987654321"]
+       }'
+     ```
 
 ## Features
 
