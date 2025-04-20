@@ -269,7 +269,7 @@ If WordPress deployment fails or doesn't appear:
 - Verify that the WordPress App Service name is unique (globally)
 - Ensure MySQL server name meets Azure naming requirements
 
-#### 4. Storage Account Naming Errors
+#### 5. Storage Account Naming Errors
 
 If you receive errors about invalid storage account names:
 
@@ -291,3 +291,6 @@ python deploy-consolidated.py --resource-group "blogauto-dev-rg" --deploy-wordpr
 - Added improved error handling and troubleshooting guidance
 - Updated region configuration to use westus for production (better quota availability)
 - Enhanced documentation with detailed descriptions of all components
+- Configured Function App to properly serve admin portal web interface
+- Added deployment scripts for updating existing Function Apps
+- Fixed issue with Function App configuration to support both functions and web app
