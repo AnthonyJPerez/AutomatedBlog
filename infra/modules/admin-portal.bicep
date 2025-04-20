@@ -93,16 +93,29 @@ resource adminPortal 'Microsoft.Web/sites@2021-02-01' = {
   }
 }
 
-// Add application configuration
-resource adminPortalConfig 'Microsoft.Web/sites/config@2021-02-01' = {
+// Add logs configuration
+resource adminPortalLogsConfig 'Microsoft.Web/sites/config@2021-02-01' = {
   parent: adminPortal
-  name: 'web'
+  name: 'logs'
   properties: {
-    numberOfWorkers: 1
-    requestTracingEnabled: true
-    httpLoggingEnabled: true
-    logsDirectorySizeLimit: 35
-    detailedErrorLoggingEnabled: true
+    applicationLogs: {
+      fileSystem: {
+        level: 'Information'
+      }
+    }
+    httpLogs: {
+      fileSystem: {
+        enabled: true
+        retentionInDays: 3
+        retentionInMb: 35
+      }
+    }
+    detailedErrorMessages: {
+      enabled: true
+    }
+    failedRequestsTracing: {
+      enabled: true
+    }
   }
 }
 

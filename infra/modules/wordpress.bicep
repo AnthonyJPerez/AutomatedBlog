@@ -53,7 +53,7 @@ param keyVaultName string
 var mysqlServerName = '${toLower(siteName)}-mysql'
 var databaseName = 'wordpress'
 var wpPlanName = !empty(appServicePlanName) ? appServicePlanName : '${siteName}-plan'
-var multisiteConfig = enableMultisite ? 'define(\'WP_ALLOW_MULTISITE\', true);define(\'SUBDOMAIN_INSTALL\', false);define(\'DOMAIN_CURRENT_SITE\', $_SERVER["HTTP_HOST"]);define(\'PATH_CURRENT_SITE\', \'/\');define(\'SITE_ID_CURRENT_SITE\', 1);define(\'BLOG_ID_CURRENT_SITE\', 1);' : ''
+var multisiteConfig = enableMultisite ? 'define(\'WP_ALLOW_MULTISITE\', true);define(\'SUBDOMAIN_INSTALL\', false);define(\'DOMAIN_CURRENT_SITE\', \\$_SERVER["HTTP_HOST"]);define(\'PATH_CURRENT_SITE\', \'/\');define(\'SITE_ID_CURRENT_SITE\', 1);define(\'BLOG_ID_CURRENT_SITE\', 1);' : ''
 
 // Create App Service Plan
 resource appServicePlan 'Microsoft.Web/serverfarms@2022-03-01' = {
