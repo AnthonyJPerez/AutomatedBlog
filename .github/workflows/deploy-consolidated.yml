@@ -366,17 +366,52 @@ jobs:
         echo "Admin portal package contents:"
         ls -la admin-package
         
-    # Deploy admin portal using ZIP deployment
+    # Deploy admin portal using explicit file uploads (more reliable than ZIP)
     - name: Deploy admin portal
       run: |
-        echo "Deploying admin portal to dedicated web app"
-        cd admin-package
-        zip -r admin-portal.zip ./*
+        echo "Deploying admin portal to dedicated web app using direct file upload"
         
+        # Make sure the web app exists before deploying
+        echo "Checking web app status..."
+        APP_EXISTS=$(az webapp show --resource-group "${{ env.RESOURCE_GROUP }}" --name "${{ env.ADMIN_PORTAL_NAME }}" --query "name" --output tsv 2>/dev/null || echo "")
+        
+        if [ -z "$APP_EXISTS" ]; then
+          echo "Error: Web app ${{ env.ADMIN_PORTAL_NAME }} does not exist or cannot be accessed"
+          exit 1
+        fi
+        
+        echo "Web app exists, proceeding with deployment"
+        
+        # Stop the web app before deployment
+        echo "Stopping the web app for deployment..."
+        az webapp stop --resource-group "${{ env.RESOURCE_GROUP }}" --name "${{ env.ADMIN_PORTAL_NAME }}"
+        
+        # Deploy files to the wwwroot directory
+        echo "Uploading files to web app..."
+        cd admin-package
+        
+        # Upload core files using zip deployment
+        echo "Creating streamlined deployment package..."
+        mkdir -p deploy-package
+        cp main.py deploy-package/
+        cp wsgi.py deploy-package/
+        cp web.config deploy-package/
+        cp -r templates deploy-package/
+        cp -r static deploy-package/
+        cp requirements.txt deploy-package/
+        mkdir -p deploy-package/data
+        if [ -d data ]; then
+          cp -r data/* deploy-package/data/
+        fi
+        
+        cd deploy-package
+        zip -r admin-portal-core.zip ./*
+        
+        echo "Deploying core files..."
         az webapp deployment source config-zip \
           --resource-group "${{ env.RESOURCE_GROUP }}" \
           --name "${{ env.ADMIN_PORTAL_NAME }}" \
-          --src admin-portal.zip
+          --src admin-portal-core.zip
         
     # Configure admin portal startup command and settings
     - name: Configure admin portal startup and environment
