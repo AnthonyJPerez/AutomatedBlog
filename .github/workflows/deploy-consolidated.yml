@@ -73,7 +73,9 @@ jobs:
         bicep build infra/storage.bicep
         bicep build infra/functions.bicep
         bicep build infra/keyvault.bicep
+        bicep build infra/keyvault-access-policies.bicep
         bicep build infra/monitoring.bicep
+        bicep build infra/admin-portal.bicep
         if [ -f infra/wordpress.bicep ]; then
           bicep build infra/wordpress.bicep
         fi
@@ -192,45 +194,30 @@ jobs:
       with:
         creds: ${{ secrets.AZURE_CREDENTIALS }}
         
-    # Get app service plan from existing function app
-    - name: Get existing app service plan
+    # Get admin portal info from Bicep deployment
+    - name: Get admin portal information
       run: |
-        APP_SERVICE_PLAN=$(az functionapp show --resource-group "${{ env.RESOURCE_GROUP }}" --name "${{ env.AZURE_FUNCTIONAPP_NAME }}" --query appServicePlanId --output tsv | awk -F'/' '{print $NF}')
-        echo "APP_SERVICE_PLAN=$APP_SERVICE_PLAN" >> $GITHUB_ENV
-        echo "Using App Service Plan: $APP_SERVICE_PLAN"
+        # Get admin portal web app name from outputs
+        ADMIN_PORTAL_NAME=$(az deployment group show \
+          --resource-group "${{ env.RESOURCE_GROUP }}" \
+          --name "github-${{ github.run_number }}" \
+          --query "properties.outputs.adminPortalName.value" \
+          --output tsv || echo "${{ env.ADMIN_PORTAL_NAME }}")
         
-    # Create or update dedicated admin portal web app
-    - name: Create or update dedicated admin portal web app
-      run: |
-        # Check if admin portal web app exists
-        if az webapp show --resource-group "${{ env.RESOURCE_GROUP }}" --name "${{ env.ADMIN_PORTAL_NAME }}" &>/dev/null; then
-          echo "Admin portal web app already exists, updating configuration"
-        else
-          echo "Creating dedicated admin portal web app"
-          az webapp create \
-            --resource-group "${{ env.RESOURCE_GROUP }}" \
-            --plan "${{ env.APP_SERVICE_PLAN }}" \
-            --name "${{ env.ADMIN_PORTAL_NAME }}" \
-            --runtime "PYTHON:${{ env.PYTHON_VERSION }}"
-            
-          echo "Admin portal web app created successfully"
+        echo "Using Admin Portal: $ADMIN_PORTAL_NAME"
+        echo "ADMIN_PORTAL_NAME=$ADMIN_PORTAL_NAME" >> $GITHUB_ENV
+        
+        # Get admin portal hostname
+        ADMIN_PORTAL_HOSTNAME=$(az deployment group show \
+          --resource-group "${{ env.RESOURCE_GROUP }}" \
+          --name "github-${{ github.run_number }}" \
+          --query "properties.outputs.adminPortalHostName.value" \
+          --output tsv || echo "")
+          
+        if [ -n "$ADMIN_PORTAL_HOSTNAME" ]; then
+          echo "Admin Portal Hostname: $ADMIN_PORTAL_HOSTNAME"
+          echo "ADMIN_PORTAL_HOSTNAME=$ADMIN_PORTAL_HOSTNAME" >> $GITHUB_ENV
         fi
-        
-        # Configure web app settings
-        az webapp config appsettings set \
-          --resource-group "${{ env.RESOURCE_GROUP }}" \
-          --name "${{ env.ADMIN_PORTAL_NAME }}" \
-          --settings \
-          FLASK_APP=main.py \
-          WEBSITES_PORT=5000 \
-          PORT=5000 \
-          SCM_DO_BUILD_DURING_DEPLOYMENT=true
-        
-        # Force HTTPS
-        az webapp update \
-          --resource-group "${{ env.RESOURCE_GROUP }}" \
-          --name "${{ env.ADMIN_PORTAL_NAME }}" \
-          --https-only true
           
     # Prepare admin portal deployment package
     - name: Prepare admin portal deployment package

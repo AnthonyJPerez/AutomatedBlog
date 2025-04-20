@@ -87,6 +87,18 @@ module monitoringModule 'monitoring.bicep' = {
   }
 }
 
+// Deploy Key Vault first (without access policies)
+module keyVaultModule 'keyvault.bicep' = {
+  name: 'keyVaultDeployment'
+  params: {
+    keyVaultName: keyVaultName
+    location: location
+    tags: deploymentTags
+    functionAppPrincipalId: '' // Empty string means no access policies added yet
+    adminPortalPrincipalId: '' // Empty string means no access policies added yet
+  }
+}
+
 // Deploy Function App
 module functionApp 'functions.bicep' = {
   name: 'functionAppDeployment'
@@ -103,6 +115,7 @@ module functionApp 'functions.bicep' = {
   dependsOn: [
     monitoringModule
     storageModule
+    keyVaultModule // Key Vault must exist before Function App is created
   ]
 }
 
@@ -119,23 +132,22 @@ module adminPortalModule 'admin-portal.bicep' = {
   }
   dependsOn: [
     functionApp // Make sure Function App is deployed first since we're reusing its app service plan
-    monitoringModule
+    keyVaultModule // Key Vault must exist before Admin Portal is created
   ]
 }
 
-// Deploy Key Vault and assign identities after both apps are created
-module keyVaultModule 'keyvault.bicep' = {
-  name: 'keyVaultDeployment'
+// Update Key Vault access policies after apps are created
+module keyVaultAccessPoliciesModule 'keyvault-access-policies.bicep' = {
+  name: 'keyVaultAccessPoliciesDeployment'
   params: {
     keyVaultName: keyVaultName
-    location: location
-    tags: deploymentTags
     functionAppPrincipalId: functionApp.outputs.functionAppPrincipalId
     adminPortalPrincipalId: adminPortalModule.outputs.adminPortalPrincipalId
   }
   dependsOn: [
     functionApp
     adminPortalModule
+    keyVaultModule
   ]
 }
 

@@ -28,45 +28,7 @@ resource keyVault 'Microsoft.KeyVault/vaults@2022-07-01' = {
     enableRbacAuthorization: false
     enableSoftDelete: true
     softDeleteRetentionInDays: 90
-    accessPolicies: concat([
-      {
-        tenantId: subscription().tenantId
-        objectId: functionAppPrincipalId
-        permissions: {
-          secrets: [
-            'get'
-            'list'
-          ]
-          keys: [
-            'get'
-            'list'
-          ]
-          certificates: [
-            'get'
-            'list'
-          ]
-        }
-      }
-    ], !empty(adminPortalPrincipalId) ? [
-      {
-        tenantId: subscription().tenantId
-        objectId: adminPortalPrincipalId
-        permissions: {
-          secrets: [
-            'get'
-            'list'
-          ]
-          keys: [
-            'get'
-            'list'
-          ]
-          certificates: [
-            'get'
-            'list'
-          ]
-        }
-      }
-    ] : [])
+    accessPolicies: [] // Initially empty, will be added later via keyvault-access-policies.bicep
     networkAcls: {
       defaultAction: 'Allow'
       bypass: 'AzureServices'
