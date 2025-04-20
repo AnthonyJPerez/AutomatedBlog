@@ -366,125 +366,76 @@ jobs:
         echo "Admin portal package contents:"
         ls -la admin-package
         
-    # Deploy admin portal using direct SFTP upload to ensure reliable deployment
-    - name: Deploy admin portal
+    # Deploy admin portal using the official Azure WebApps deploy action
+    - name: Prepare admin portal for deployment
       run: |
-        echo "Deploying admin portal to dedicated web app using direct SFTP upload"
+        echo "Preparing admin portal for deployment using official Azure WebApps action"
         
-        # Make sure the web app exists before deploying
-        echo "Checking web app status..."
-        APP_EXISTS=$(az webapp show --resource-group "${{ env.RESOURCE_GROUP }}" --name "${{ env.ADMIN_PORTAL_NAME }}" --query "name" --output tsv 2>/dev/null || echo "")
-        
-        if [ -z "$APP_EXISTS" ]; then
-          echo "Error: Web app ${{ env.ADMIN_PORTAL_NAME }} does not exist or cannot be accessed"
-          exit 1
-        fi
-        
-        echo "Web app exists, proceeding with deployment"
-        
-        # Get the publish profile for SFTP access
+        # Create a publish profile for the admin portal
         echo "Getting publish profile..."
         az webapp deployment list-publishing-profiles \
           --resource-group "${{ env.RESOURCE_GROUP }}" \
           --name "${{ env.ADMIN_PORTAL_NAME }}" \
-          --xml > publish_profile.xml
-          
-        # Parse SFTP credentials
-        SFTP_USERNAME=$(grep -oP '(?<=userName=")[^"]*' publish_profile.xml | head -1)
-        SFTP_PASSWORD=$(grep -oP '(?<=userPWD=")[^"]*' publish_profile.xml | head -1)
-        SFTP_HOST=$(grep -oP '(?<=publishUrl=")[^"]*' publish_profile.xml | head -1 | sed 's/ftp:///' | sed 's/\///g')
+          --xml > admin-portal-publish-profile.xml
         
-        echo "SFTP Host: $SFTP_HOST"
-        echo "SFTP Username: $SFTP_USERNAME"
+        # Prepare the clean deployment package at the root level
+        echo "Preparing deployment package..."
+        mkdir -p admin-portal-app
         
-        # Install sshpass for non-interactive SFTP
-        echo "Installing sshpass..."
-        apt-get update && apt-get install -y sshpass
+        # Copy main files to the deployment package
+        cp main.py admin-portal-app/
+        cp wsgi.py admin-portal-app/
+        cp requirements.txt admin-portal-app/
         
-        # Remove any existing content from the site/wwwroot directory
-        echo "Preparing site/wwwroot directory..."
+        # Copy templates and static directories
+        cp -r templates admin-portal-app/ 2>/dev/null || mkdir -p admin-portal-app/templates
+        cp -r static admin-portal-app/ 2>/dev/null || mkdir -p admin-portal-app/static
         
-        # Prepare the clean deployment package
-        echo "Creating deployment package..."
-        mkdir -p deploy-package
-        cd admin-package
-        
-        cp main.py ../deploy-package/
-        cp wsgi.py ../deploy-package/
-        cp web.config ../deploy-package/
-        cp -r templates ../deploy-package/
-        cp -r static ../deploy-package/ 2>/dev/null || mkdir -p ../deploy-package/static
-        cp requirements.txt ../deploy-package/
-        mkdir -p ../deploy-package/data
+        # Ensure data directory exists
+        mkdir -p admin-portal-app/data
         if [ -d data ]; then
-          cp -r data/* ../deploy-package/data/
+          cp -r data/* admin-portal-app/data/ 2>/dev/null || true
         fi
         
-        # Add src directory if it exists
+        # Copy src directory if it exists
         if [ -d src ]; then
-          cp -r src ../deploy-package/
+          cp -r src admin-portal-app/src
         fi
         
-        cd ../deploy-package
-        
-        # Use the ZIP deploy method with the REST API
-        echo "Using ZIP deploy via REST API..."
-        zip -r admin-portal-package.zip ./*
-        
-        # Get a publishing credential
-        echo "Getting publishing credentials..."
-        CREDS=$(az webapp deployment list-publishing-credentials \
-          --resource-group "${{ env.RESOURCE_GROUP }}" \
-          --name "${{ env.ADMIN_PORTAL_NAME }}" \
-          --output json)
-        
-        PUBLISH_USER=$(echo $CREDS | jq -r '.publishingUserName')
-        PUBLISH_PWD=$(echo $CREDS | jq -r '.publishingPassword')
-        
-        # Do the ZIP deploy using the REST API
-        echo "Deploying ZIP package via REST API..."
-        curl -X POST -u "$PUBLISH_USER:$PUBLISH_PWD" \
-          --data-binary @admin-portal-package.zip \
-          https://${{ env.ADMIN_PORTAL_NAME }}.scm.azurewebsites.net/api/zipdeploy?isAsync=true
+        # Create .deployment file for Azure App Service
+        cat > admin-portal-app/.deployment << EOF
+        [config]
+        SCM_DO_BUILD_DURING_DEPLOYMENT=true
+        EOF
+      
+    # Deploy the admin portal using the official WebApps action
+    - name: Deploy to Azure Web App
+      uses: azure/webapps-deploy@v2
+      with:
+        app-name: ${{ env.ADMIN_PORTAL_NAME }}
+        publish-profile: ${{ secrets.AZURE_PUBLISH_PROFILE }}
+        package: ./admin-portal-app
+        startup-command: "gunicorn --bind=0.0.0.0:8000 --timeout 600 wsgi:application"
         
     # Configure admin portal startup command and settings
-    - name: Configure admin portal startup and environment
+    - name: Configure admin portal environment
       run: |
-        # Set the startup command and make sure Linux FX Version is correct
+        # Set Linux-specific configuration
         az webapp config set \
           --resource-group "${{ env.RESOURCE_GROUP }}" \
           --name "${{ env.ADMIN_PORTAL_NAME }}" \
-          --startup-file "gunicorn --bind=0.0.0.0:5000 --timeout 600 wsgi:application" \
-          --linux-fx-version "PYTHON|${{ env.PYTHON_VERSION }}"
-        
-        # Set general settings
-        az webapp config set \
-          --resource-group "${{ env.RESOURCE_GROUP }}" \
-          --name "${{ env.ADMIN_PORTAL_NAME }}" \
+          --linux-fx-version "PYTHON|${{ env.PYTHON_VERSION }}" \
           --always-on true \
-          --ftps-state Disabled \
-          --http20-enabled true \
-          --min-tls-version 1.2
+          --ftps-state Disabled
         
-        # Set additional app settings to ensure proper startup
+        # Set essential app settings
         az webapp config appsettings set \
           --resource-group "${{ env.RESOURCE_GROUP }}" \
           --name "${{ env.ADMIN_PORTAL_NAME }}" \
           --settings \
-          PYTHON_VERSION="${{ env.PYTHON_VERSION }}" \
-          PYTHONPATH="/home/site/wwwroot" \
           SCM_DO_BUILD_DURING_DEPLOYMENT=true \
           WEBSITES_ENABLE_APP_SERVICE_STORAGE=true \
-          ENABLE_ORYX_BUILD=true \
-          BUILD_FLAGS="--platform python --platform-version ${{ env.PYTHON_VERSION }}" \
-          GUNICORN_CMD_ARGS="--bind=0.0.0.0:5000 --timeout 600" \
-          WEBSITE_HTTPLOGGING_RETENTION_DAYS=3 \
           FLASK_APP=main.py
-        
-        # Restart the web app to apply changes
-        az webapp restart \
-          --resource-group "${{ env.RESOURCE_GROUP }}" \
-          --name "${{ env.ADMIN_PORTAL_NAME }}"
         
         echo "Waiting for admin portal to start..."
         sleep 30
@@ -499,20 +450,7 @@ jobs:
           echo "Admin portal deployment may have issues. Check logs in Azure Portal."
           echo "URL: https://${{ env.ADMIN_PORTAL_NAME }}.azurewebsites.net/"
           
-          # Add troubleshooting info
-          echo "---------- TROUBLESHOOTING INFORMATION ----------"
-          echo "Fetching admin portal logs..."
-          az webapp log download --resource-group "${{ env.RESOURCE_GROUP }}" --name "${{ env.ADMIN_PORTAL_NAME }}" --log-file admin-portal-logs.zip
-          
-          # Check deployment logs
-          echo "Checking deployment status..."
-          az webapp deployment list --resource-group "${{ env.RESOURCE_GROUP }}" --name "${{ env.ADMIN_PORTAL_NAME }}" --output table
-          
-          # Show application settings
-          echo "Current application settings:"
-          az webapp config appsettings list --resource-group "${{ env.RESOURCE_GROUP }}" --name "${{ env.ADMIN_PORTAL_NAME }}" --output table
-          
-          # Show site configuration
-          echo "Current site configuration:"
-          az webapp config show --resource-group "${{ env.RESOURCE_GROUP }}" --name "${{ env.ADMIN_PORTAL_NAME }}" --output table | grep -E "linuxFxVersion|appCommandLine"
+          # View logs stream
+          echo "---------- SHOWING LOGS STREAM ----------"
+          az webapp log tail --resource-group "${{ env.RESOURCE_GROUP }}" --name "${{ env.ADMIN_PORTAL_NAME }}" --timeout 30
         fi

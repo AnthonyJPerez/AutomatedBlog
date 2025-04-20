@@ -1,0 +1,49 @@
+{
+  "moduleAliases": {
+    "core": {
+      "storage": {
+        "path": "./modules/storage.bicep"
+      },
+      "monitoring": {
+        "path": "./modules/monitoring.bicep"
+      },
+      "keyvault": {
+        "path": "./modules/keyvault.bicep"
+      },
+      "functions": {
+        "path": "./modules/functions.bicep"
+      },
+      "admin-portal": {
+        "path": "./modules/admin-portal.bicep"
+      },
+      "wordpress": {
+        "path": "./modules/wordpress.bicep"
+      },
+      "keyvault-access-policies": {
+        "path": "./modules/keyvault-access-policies.bicep"
+      }
+    }
+  },
+  "analyzers": {
+    "core": {
+      "enabled": true,
+      "rules": {
+        "no-unused-params": {
+          "level": "warning"
+        },
+        "no-unused-vars": {
+          "level": "warning"
+        },
+        "prefer-interpolation": {
+          "level": "warning"
+        },
+        "secure-parameter-default": {
+          "level": "warning"
+        },
+        "simplify-interpolation": {
+          "level": "warning"
+        }
+      }
+    }
+  }
+}

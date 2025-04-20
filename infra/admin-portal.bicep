@@ -22,12 +22,15 @@ resource appServicePlan 'Microsoft.Web/serverfarms@2021-02-01' existing = {
   name: appServicePlanName
 }
 
-// Deploy the Admin Portal Web App
+// Deploy the Admin Portal Web App with system-assigned identity
 resource adminPortal 'Microsoft.Web/sites@2021-02-01' = {
   name: adminPortalName
   location: location
   tags: tags
   kind: 'app,linux'
+  identity: {
+    type: 'SystemAssigned'
+  }
   properties: {
     serverFarmId: appServicePlan.id
     httpsOnly: true
@@ -51,6 +54,10 @@ resource adminPortal 'Microsoft.Web/sites@2021-02-01' = {
           value: 'true'
         }
         {
+          name: 'WEBSITES_ENABLE_APP_SERVICE_STORAGE'
+          value: 'true'
+        }
+        {
           name: 'APPINSIGHTS_INSTRUMENTATIONKEY'
           value: appInsightsInstrumentationKey
         }
@@ -65,18 +72,7 @@ resource adminPortal 'Microsoft.Web/sites@2021-02-01' = {
   }
 }
 
-// Update the admin portal with managed identity
-module adminPortalIdentityModule 'admin-portal-identity.bicep' = {
-  name: 'adminPortalIdentityModule'
-  params: {
-    adminPortalName: adminPortalName
-    location: location
-    appServicePlanId: appServicePlan.id
-    siteConfig: adminPortal.properties.siteConfig
-  }
-}
-
 // Outputs
 output adminPortalName string = adminPortal.name
 output adminPortalHostName string = adminPortal.properties.defaultHostName
-output adminPortalPrincipalId string = adminPortalIdentityModule.outputs.adminPortalPrincipalId
+output adminPortalPrincipalId string = adminPortal.identity.principalId

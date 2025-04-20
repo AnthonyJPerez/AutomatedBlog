@@ -1,7 +1,10 @@
 // Main deployment template for the blog automation infrastructure
-@description('Project name used as prefix for resource naming')
+@minLength(3)
+@maxLength(11)
+@description('Project name used as prefix for resource naming (3-11 characters)')
 param projectName string = 'blogauto'
 
+@allowed(['dev', 'test', 'prod'])
 @description('Environment name (dev, test, prod)')
 param environment string = 'dev'
 
@@ -11,23 +14,29 @@ param location string = resourceGroup().location
 @description('Enable WordPress deployment')
 param deployWordPress bool = false
 
-@description('WordPress site name (must be globally unique)')
-param wordPressSiteName string = 'wp-${uniqueString(resourceGroup().id)}'
+@maxLength(20)
+@description('WordPress site name suffix (optional, max 20 chars)')
+param wordPressSiteNameSuffix string = ''
 
-@description('Database administrator login name')
+@minLength(4)
+@maxLength(20)
+@description('Database administrator login name (4-20 chars)')
 param dbAdminLogin string = 'wpdbadmin'
 
-@description('Database administrator password')
+@minLength(8)
+@description('Database administrator password (min 8 chars)')
 @secure()
 param dbAdminPassword string = ''
 
 @description('WordPress admin email address')
 param wpAdminEmail string = ''
 
-@description('WordPress admin username')
+@minLength(4)
+@description('WordPress admin username (min 4 chars)')
 param wpAdminUsername string = 'admin'
 
-@description('WordPress admin password')
+@minLength(8)
+@description('WordPress admin password (min 8 chars)')
 @secure()
 param wpAdminPassword string = ''
 
@@ -64,6 +73,7 @@ var deploymentRegion = location == 'eastus' && environment == 'prod' ? 'westus' 
 var keyVaultName = '${namePrefix}-vault'
 
 // WordPress settings
+var wordPressSiteName = !empty(wordPressSiteNameSuffix) ? 'wp-${wordPressSiteNameSuffix}' : 'wp-${uniqueString(resourceGroup().id)}'
 var wpAppServicePlanName = '${wordPressSiteName}-plan'
 
 // Deploy storage account
@@ -137,6 +147,11 @@ module keyVaultAccessPoliciesModule 'keyvault-access-policies.bicep' = {
     functionAppPrincipalId: functionApp.outputs.functionAppPrincipalId
     adminPortalPrincipalId: adminPortalModule.outputs.adminPortalPrincipalId
   }
+  dependsOn: [
+    keyVaultModule
+    functionApp
+    adminPortalModule
+  ]
 }
 
 // Deploy WordPress if enabled
