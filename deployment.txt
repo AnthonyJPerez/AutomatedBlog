@@ -1,1 +1,74 @@
+DEPLOYMENT NOTES
 April 20, 2025
+
+OVERVIEW
+This document provides detailed information about the deployment of the blog automation infrastructure to Azure. The deployment process has been streamlined and consolidated from multiple scripts into a single script that handles all resources.
+
+DEPLOYMENT SCRIPT OPTIONS
+The consolidated deployment script (deploy-consolidated.py) supports two deployment methods:
+1. Using Azure CLI (default method)
+2. Using Azure SDK (for CI/CD scenarios)
+
+COMMAND LINE PARAMETERS
+--resource-group, -g  (Required) Name of the Azure resource group
+--location, -l        Azure region location (default: eastus, recommend westus for prod)
+--environment, -e     Environment name for resources (default: dev)
+--project-name, -p    Project name for resource naming (default: blogauto)
+--use-azure-sdk       Use Azure SDK instead of CLI (useful for CI/CD)
+--verbose, -v         Enable verbose logging
+
+RESOURCE NAMING CONVENTIONS
+All resources follow a consistent naming convention:
+{project-name}-{environment}-{resource-type}
+
+Examples:
+- blogauto-dev-storage (storage account, converted to lowercase with no hyphens)
+- blogauto-dev-function (function app)
+- blogauto-dev-plan (app service plan)
+- blogauto-dev-insights (application insights)
+- blogauto-dev-vault (key vault)
+
+REGION CONSIDERATIONS
+For production environments, westus is recommended over eastus due to quota availability.
+The script will automatically use westus for production deployments if location is set to eastus.
+
+SKU CONSIDERATIONS
+All environments now use B1 SKU for consistency and to avoid quota limitations.
+Storage accounts use Standard_LRS for dev/test and Standard_GRS for production.
+
+WORDPRESS DEPLOYMENT (OPTIONAL)
+WordPress can be deployed as part of the infrastructure by specifying --deploy-wordpress.
+WordPress credentials can be provided as parameters or will be generated automatically.
+WordPress Multisite is enabled by default with domain mapping capabilities.
+
+GITHUB ACTIONS INTEGRATION
+The deployment can be triggered from GitHub Actions using the consolidated workflow file.
+Required secrets for GitHub Actions:
+- AZURE_CREDENTIALS: JSON containing Service Principal credentials
+
+KEY VAULT CONFIGURATION
+The deployment creates a Key Vault to store sensitive information:
+- WordPress credentials
+- Database connection strings
+- API keys for external services
+
+IMPORTANT NOTES
+1. The deployment process can take 15-20 minutes to complete
+2. WordPress deployment adds an additional 10-15 minutes
+3. Default SKUs are chosen to work within Azure free tier limits where possible
+4. Function app uses Python 3.11 runtime
+5. Storage account names are automatically converted to lowercase to ensure validity
+
+CHANGES FROM PREVIOUS DEPLOYMENT
+- Simplified SKU tier determination in Bicep templates
+- Fixed issues with nested ternary expressions by using simpler conditionals
+- Improved error handling and logging in deployment scripts
+- Enhanced security by removing storage key exposure from output properties
+- Added support for custom region configuration to address quota limitations
+
+TESTING DEPLOYED RESOURCES
+After deployment completes, verify the following:
+1. Function app is accessible and responding to requests
+2. Storage account has the expected containers created
+3. Key Vault contains the necessary secrets
+4. WordPress site is accessible (if deployed)
