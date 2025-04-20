@@ -18,6 +18,8 @@ env:
   LOCATION: ${{ vars.ENVIRONMENT == 'prod' && 'westus' || vars.LOCATION || 'eastus' }}
   ENVIRONMENT: ${{ vars.ENVIRONMENT || 'dev' }}
   PROJECT_NAME: "blogauto"
+  # Default WordPress admin settings
+  WP_ADMIN_EMAIL: ${{ vars.WP_ADMIN_EMAIL || 'admin@example.com' }}
 
 jobs:
   lint-and-test:
@@ -94,7 +96,7 @@ jobs:
     - name: Deploy Azure infrastructure
       run: |
         # Deploy Azure infrastructure using Bicep template
-        # Always deploy WordPress (deployWordPress=true)
+        # Always deploy WordPress (deployWordPress=true) with secure passwords from secrets
         az deployment group create \
           --resource-group "${{ env.RESOURCE_GROUP }}" \
           --template-file ./infra/main.bicep \
@@ -102,6 +104,9 @@ jobs:
           --parameters environment="${{ env.ENVIRONMENT }}" \
           --parameters location="${{ env.LOCATION }}" \
           --parameters deployWordPress=true \
+          --parameters wpAdminEmail="${{ env.WP_ADMIN_EMAIL }}" \
+          --parameters dbAdminPassword="${{ secrets.DB_ADMIN_PASSWORD || 'Wp@ssw0rd12345!' }}" \
+          --parameters wpAdminPassword="${{ secrets.WP_ADMIN_PASSWORD || 'Wp@ssw0rd54321!' }}" \
           --name "github-${{ github.run_number }}"
 
   deploy-function:

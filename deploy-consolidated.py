@@ -209,8 +209,17 @@ def deploy_with_cli(resource_group_name, location="eastus", env_name="dev", proj
         
         # Add WordPress deployment parameter if enabled
         if deploy_wordpress:
-            cmd.extend(["--parameters", "deployWordPress=true"])
+            wp_admin_email = os.environ.get("WP_ADMIN_EMAIL", "admin@example.com")
+            db_admin_password = os.environ.get("DB_ADMIN_PASSWORD", "Wp@ssw0rd12345!")
+            wp_admin_password = os.environ.get("WP_ADMIN_PASSWORD", "Wp@ssw0rd54321!")
+            
             logger.info("WordPress deployment enabled")
+            cmd.extend([
+                "--parameters", "deployWordPress=true",
+                "--parameters", f"wpAdminEmail={wp_admin_email}",
+                "--parameters", f"dbAdminPassword={db_admin_password}",
+                "--parameters", f"wpAdminPassword={wp_admin_password}"
+            ])
         
         # Add debug flag for verbose mode
         if verbose:
