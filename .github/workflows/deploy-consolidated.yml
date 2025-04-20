@@ -93,10 +93,13 @@ jobs:
         
     - name: Deploy Azure infrastructure
       run: |
+        # Deploy Azure infrastructure using Bicep template
         az deployment group create \
           --resource-group "${{ env.RESOURCE_GROUP }}" \
           --template-file ./infra/main.bicep \
-          --parameters projectName="${{ env.PROJECT_NAME }}" environment="${{ env.ENVIRONMENT }}" location="${{ env.LOCATION }}" \
+          --parameters projectName="${{ env.PROJECT_NAME }}" \
+          --parameters environment="${{ env.ENVIRONMENT }}" \
+          --parameters location="${{ env.LOCATION }}" \
           --name "github-${{ github.run_number }}"
 
   deploy-function:
