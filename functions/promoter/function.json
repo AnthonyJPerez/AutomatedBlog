@@ -1,0 +1,19 @@
+{
+  "scriptFile": "__init__.py",
+  "bindings": [
+    {
+      "name": "msg",
+      "type": "queueTrigger",
+      "direction": "in",
+      "queueName": "social-queue",
+      "connection": "AzureWebJobsStorage"
+    },
+    {
+      "name": "contentBlob",
+      "type": "blob",
+      "direction": "in",
+      "path": "generated/{blog_id}/{run_id}/content.json",
+      "connection": "AzureWebJobsStorage"
+    }
+  ]
+}
