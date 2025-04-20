@@ -2,14 +2,21 @@
 
 This document provides step-by-step instructions for deploying the blog automation platform to Azure.
 
+## Architecture Overview
+
+The deployment consists of two main components:
+1. **Azure Functions App**: Handles all serverless processing, event triggers, and content generation
+2. **Admin Portal Web App**: Dedicated web application for managing blogs, configurations, and monitoring
+
+This clean separation ensures each component can operate independently and be scaled/maintained separately.
+
 ## Prerequisites
 
 Before deploying, ensure you have:
 
-1. **Azure CLI** installed and configured
-2. **GitHub account** with permissions to the repository
-3. **Azure subscription** with appropriate permissions
-4. **Service Principal** with Contributor access to the subscription
+1. **GitHub account** with permissions to the repository
+2. **Azure subscription** with appropriate permissions
+3. **Service Principal** with Contributor access to the subscription
 
 ## Setup GitHub Secrets
 
@@ -34,17 +41,62 @@ az ad sp create-for-rbac --name "blogauto-github-actions" \
 # The output JSON should be added as a secret named AZURE_CREDENTIALS in GitHub
 ```
 
-## Deployment Options
+## Automatic Deployment via GitHub Actions
 
-### Option 1: Automatic Deployment via GitHub Actions
-
-This is the recommended approach for production deployments:
+This is the touchless deployment approach for production:
 
 1. Push changes to your repository
-2. GitHub Actions workflow will automatically build and deploy resources
-3. Monitor the workflow in the Actions tab
+2. GitHub Actions workflow will automatically:
+   - Build and validate the Bicep templates
+   - Deploy Azure infrastructure
+   - Deploy the Functions App
+   - Deploy the dedicated Admin Portal web app
+3. Monitor the workflow in the GitHub Actions tab
 
-### Option 2: Manual Deployment using Deploy Script
+## Deployment Components
+
+The GitHub workflow deploys several components:
+
+1. **Infrastructure** (Bicep templates):
+   - Resource Group
+   - Storage Account
+   - Function App
+   - Key Vault
+   - WordPress (if enabled)
+   - Application Insights
+
+2. **Functions App**:
+   - All serverless functions for processing
+   - Event-triggered functions
+   - Background processing tasks
+
+3. **Admin Portal Web App**:
+   - Dedicated web app for the admin interface
+   - Configuration and management UI
+   - Monitoring and analytics dashboards
+
+## Admin Portal Access
+
+The admin portal is deployed as a dedicated web app and will be available at:
+
+```
+https://[project-name]-[environment]-admin.azurewebsites.net/
+```
+
+For example:
+- Development: `https://blogauto-dev-admin.azurewebsites.net/`
+- Production: `https://blogauto-prod-admin.azurewebsites.net/`
+
+## Post-Deployment Configuration
+
+After successful deployment:
+
+1. Access the admin portal at the dedicated web app URL
+2. Configure analytics integrations in the admin portal
+3. Set up blog configurations and themes
+4. Configure WordPress for each blog
+
+## Manual Deployment (Alternative)
 
 For testing or when GitHub Actions isn't suitable:
 
@@ -59,69 +111,14 @@ python deploy-consolidated.py --resource-group blogauto-prod-rg --project-name b
 python deploy-consolidated.py --resource-group blogauto-prod-rg --project-name blogauto --environment prod --use-azure-sdk
 ```
 
-## Troubleshooting the Admin Portal
-
-If the admin portal isn't displaying properly, try these approaches:
-
-### Step 1: Run the Fix Web App Directly Script
-
-```bash
-./fix-webapp-directly.sh "blogauto-prod-rg" "blogauto-prod-function"
-```
-
-### Step 2: Try the Minimal Test App
-
-```bash
-./deploy-minimal-test.sh "blogauto-prod-rg" "blogauto-prod-function"
-```
-
-### Step 3: Try the Static Test Deployment
-
-```bash
-./deploy-static-test.sh "blogauto-prod-rg" "blogauto-prod-function"
-```
-
-### Step 4: Use the Direct Fix Approach
-
-```bash
-./direct-fix.sh "blogauto-prod-rg" "blogauto-prod-function"
-```
-
-### Step 5: Create a Dedicated Admin App (Last Resort)
-
-```bash
-./create-dedicated-admin-app.sh "blogauto-prod-rg" "blogauto-prod-plan" "blogauto-prod-admin"
-```
-
-## Post-Deployment Configuration
-
-After successful deployment:
-
-1. Access the admin portal at `https://[function-app-name].azurewebsites.net/`
-2. Configure analytics integrations in the admin portal
-3. Set up blog configurations and themes
-4. Configure WordPress for each blog
-
-## Updating an Existing Deployment
-
-To update an existing deployment:
-
-```bash
-# Update app configuration
-./update-app-config.sh "blogauto-prod-rg" "blogauto-prod-function"
-
-# Deploy only the admin portal
-./deploy-admin-portal.sh "blogauto-prod-rg" "blogauto-prod-function"
-```
-
 ## Monitoring and Logs
 
-- Azure Function logs: Available in the Azure Portal under the Monitor tab
-- Admin portal logs: Available in the Log Stream feature of the Function App
-- Application Insights: If configured, provides detailed monitoring
+- Function App logs: Available in the Azure Portal under the Monitor tab
+- Admin portal logs: Available in the Log Stream feature of the Admin Portal Web App
+- Application Insights: Provides detailed monitoring for both the Function App and Admin Portal
 
 ## Additional Resources
 
-- See `ADMIN_PORTAL_TROUBLESHOOTING.md` for detailed admin portal troubleshooting
 - Check the Azure Portal for real-time metrics and logging
 - Review GitHub Actions workflows for CI/CD pipeline details
+- Monitor Application Insights for performance metrics and errors

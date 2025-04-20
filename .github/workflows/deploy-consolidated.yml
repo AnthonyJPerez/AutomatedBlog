@@ -1,7 +1,7 @@
 name: Azure Deployment Pipeline
 
-# This workflow handles deployment of all Azure resources and functions
-# Consolidation of all separate workflows to reduce confusion
+# This workflow handles deployment of all Azure resources, functions, and admin portal
+# Clean implementation with dedicated admin portal web app
 
 on:
   push:
@@ -11,6 +11,7 @@ on:
 
 env:
   AZURE_FUNCTIONAPP_NAME: "blogauto-${{ vars.ENVIRONMENT || 'dev' }}-function"
+  ADMIN_PORTAL_NAME: "blogauto-${{ vars.ENVIRONMENT || 'dev' }}-admin"
   PYTHON_VERSION: '3.11'
   RESOURCE_GROUP: "blogauto-${{ vars.ENVIRONMENT || 'dev' }}-rg"
   # Default location for production is westus due to quota availability
@@ -137,48 +138,162 @@ jobs:
     - name: Debug Environment
       run: |
         echo "Function App Name: ${{ env.AZURE_FUNCTIONAPP_NAME }}"
+        echo "Admin Portal Name: ${{ env.ADMIN_PORTAL_NAME }}"
         echo "Python Version: ${{ env.PYTHON_VERSION }}"
         echo "Environment: ${{ env.ENVIRONMENT }}"
         echo "Resource Group: ${{ env.RESOURCE_GROUP }}"
       
-    # First, prepare the web app deployment package including admin portal
-    - name: Prepare web application deployment package
+    # Prepare the function app deployment package (without admin portal)
+    - name: Prepare function app deployment package
       run: |
-        echo "Preparing web application deployment package"
-        mkdir -p deploy-package
+        echo "Preparing function app deployment package"
+        mkdir -p function-package
         
         # Copy function code
-        cp -r src/* deploy-package/
+        cp -r src/* function-package/
+        
+        # Create required Azure configuration files
+        echo '{"version":"2.0","extensionBundle":{"id":"Microsoft.Azure.Functions.ExtensionBundle","version":"[2.*, 3.0.0)"}}' > function-package/host.json
+        
+        # List the contents of the function package
+        echo "Function package contents:"
+        ls -la function-package
+
+    - name: Deploy Function App
+      uses: Azure/functions-action@v1
+      with:
+        app-name: ${{ env.AZURE_FUNCTIONAPP_NAME }}
+        package: function-package
+        scm-do-build-during-deployment: true
+        enable-oryx-build: true
+      env:
+        AZURE_FUNCTIONAPP_PACKAGE_PATH: function-package
+        PYTHON_VERSION: ${{ env.PYTHON_VERSION }}
+
+  deploy-admin-portal:
+    runs-on: ubuntu-latest
+    needs: deploy-infra
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+      
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+        
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install azure-functions flask gunicorn
+        
+    - name: Azure login
+      uses: azure/login@v1
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS }}
+        
+    # Get app service plan from existing function app
+    - name: Get existing app service plan
+      run: |
+        APP_SERVICE_PLAN=$(az functionapp show --resource-group "${{ env.RESOURCE_GROUP }}" --name "${{ env.AZURE_FUNCTIONAPP_NAME }}" --query appServicePlanId --output tsv | awk -F'/' '{print $NF}')
+        echo "APP_SERVICE_PLAN=$APP_SERVICE_PLAN" >> $GITHUB_ENV
+        echo "Using App Service Plan: $APP_SERVICE_PLAN"
+        
+    # Create or update dedicated admin portal web app
+    - name: Create or update dedicated admin portal web app
+      run: |
+        # Check if admin portal web app exists
+        if az webapp show --resource-group "${{ env.RESOURCE_GROUP }}" --name "${{ env.ADMIN_PORTAL_NAME }}" &>/dev/null; then
+          echo "Admin portal web app already exists, updating configuration"
+        else
+          echo "Creating dedicated admin portal web app"
+          az webapp create \
+            --resource-group "${{ env.RESOURCE_GROUP }}" \
+            --plan "${{ env.APP_SERVICE_PLAN }}" \
+            --name "${{ env.ADMIN_PORTAL_NAME }}" \
+            --runtime "PYTHON:${{ env.PYTHON_VERSION }}"
+            
+          echo "Admin portal web app created successfully"
+        fi
+        
+        # Configure web app settings
+        az webapp config appsettings set \
+          --resource-group "${{ env.RESOURCE_GROUP }}" \
+          --name "${{ env.ADMIN_PORTAL_NAME }}" \
+          --settings \
+          FLASK_APP=main.py \
+          WEBSITES_PORT=5000 \
+          PORT=5000 \
+          SCM_DO_BUILD_DURING_DEPLOYMENT=true
+        
+        # Force HTTPS
+        az webapp update \
+          --resource-group "${{ env.RESOURCE_GROUP }}" \
+          --name "${{ env.ADMIN_PORTAL_NAME }}" \
+          --https-only true
+          
+    # Prepare admin portal deployment package
+    - name: Prepare admin portal deployment package
+      run: |
+        echo "Preparing admin portal deployment package"
+        mkdir -p admin-package
         
         # Copy admin portal files
-        cp -r templates static deploy-package/
+        cp -r templates static admin-package/
         
         # Ensure data directory exists
-        mkdir -p deploy-package/data
-        # Create data directories if they don't exist
+        mkdir -p admin-package/data
         if [ -d data ]; then
-          cp -r data/* deploy-package/data/
+          cp -r data/* admin-package/data/
         fi
         
         # Copy main application files
-        cp main.py deploy-package/
-        cp wsgi.py deploy-package/
-        cp minimal_app.py deploy-package/  # Add fallback app
+        cp main.py admin-package/
+        cp wsgi.py admin-package/
         
-        # Copy web configuration files
-        cp web.config deploy-package/
-        chmod +x startup.sh
-        cp startup.sh deploy-package/
+        # Create web.config file
+        cat > admin-package/web.config << EOF
+        <?xml version="1.0" encoding="utf-8"?>
+        <configuration>
+          <system.webServer>
+            <handlers>
+              <add name="PythonHandler" path="*" verb="*" modules="FastCgiModule" 
+                   scriptProcessor="D:\Program Files\Python\${{ env.PYTHON_VERSION }}\python.exe|D:\Program Files\Python\${{ env.PYTHON_VERSION }}\Lib\site-packages\wfastcgi.py" 
+                   resourceType="Unspecified" requireAccess="Script" />
+            </handlers>
+            <fastCgi>
+              <application fullPath="D:\Program Files\Python\${{ env.PYTHON_VERSION }}\python.exe" 
+                           arguments="D:\Program Files\Python\${{ env.PYTHON_VERSION }}\Lib\site-packages\wfastcgi.py">
+                <environmentVariables>
+                  <environmentVariable name="PYTHONPATH" value="D:\home\site\wwwroot" />
+                  <environmentVariable name="WSGI_HANDLER" value="wsgi.application" />
+                </environmentVariables>
+              </application>
+            </fastCgi>
+            <rewrite>
+              <rules>
+                <rule name="LowerCaseUrls" stopProcessing="true">
+                  <match url="[A-Z]" ignoreCase="false" />
+                  <action type="Redirect" url="{ToLower:{URL}}" />
+                </rule>
+              </rules>
+            </rewrite>
+            <httpErrors errorMode="DetailedLocalOnly" existingResponse="Auto">
+              <clear />
+              <error statusCode="404" path="404.html" responseMode="File" />
+              <error statusCode="500" path="500.html" responseMode="File" />
+            </httpErrors>
+          </system.webServer>
+          <appSettings>
+            <add key="PYTHONPATH" value="D:\home\site\wwwroot" />
+            <add key="WSGI_HANDLER" value="wsgi.application" />
+            <add key="WSGI_LOG" value="D:\home\LogFiles\application.log" />
+          </appSettings>
+        </configuration>
+        EOF
         
-        # Copy troubleshooting scripts
-        chmod +x fix-webapp-directly.sh deploy-static-test.sh direct-fix.sh deploy-admin-portal.sh
-        cp fix-webapp-directly.sh deploy-static-test.sh direct-fix.sh deploy-admin-portal.sh deploy-package/
-        
-        # Create error pages
-        mkdir -p deploy-package/errors
-        
-        # Create 404 page
-        cat > deploy-package/404.html << EOF
+        # Create 404 and 500 error pages
+        cat > admin-package/404.html << EOF
         <!DOCTYPE html>
         <html>
         <head>
@@ -199,8 +314,7 @@ jobs:
         </html>
         EOF
         
-        # Create 500 page
-        cat > deploy-package/500.html << EOF
+        cat > admin-package/500.html << EOF
         <!DOCTYPE html>
         <html>
         <head>
@@ -222,47 +336,8 @@ jobs:
         </html>
         EOF
         
-        # Create hostingstart.html (fallback page)
-        cat > deploy-package/hostingstart.html << EOF
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <title>Blog Automation Admin Portal</title>
-            <style>
-                body { font-family: Arial, sans-serif; margin: 40px; line-height: 1.6; }
-                h1 { color: #0066cc; }
-                .container { border: 1px solid #ddd; padding: 20px; border-radius: 5px; }
-                .info { color: #0066cc; background-color: #e7f9f9; padding: 15px; border-radius: 5px; margin-bottom: 20px; }
-            </style>
-        </head>
-        <body>
-            <h1>Blog Automation Admin Portal</h1>
-            
-            <div class="info">
-                <strong>Startup in Progress:</strong> The Blog Automation Admin Portal is starting up. If this page persists, check the application logs.
-            </div>
-            
-            <div class="container">
-                <h2>Quick Links</h2>
-                <ul>
-                    <li><a href="/admin">Admin Dashboard</a></li>
-                    <li><a href="/api">API Endpoints</a></li>
-                    <li><a href="/docs">Documentation</a></li>
-                </ul>
-            </div>
-        </body>
-        </html>
-        EOF
-        
-        # Make script files executable
-        find deploy-package -name "*.sh" -exec chmod +x {} \;
-        
-        # Copy or create requirements file
-        if [ -f requirements.txt ]; then
-          cp requirements.txt deploy-package/
-        else
-          # Create comprehensive requirements if none exists
-          cat > deploy-package/requirements.txt << EOF
+        # Create requirements.txt
+        cat > admin-package/requirements.txt << EOF
         flask>=2.0.0
         gunicorn>=20.1.0
         wfastcgi>=3.0.0
@@ -278,126 +353,62 @@ jobs:
         langdetect>=1.0.9
         trafilatura>=1.4.0
         EOF
-        fi
         
-        # Create required Azure configuration files
-        echo '{"version":"2.0","extensionBundle":{"id":"Microsoft.Azure.Functions.ExtensionBundle","version":"[2.*, 3.0.0)"}}' > deploy-package/host.json
+        # Create startup script
+        cat > admin-package/startup.sh << EOF
+        #!/bin/bash
+        echo "Installing required packages..."
+        python -m pip install --upgrade pip
+        pip install gunicorn flask wfastcgi
         
-        # Create a '.deployment' file to control deployment behavior
-        echo '[config]' > deploy-package/.deployment
-        echo 'SCM_DO_BUILD_DURING_DEPLOYMENT=true' >> deploy-package/.deployment
-        
-        # Create a simple route.json file to indicate this is a web app
-        echo '{"routes":[{"route":"/*","serve":"/"}]}' > deploy-package/routes.json
+        echo "Starting admin portal with gunicorn..."
+        gunicorn --bind=0.0.0.0:5000 --timeout 600 wsgi:application
+        EOF
+        chmod +x admin-package/startup.sh
         
         # Ensure proper file permissions
-        chmod -R 755 deploy-package
+        chmod -R 755 admin-package
         
-        # List the contents of the deploy package
-        echo "Deploy package contents:"
-        ls -la deploy-package
-        echo "Web config file:"
-        cat deploy-package/web.config
-
-    - name: Deploy Function App and Web App
-      uses: Azure/functions-action@v1
-      with:
-        app-name: ${{ env.AZURE_FUNCTIONAPP_NAME }}
-        package: deploy-package
-        scm-do-build-during-deployment: true
-        enable-oryx-build: true
-        respect-pom-xml: false
-        respect-funcignore: false
-      env:
-        AZURE_FUNCTIONAPP_PACKAGE_PATH: deploy-package
-        PYTHON_VERSION: ${{ env.PYTHON_VERSION }}
-
-    - name: Configure Admin Portal
+        # List the contents of the admin package
+        echo "Admin portal package contents:"
+        ls -la admin-package
+        
+    # Deploy admin portal using ZIP deployment
+    - name: Deploy admin portal
       run: |
-        echo "Running post-deployment configuration to properly set up admin portal..."
-        chmod +x ./configure-admin-portal.sh
+        echo "Deploying admin portal to dedicated web app"
+        cd admin-package
+        zip -r admin-portal.zip ./*
         
-        # Run configuration script and continue even if it fails
-        if ./configure-admin-portal.sh "${{ env.RESOURCE_GROUP }}" "${{ env.AZURE_FUNCTIONAPP_NAME }}"; then
-          echo "Admin portal configuration completed successfully."
-        else
-          echo "Admin portal configuration had some warnings, but deployment will continue."
-          echo "You may need to manually check the admin portal configuration."
-        fi
-        
-    - name: Prepare Fallback Mechanism
-      run: |
-        echo "Setting up fallback mechanisms for maximum reliability..."
-        
-        # Create minimal app and error pages for fallback
-        chmod +x ./fix-webapp-directly.sh
-        ./fix-webapp-directly.sh "${{ env.RESOURCE_GROUP }}" "${{ env.AZURE_FUNCTIONAPP_NAME }}" || true
-        
-        # Deploy static test as a backup option
-        chmod +x ./deploy-static-test.sh
-        ./deploy-static-test.sh "${{ env.RESOURCE_GROUP }}" "${{ env.AZURE_FUNCTIONAPP_NAME }}" || true
-        
-    - name: Final Web App Configuration
-      run: |
-        echo "Performing final crucial web app configuration steps..."
-        
-        # Configure the app as a web app (not a function app)
-        az resource update \
+        az webapp deployment source config-zip \
           --resource-group "${{ env.RESOURCE_GROUP }}" \
-          --name "${{ env.AZURE_FUNCTIONAPP_NAME }}" \
-          --resource-type "Microsoft.Web/sites" \
-          --set kind="app,linux" \
-          --api-version "2021-02-01"
+          --name "${{ env.ADMIN_PORTAL_NAME }}" \
+          --src admin-portal.zip
         
-        # Force the app to be a web app and set the right startup command
+    # Configure admin portal startup command
+    - name: Configure admin portal startup
+      run: |
+        # Set the startup command
         az webapp config set \
           --resource-group "${{ env.RESOURCE_GROUP }}" \
-          --name "${{ env.AZURE_FUNCTIONAPP_NAME }}" \
+          --name "${{ env.ADMIN_PORTAL_NAME }}" \
           --startup-file "gunicorn --bind=0.0.0.0:5000 --timeout 600 wsgi:application"
         
-        # Set crucial app settings that make Flask work as a web app
-        az webapp config appsettings set \
-          --resource-group "${{ env.RESOURCE_GROUP }}" \
-          --name "${{ env.AZURE_FUNCTIONAPP_NAME }}" \
-          --settings \
-          FLASK_APP=main.py \
-          WEBSITES_PORT=5000 \
-          PORT=5000 \
-          SCM_DO_BUILD_DURING_DEPLOYMENT=true \
-          WSGI_LOG=D:\\home\\LogFiles\\application.log
-        
-        # Force HTTPS
-        az webapp update \
-          --resource-group "${{ env.RESOURCE_GROUP }}" \
-          --name "${{ env.AZURE_FUNCTIONAPP_NAME }}" \
-          --https-only true
-        
-        # Configure default documents to handle both scenarios
-        az webapp config set \
-          --resource-group "${{ env.RESOURCE_GROUP }}" \
-          --name "${{ env.AZURE_FUNCTIONAPP_NAME }}" \
-          --generic-configurations "{'defaultDocuments': ['index.html','default.htm','hostingstart.html']}"
-        
-        # Final restart to apply all settings
+        # Restart the web app to apply changes
         az webapp restart \
           --resource-group "${{ env.RESOURCE_GROUP }}" \
-          --name "${{ env.AZURE_FUNCTIONAPP_NAME }}"
-          
-        # Wait for the app to become available
-        echo "Waiting for the web app to become available..."
-        sleep 60
+          --name "${{ env.ADMIN_PORTAL_NAME }}"
         
-        # Check if the app is accessible
-        HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" "https://${{ env.AZURE_FUNCTIONAPP_NAME }}.azurewebsites.net/")
-        echo "Web app responded with HTTP code: $HTTP_CODE"
+        echo "Waiting for admin portal to start..."
+        sleep 30
         
-        if [ "$HTTP_CODE" != "200" ]; then
-          echo "Warning: Web app not returning 200 OK. Attempting emergency direct fix..."
-          chmod +x ./direct-fix.sh
-          ./direct-fix.sh "${{ env.RESOURCE_GROUP }}" "${{ env.AZURE_FUNCTIONAPP_NAME }}" || true
-          
-          # Wait a bit more and check again
-          sleep 30
-          FINAL_HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" "https://${{ env.AZURE_FUNCTIONAPP_NAME }}.azurewebsites.net/")
-          echo "Final HTTP code after emergency fix: $FINAL_HTTP_CODE"
+        # Check if admin portal is accessible
+        HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" "https://${{ env.ADMIN_PORTAL_NAME }}.azurewebsites.net/")
+        echo "Admin portal responded with HTTP code: $HTTP_CODE"
+        
+        if [ "$HTTP_CODE" = "200" ]; then
+          echo "Admin portal deployed and accessible at: https://${{ env.ADMIN_PORTAL_NAME }}.azurewebsites.net/"
+        else
+          echo "Admin portal deployment may have issues. Check logs in Azure Portal."
+          echo "URL: https://${{ env.ADMIN_PORTAL_NAME }}.azurewebsites.net/"
         fi
