@@ -173,9 +173,8 @@ resource deploymentScript 'Microsoft.Resources/deploymentScripts@2020-10-01' = {
   name: '${siteName}-wp-plugins-setup'
   location: location
   kind: 'AzureCLI'
-  identity: {
-    type: 'SystemAssigned'
-  }
+  // Remove the identity block as it's causing deployment issues
+  // The script will use the deployment identity permissions
   properties: {
     azCliVersion: '2.30.0'
     retentionInterval: 'P1D'
@@ -248,9 +247,8 @@ resource updateKeyVaultWithWordPressCredentials 'Microsoft.Resources/deploymentS
   name: '${siteName}-update-keyvault'
   location: location
   kind: 'AzureCLI'
-  identity: {
-    type: 'SystemAssigned'
-  }
+  // Remove the identity block as it's causing deployment issues
+  // The script will use the deployment identity permissions
   properties: {
     azCliVersion: '2.30.0'
     retentionInterval: 'P1D'

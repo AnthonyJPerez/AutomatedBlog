@@ -270,6 +270,20 @@ Error BCP238: Unexpected new line character after a comma.
 
 This typically occurs in array definitions with multiple lines. Bicep has strict formatting requirements:
 
+#### 3.2 Deployment Script Identity Issues
+
+If you encounter errors related to resource identity like:
+```
+"code": "CannotSetResourceIdentity", "message": "Resource type 'Microsoft.Resources/deploymentScripts' does not support creation of 'SystemAssigned' resource identity."
+```
+
+This is related to deployment script resources in the Bicep templates. The solution is to:
+
+1. Remove any `identity` blocks with `type: 'SystemAssigned'` from the deployment script resources
+2. Deploy using the default identity permissions provided by the deployment process
+
+For local deployments, ensure you're logged in with proper permissions using `az login`.
+
 - For arrays with simple values, keep them on a single line:
   ```bicep
   // Correct - single line array
@@ -314,6 +328,28 @@ If you receive errors about invalid storage account names:
 - No hyphens or special characters are allowed
 - The deployment script automatically handles this by using `toLower()` and removing hyphens
 
+#### 6. WordPress Password Requirements
+
+If you see errors about password requirements:
+
+```
+"The provided value for the template parameter 'administratorLoginPassword' is not valid.
+Length of the value should be greater than or equal to '8'."
+```
+
+The solution is to use GitHub secrets for storing secure passwords:
+
+1. Add the following secrets to your GitHub repository:
+   - `DB_ADMIN_PASSWORD` - For MySQL database administrator
+   - `WP_ADMIN_PASSWORD` - For WordPress administrator
+
+2. Requirements for passwords:
+   - Minimum 8 characters
+   - Should include uppercase letters, lowercase letters, numbers, and special characters
+   - Cannot contain the username
+
+3. The workflow will automatically use these secrets during deployment
+
 For persistent issues, run deployment with verbose logging:
 ```bash
 python deploy-consolidated.py --resource-group "blogauto-dev-rg" --deploy-wordpress --verbose
@@ -332,3 +368,5 @@ python deploy-consolidated.py --resource-group "blogauto-dev-rg" --deploy-wordpr
 - Added deployment scripts for updating existing Function Apps
 - Fixed issue with Function App configuration to support both functions and web app
 - Fixed Bicep syntax error in array definitions (Error BCP238: Unexpected new line character)
+- Added GitHub secret-based password management for WordPress and database administrator
+- Fixed deployment script identity issues by removing SystemAssigned identity type
