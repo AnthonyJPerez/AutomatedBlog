@@ -146,6 +146,7 @@ class AIOptimizationService:
                 )
                 
                 # Keep only the newest entries
+                global _response_cache
                 _response_cache = dict(sorted_entries[:_cache_info["max_size"]])
                 
             _cache_info["size"] = len(_response_cache)
