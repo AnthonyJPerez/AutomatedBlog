@@ -146,6 +146,42 @@ The admin portal is part of the Function App. To access it:
    https://blogauto-{env}-function.azurewebsites.net/
    ```
 
+### Admin Portal Configuration
+
+If the admin portal is not accessible (you see the default Azure Functions page instead), you need to configure the Function App to serve the web application:
+
+1. **Using the update scripts (Recommended)**:
+   ```bash
+   # First update the app configuration
+   ./update-app-config.sh blogauto-prod-rg blogauto-prod-function
+   
+   # Then deploy the admin portal files
+   ./deploy-admin-portal.sh blogauto-prod-rg blogauto-prod-function
+   ```
+
+2. **Using Azure Portal**:
+   - Navigate to your Function App in the Azure Portal
+   - Go to Configuration → General settings
+   - Set "Stack" to "Python"
+   - Set "Startup Command" to: `gunicorn --bind=0.0.0.0:5000 --timeout 600 main:app`
+   - Save the changes
+   - Go to Configuration → Application settings
+   - Add the following settings:
+     - `FLASK_APP`: `main.py`
+     - `WEBSITES_PORT`: `5000`
+     - `ADMIN_PORTAL_ENABLED`: `true`
+   - Save the changes
+   - Restart the Function App
+
+3. **Using Azure CLI**:
+   ```bash
+   # Update app settings
+   az webapp config appsettings set --resource-group blogauto-prod-rg --name blogauto-prod-function --settings FLASK_APP=main.py WEBSITES_PORT=5000 ADMIN_PORTAL_ENABLED=true
+   
+   # Update startup command
+   az webapp config set --resource-group blogauto-prod-rg --name blogauto-prod-function --startup-file "gunicorn --bind=0.0.0.0:5000 --timeout 600 main:app"
+   ```
+
 ## WordPress Integration
 
 WordPress is now **automatically deployed** with each infrastructure deployment. The WordPress installation includes:
@@ -179,7 +215,28 @@ If you encounter issues during deployment:
 
 ### Common Issues and Solutions
 
-#### 1. Azure Quota Limitations
+#### 1. Admin Portal Not Accessible
+
+If you see the default Azure Functions landing page instead of the admin portal:
+
+- **Problem**: The Function App is not configured to serve the web application files
+- **Solution**: Use the provided scripts to update the app configuration:
+  ```bash
+  ./update-app-config.sh blogauto-prod-rg blogauto-prod-function
+  ./deploy-admin-portal.sh blogauto-prod-rg blogauto-prod-function
+  ```
+
+- **Alternative Solution**: Manually check the Function App configuration in Azure Portal:
+  1. Ensure the `WEBSITES_PORT` is set to `5000`
+  2. Verify the startup command is set to `gunicorn --bind=0.0.0.0:5000 --timeout 600 main:app`
+  3. Check if all necessary files (main.py, templates folder, static folder) are deployed to the Function App
+
+- **Verification**: Check the Function App logs in Azure Portal for any startup errors:
+  1. Go to the Function App in Azure Portal
+  2. Select "Logs" from the left menu
+  3. Check for any Python or Gunicorn startup errors
+
+#### 2. Azure Quota Limitations
 
 If you encounter an error like:
 ```
@@ -196,7 +253,7 @@ This indicates your Azure subscription has reached its quota limit for the speci
 - The templates now default to `B1` (Basic) SKU instead of premium tiers
 - For production, consider requesting a quota increase from Azure Support
 
-#### 2. GitHub Actions Workflow Syntax Errors
+#### 3. GitHub Actions Workflow Syntax Errors
 
 If you see errors related to duplicate commands or improper formatting:
 
@@ -204,7 +261,7 @@ If you see errors related to duplicate commands or improper formatting:
 - Ensure parameters are properly formatted with one per line
 - Verify that deployment parameters are correctly specified
 
-#### 3. WordPress Deployment Issues
+#### 4. WordPress Deployment Issues
 
 If WordPress deployment fails or doesn't appear:
 

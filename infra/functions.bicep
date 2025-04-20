@@ -45,12 +45,12 @@ resource appServicePlan 'Microsoft.Web/serverfarms@2022-03-01' = {
   }
 }
 
-// Create Function App
+// Create Function App with Web App capabilities
 resource functionApp 'Microsoft.Web/sites@2022-03-01' = {
   name: functionAppName
   location: location
   tags: tags
-  kind: 'functionapp,linux'
+  kind: 'app,linux' // Changed from 'functionapp,linux' to support both functions and web app
   identity: {
     type: 'SystemAssigned'
   }
@@ -109,10 +109,41 @@ resource functionApp 'Microsoft.Web/sites@2022-03-01' = {
           name: 'WORDPRESS_APP_PASSWORD'
           value: '@Microsoft.KeyVault(SecretUri=https://${keyVaultName}.vault.azure.net/secrets/WordPressAppPassword/)'
         }
+        // Web app specific settings
+        {
+          name: 'SCM_DO_BUILD_DURING_DEPLOYMENT'
+          value: 'true'
+        }
+        {
+          name: 'ENABLE_ORYX_BUILD'
+          value: 'true'
+        }
+        {
+          name: 'FLASK_APP'
+          value: 'main.py'
+        }
+        {
+          name: 'WEBSITES_PORT'
+          value: '5000'
+        }
+        {
+          name: 'ADMIN_PORTAL_ENABLED'
+          value: 'true'
+        }
       ]
       ftpsState: 'Disabled'
       minTlsVersion: '1.2'
       http20Enabled: true
+      // Add handlers for Flask application
+      appCommandLine: 'gunicorn --bind=0.0.0.0:5000 --timeout 600 main:app'
+      // Ensure the root handler is set
+      defaultDocuments: [
+        'index.html',
+        'index.htm',
+        'default.html',
+        'default.htm',
+        'hostingstart.html'
+      ]
     }
     httpsOnly: true
   }
