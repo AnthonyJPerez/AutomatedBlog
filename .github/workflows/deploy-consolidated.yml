@@ -76,6 +76,7 @@ jobs:
         bicep build infra/keyvault-access-policies.bicep
         bicep build infra/monitoring.bicep
         bicep build infra/admin-portal.bicep
+        bicep build infra/admin-portal-identity.bicep
         if [ -f infra/wordpress.bicep ]; then
           bicep build infra/wordpress.bicep
         fi
@@ -387,6 +388,15 @@ jobs:
           --startup-file "gunicorn --bind=0.0.0.0:5000 --timeout 600 wsgi:application" \
           --linux-fx-version "PYTHON|${{ env.PYTHON_VERSION }}"
         
+        # Set general settings
+        az webapp config set \
+          --resource-group "${{ env.RESOURCE_GROUP }}" \
+          --name "${{ env.ADMIN_PORTAL_NAME }}" \
+          --always-on true \
+          --ftps-state Disabled \
+          --http20-enabled true \
+          --min-tls-version 1.2
+        
         # Set additional app settings to ensure proper startup
         az webapp config appsettings set \
           --resource-group "${{ env.RESOURCE_GROUP }}" \
@@ -395,9 +405,12 @@ jobs:
           PYTHON_VERSION="${{ env.PYTHON_VERSION }}" \
           PYTHONPATH="/home/site/wwwroot" \
           SCM_DO_BUILD_DURING_DEPLOYMENT=true \
+          WEBSITES_ENABLE_APP_SERVICE_STORAGE=true \
           ENABLE_ORYX_BUILD=true \
           BUILD_FLAGS="--platform python --platform-version ${{ env.PYTHON_VERSION }}" \
-          GUNICORN_CMD_ARGS="--bind=0.0.0.0:5000 --timeout 600"
+          GUNICORN_CMD_ARGS="--bind=0.0.0.0:5000 --timeout 600" \
+          WEBSITE_HTTPLOGGING_RETENTION_DAYS=3 \
+          FLASK_APP=main.py
         
         # Restart the web app to apply changes
         az webapp restart \

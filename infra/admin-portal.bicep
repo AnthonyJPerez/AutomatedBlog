@@ -65,25 +65,18 @@ resource adminPortal 'Microsoft.Web/sites@2021-02-01' = {
   }
 }
 
-// Enable managed identity for the admin portal
-resource adminPortalIdentity 'Microsoft.Web/sites@2021-02-01' = {
-  name: adminPortalName
-  location: location
-  kind: 'app,linux'
-  identity: {
-    type: 'SystemAssigned'
-  }
-  properties: {
-    serverFarmId: appServicePlan.id
-    httpsOnly: true
+// Update the admin portal with managed identity
+module adminPortalIdentityModule 'admin-portal-identity.bicep' = {
+  name: 'adminPortalIdentityModule'
+  params: {
+    adminPortalName: adminPortalName
+    location: location
+    appServicePlanId: appServicePlan.id
     siteConfig: adminPortal.properties.siteConfig
   }
-  dependsOn: [
-    adminPortal
-  ]
 }
 
 // Outputs
 output adminPortalName string = adminPortal.name
 output adminPortalHostName string = adminPortal.properties.defaultHostName
-output adminPortalPrincipalId string = adminPortalIdentity.identity.principalId
+output adminPortalPrincipalId string = adminPortalIdentityModule.outputs.adminPortalPrincipalId

@@ -13,62 +13,61 @@ resource keyVault 'Microsoft.KeyVault/vaults@2022-07-01' existing = {
   name: keyVaultName
 }
 
-// Update Key Vault with access policies for both apps
-resource keyVaultWithPolicies 'Microsoft.KeyVault/vaults@2022-07-01' = {
-  name: keyVaultName
-  location: keyVault.location
-  tags: keyVault.tags
+// Add access policies using the dedicated endpoint rather than updating the vault directly
+resource functionAppAccessPolicy 'Microsoft.KeyVault/vaults/accessPolicies@2022-07-01' = if (!empty(functionAppPrincipalId)) {
+  name: '${keyVaultName}/add'
   properties: {
-    sku: keyVault.properties.sku
-    tenantId: subscription().tenantId
-    enableRbacAuthorization: false
-    enableSoftDelete: true
-    softDeleteRetentionInDays: 90
-    accessPolicies: concat(
-      !empty(functionAppPrincipalId) ? [
-        {
-          tenantId: subscription().tenantId
-          objectId: functionAppPrincipalId
-          permissions: {
-            secrets: [
-              'get'
-              'list'
-            ]
-            keys: [
-              'get'
-              'list'
-            ]
-            certificates: [
-              'get'
-              'list'
-            ]
-          }
+    accessPolicies: [
+      {
+        tenantId: subscription().tenantId
+        objectId: functionAppPrincipalId
+        permissions: {
+          secrets: [
+            'get'
+            'list'
+          ]
+          keys: [
+            'get'
+            'list'
+          ]
+          certificates: [
+            'get'
+            'list'
+          ]
         }
-      ] : [],
-      !empty(adminPortalPrincipalId) ? [
-        {
-          tenantId: subscription().tenantId
-          objectId: adminPortalPrincipalId
-          permissions: {
-            secrets: [
-              'get'
-              'list'
-            ]
-            keys: [
-              'get'
-              'list'
-            ]
-            certificates: [
-              'get'
-              'list'
-            ]
-          }
-        }
-      ] : []
-    )
-    networkAcls: keyVault.properties.networkAcls
+      }
+    ]
   }
 }
 
+resource adminPortalAccessPolicy 'Microsoft.KeyVault/vaults/accessPolicies@2022-07-01' = if (!empty(adminPortalPrincipalId)) {
+  name: '${keyVaultName}/add'
+  properties: {
+    accessPolicies: [
+      {
+        tenantId: subscription().tenantId
+        objectId: adminPortalPrincipalId
+        permissions: {
+          secrets: [
+            'get'
+            'list'
+          ]
+          keys: [
+            'get'
+            'list'
+          ]
+          certificates: [
+            'get'
+            'list'
+          ]
+        }
+      }
+    ]
+  }
+  dependsOn: [
+    functionAppAccessPolicy
+  ]
+}
+
 // Outputs
-output updatedKeyVaultId string = keyVaultWithPolicies.id
+output updatedKeyVaultId string = keyVault.id
