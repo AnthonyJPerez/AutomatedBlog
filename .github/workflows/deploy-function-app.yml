@@ -12,6 +12,7 @@ env:
   RESOURCE_GROUP: "blogauto-${{ vars.ENVIRONMENT || 'dev' }}-rg"
   LOCATION: 'eastus'
   ENVIRONMENT: ${{ vars.ENVIRONMENT || 'dev' }}
+  PROJECT_NAME: "blogauto"
 
 jobs:
   lint-and-test:
@@ -75,12 +76,16 @@ jobs:
       with:
         creds: ${{ secrets.AZURE_CREDENTIALS }}
         
+    - name: Create resource group if not exists
+      run: |
+        az group create --name ${{ env.RESOURCE_GROUP }} --location ${{ env.LOCATION }}
+        
     - name: Deploy Bicep
       uses: azure/arm-deploy@v1
       with:
         resourceGroupName: ${{ env.RESOURCE_GROUP }}
         template: ./infra/main.bicep
-        parameters: environment=${{ env.ENVIRONMENT }} location=${{ env.LOCATION }}
+        parameters: projectName=${{ env.PROJECT_NAME }} environment=${{ env.ENVIRONMENT }} location=${{ env.LOCATION }}
         deploymentName: 'github-${{ github.run_number }}'
         failOnStdErr: false
 
