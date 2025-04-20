@@ -23,11 +23,11 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger('processor_functions')
 
 # Import shared services
-from src.shared.blog_service import BlogService
-from src.shared.content_generator import ContentGenerator
-from src.shared.storage_service import StorageService
-from src.shared.research_service import ResearchService
-from src.shared.openai_service import OpenAIService
+from shared.blog_service import BlogService
+from shared.content_generator import ContentGenerator
+from shared.storage_service import StorageService
+from shared.research_service import ResearchService
+from shared.openai_service import OpenAIService
 
 # Initialize services
 storage_service = StorageService()
