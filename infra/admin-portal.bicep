@@ -66,26 +66,24 @@ resource adminPortal 'Microsoft.Web/sites@2021-02-01' = {
 }
 
 // Enable managed identity for the admin portal
-resource adminPortalIdentity 'Microsoft.Web/sites/config@2021-02-01' = {
-  parent: adminPortal
-  name: 'web'
-  properties: {
-    managedServiceIdentity: {
-      enabled: true
-    }
-  }
-}
-
-// Assign managed identity to the admin portal
-resource identity 'Microsoft.Web/sites/config@2021-02-01' = {
-  parent: adminPortal
-  name: 'ManagedServiceIdentity'
-  properties: {
+resource adminPortalIdentity 'Microsoft.Web/sites@2021-02-01' = {
+  name: adminPortalName
+  location: location
+  kind: 'app,linux'
+  identity: {
     type: 'SystemAssigned'
   }
+  properties: {
+    serverFarmId: appServicePlan.id
+    httpsOnly: true
+    siteConfig: adminPortal.properties.siteConfig
+  }
+  dependsOn: [
+    adminPortal
+  ]
 }
 
 // Outputs
 output adminPortalName string = adminPortal.name
 output adminPortalHostName string = adminPortal.properties.defaultHostName
-output adminPortalPrincipalId string = reference(adminPortal.id, '2021-02-01', 'Full').identity.principalId
+output adminPortalPrincipalId string = adminPortalIdentity.identity.principalId

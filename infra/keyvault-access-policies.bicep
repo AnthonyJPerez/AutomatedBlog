@@ -13,64 +13,62 @@ resource keyVault 'Microsoft.KeyVault/vaults@2022-07-01' existing = {
   name: keyVaultName
 }
 
-// Add access policy for Function App if principal ID is provided
-resource functionAppAccessPolicy 'Microsoft.KeyVault/vaults/accessPolicies@2022-07-01' = if (!empty(functionAppPrincipalId)) {
-  name: 'add'
-  parent: keyVault
+// Update Key Vault with access policies for both apps
+resource keyVaultWithPolicies 'Microsoft.KeyVault/vaults@2022-07-01' = {
+  name: keyVaultName
+  location: keyVault.location
+  tags: keyVault.tags
   properties: {
-    accessPolicies: [
-      {
-        tenantId: subscription().tenantId
-        objectId: functionAppPrincipalId
-        permissions: {
-          secrets: [
-            'get'
-            'list'
-          ]
-          keys: [
-            'get'
-            'list'
-          ]
-          certificates: [
-            'get'
-            'list'
-          ]
+    sku: keyVault.properties.sku
+    tenantId: subscription().tenantId
+    enableRbacAuthorization: false
+    enableSoftDelete: true
+    softDeleteRetentionInDays: 90
+    accessPolicies: concat(
+      !empty(functionAppPrincipalId) ? [
+        {
+          tenantId: subscription().tenantId
+          objectId: functionAppPrincipalId
+          permissions: {
+            secrets: [
+              'get'
+              'list'
+            ]
+            keys: [
+              'get'
+              'list'
+            ]
+            certificates: [
+              'get'
+              'list'
+            ]
+          }
         }
-      }
-    ]
-  }
-}
-
-// Add access policy for Admin Portal if principal ID is provided
-resource adminPortalAccessPolicy 'Microsoft.KeyVault/vaults/accessPolicies@2022-07-01' = if (!empty(adminPortalPrincipalId)) {
-  name: 'add'
-  parent: keyVault
-  properties: {
-    accessPolicies: [
-      {
-        tenantId: subscription().tenantId
-        objectId: adminPortalPrincipalId
-        permissions: {
-          secrets: [
-            'get'
-            'list'
-          ]
-          keys: [
-            'get'
-            'list'
-          ]
-          certificates: [
-            'get'
-            'list'
-          ]
+      ] : [],
+      !empty(adminPortalPrincipalId) ? [
+        {
+          tenantId: subscription().tenantId
+          objectId: adminPortalPrincipalId
+          permissions: {
+            secrets: [
+              'get'
+              'list'
+            ]
+            keys: [
+              'get'
+              'list'
+            ]
+            certificates: [
+              'get'
+              'list'
+            ]
+          }
         }
-      }
-    ]
+      ] : []
+    )
+    networkAcls: keyVault.properties.networkAcls
   }
-  dependsOn: [
-    functionAppAccessPolicy // Wait for Function App access policy to be applied first
-  ]
 }
 
 // Outputs
-output updatedKeyVaultId string = keyVault.id
+output updatedKeyVaultId string = keyVaultWithPolicies.id

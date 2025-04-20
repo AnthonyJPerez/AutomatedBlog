@@ -112,11 +112,6 @@ module functionApp 'functions.bicep' = {
     keyVaultName: keyVaultName
     appServicePlanSku: appServicePlanSku
   }
-  dependsOn: [
-    monitoringModule
-    storageModule
-    keyVaultModule // Key Vault must exist before Function App is created
-  ]
 }
 
 // Deploy Admin Portal Web App
@@ -132,7 +127,6 @@ module adminPortalModule 'admin-portal.bicep' = {
   }
   dependsOn: [
     functionApp // Make sure Function App is deployed first since we're reusing its app service plan
-    keyVaultModule // Key Vault must exist before Admin Portal is created
   ]
 }
 
@@ -144,11 +138,6 @@ module keyVaultAccessPoliciesModule 'keyvault-access-policies.bicep' = {
     functionAppPrincipalId: functionApp.outputs.functionAppPrincipalId
     adminPortalPrincipalId: adminPortalModule.outputs.adminPortalPrincipalId
   }
-  dependsOn: [
-    functionApp
-    adminPortalModule
-    keyVaultModule
-  ]
 }
 
 // Deploy WordPress if enabled

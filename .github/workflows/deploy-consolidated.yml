@@ -325,20 +325,25 @@ jobs:
         
         # Create requirements.txt
         cat > admin-package/requirements.txt << EOF
-        flask>=2.0.0
-        gunicorn>=20.1.0
-        wfastcgi>=3.0.0
-        python-dotenv>=0.19.0
-        werkzeug>=2.0.1
-        azure-functions>=1.11.0
-        azure-identity>=1.10.0
-        azure-keyvault-secrets>=4.5.0
-        azure-storage-blob>=12.13.0
-        requests>=2.27.1
-        markdown>=3.3.7
-        pygments>=2.13.0
-        langdetect>=1.0.9
-        trafilatura>=1.4.0
+        flask==2.0.3
+        gunicorn==20.1.0
+        wfastcgi==3.0.0
+        python-dotenv==0.21.1
+        werkzeug==2.0.3
+        azure-functions==1.15.0
+        azure-identity==1.12.0
+        azure-keyvault-secrets==4.6.0
+        azure-storage-blob==12.16.0
+        requests==2.29.0
+        markdown==3.4.3
+        pygments==2.15.1
+        langdetect==1.0.9
+        trafilatura==1.6.1
+        azure-mgmt-storage==21.0.0
+        azure-mgmt-resource==22.0.0
+        Flask-SQLAlchemy==3.0.3
+        sqlalchemy==2.0.12
+        psycopg2-binary==2.9.6
         EOF
         
         # Create startup script
@@ -372,14 +377,27 @@ jobs:
           --name "${{ env.ADMIN_PORTAL_NAME }}" \
           --src admin-portal.zip
         
-    # Configure admin portal startup command
-    - name: Configure admin portal startup
+    # Configure admin portal startup command and settings
+    - name: Configure admin portal startup and environment
       run: |
-        # Set the startup command
+        # Set the startup command and make sure Linux FX Version is correct
         az webapp config set \
           --resource-group "${{ env.RESOURCE_GROUP }}" \
           --name "${{ env.ADMIN_PORTAL_NAME }}" \
-          --startup-file "gunicorn --bind=0.0.0.0:5000 --timeout 600 wsgi:application"
+          --startup-file "gunicorn --bind=0.0.0.0:5000 --timeout 600 wsgi:application" \
+          --linux-fx-version "PYTHON|${{ env.PYTHON_VERSION }}"
+        
+        # Set additional app settings to ensure proper startup
+        az webapp config appsettings set \
+          --resource-group "${{ env.RESOURCE_GROUP }}" \
+          --name "${{ env.ADMIN_PORTAL_NAME }}" \
+          --settings \
+          PYTHON_VERSION="${{ env.PYTHON_VERSION }}" \
+          PYTHONPATH="/home/site/wwwroot" \
+          SCM_DO_BUILD_DURING_DEPLOYMENT=true \
+          ENABLE_ORYX_BUILD=true \
+          BUILD_FLAGS="--platform python --platform-version ${{ env.PYTHON_VERSION }}" \
+          GUNICORN_CMD_ARGS="--bind=0.0.0.0:5000 --timeout 600"
         
         # Restart the web app to apply changes
         az webapp restart \
@@ -398,4 +416,21 @@ jobs:
         else
           echo "Admin portal deployment may have issues. Check logs in Azure Portal."
           echo "URL: https://${{ env.ADMIN_PORTAL_NAME }}.azurewebsites.net/"
+          
+          # Add troubleshooting info
+          echo "---------- TROUBLESHOOTING INFORMATION ----------"
+          echo "Fetching admin portal logs..."
+          az webapp log download --resource-group "${{ env.RESOURCE_GROUP }}" --name "${{ env.ADMIN_PORTAL_NAME }}" --log-file admin-portal-logs.zip
+          
+          # Check deployment logs
+          echo "Checking deployment status..."
+          az webapp deployment list --resource-group "${{ env.RESOURCE_GROUP }}" --name "${{ env.ADMIN_PORTAL_NAME }}" --output table
+          
+          # Show application settings
+          echo "Current application settings:"
+          az webapp config appsettings list --resource-group "${{ env.RESOURCE_GROUP }}" --name "${{ env.ADMIN_PORTAL_NAME }}" --output table
+          
+          # Show site configuration
+          echo "Current site configuration:"
+          az webapp config show --resource-group "${{ env.RESOURCE_GROUP }}" --name "${{ env.ADMIN_PORTAL_NAME }}" --output table | grep -E "linuxFxVersion|appCommandLine"
         fi
