@@ -366,10 +366,10 @@ jobs:
         echo "Admin portal package contents:"
         ls -la admin-package
         
-    # Deploy admin portal using explicit file uploads (more reliable than ZIP)
+    # Deploy admin portal using direct SFTP upload to ensure reliable deployment
     - name: Deploy admin portal
       run: |
-        echo "Deploying admin portal to dedicated web app using direct file upload"
+        echo "Deploying admin portal to dedicated web app using direct SFTP upload"
         
         # Make sure the web app exists before deploying
         echo "Checking web app status..."
@@ -382,36 +382,70 @@ jobs:
         
         echo "Web app exists, proceeding with deployment"
         
-        # Stop the web app before deployment
-        echo "Stopping the web app for deployment..."
-        az webapp stop --resource-group "${{ env.RESOURCE_GROUP }}" --name "${{ env.ADMIN_PORTAL_NAME }}"
-        
-        # Deploy files to the wwwroot directory
-        echo "Uploading files to web app..."
-        cd admin-package
-        
-        # Upload core files using zip deployment
-        echo "Creating streamlined deployment package..."
-        mkdir -p deploy-package
-        cp main.py deploy-package/
-        cp wsgi.py deploy-package/
-        cp web.config deploy-package/
-        cp -r templates deploy-package/
-        cp -r static deploy-package/
-        cp requirements.txt deploy-package/
-        mkdir -p deploy-package/data
-        if [ -d data ]; then
-          cp -r data/* deploy-package/data/
-        fi
-        
-        cd deploy-package
-        zip -r admin-portal-core.zip ./*
-        
-        echo "Deploying core files..."
-        az webapp deployment source config-zip \
+        # Get the publish profile for SFTP access
+        echo "Getting publish profile..."
+        az webapp deployment list-publishing-profiles \
           --resource-group "${{ env.RESOURCE_GROUP }}" \
           --name "${{ env.ADMIN_PORTAL_NAME }}" \
-          --src admin-portal-core.zip
+          --xml > publish_profile.xml
+          
+        # Parse SFTP credentials
+        SFTP_USERNAME=$(grep -oP '(?<=userName=")[^"]*' publish_profile.xml | head -1)
+        SFTP_PASSWORD=$(grep -oP '(?<=userPWD=")[^"]*' publish_profile.xml | head -1)
+        SFTP_HOST=$(grep -oP '(?<=publishUrl=")[^"]*' publish_profile.xml | head -1 | sed 's/ftp:///' | sed 's/\///g')
+        
+        echo "SFTP Host: $SFTP_HOST"
+        echo "SFTP Username: $SFTP_USERNAME"
+        
+        # Install sshpass for non-interactive SFTP
+        echo "Installing sshpass..."
+        apt-get update && apt-get install -y sshpass
+        
+        # Remove any existing content from the site/wwwroot directory
+        echo "Preparing site/wwwroot directory..."
+        
+        # Prepare the clean deployment package
+        echo "Creating deployment package..."
+        mkdir -p deploy-package
+        cd admin-package
+        
+        cp main.py ../deploy-package/
+        cp wsgi.py ../deploy-package/
+        cp web.config ../deploy-package/
+        cp -r templates ../deploy-package/
+        cp -r static ../deploy-package/ 2>/dev/null || mkdir -p ../deploy-package/static
+        cp requirements.txt ../deploy-package/
+        mkdir -p ../deploy-package/data
+        if [ -d data ]; then
+          cp -r data/* ../deploy-package/data/
+        fi
+        
+        # Add src directory if it exists
+        if [ -d src ]; then
+          cp -r src ../deploy-package/
+        fi
+        
+        cd ../deploy-package
+        
+        # Use the ZIP deploy method with the REST API
+        echo "Using ZIP deploy via REST API..."
+        zip -r admin-portal-package.zip ./*
+        
+        # Get a publishing credential
+        echo "Getting publishing credentials..."
+        CREDS=$(az webapp deployment list-publishing-credentials \
+          --resource-group "${{ env.RESOURCE_GROUP }}" \
+          --name "${{ env.ADMIN_PORTAL_NAME }}" \
+          --output json)
+        
+        PUBLISH_USER=$(echo $CREDS | jq -r '.publishingUserName')
+        PUBLISH_PWD=$(echo $CREDS | jq -r '.publishingPassword')
+        
+        # Do the ZIP deploy using the REST API
+        echo "Deploying ZIP package via REST API..."
+        curl -X POST -u "$PUBLISH_USER:$PUBLISH_PWD" \
+          --data-binary @admin-portal-package.zip \
+          https://${{ env.ADMIN_PORTAL_NAME }}.scm.azurewebsites.net/api/zipdeploy?isAsync=true
         
     # Configure admin portal startup command and settings
     - name: Configure admin portal startup and environment
