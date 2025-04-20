@@ -8,11 +8,13 @@ param location string
 @description('Tags for the Key Vault')
 param tags object
 
-@description('Object ID of the Function App Managed Identity')
-param functionAppPrincipalId string
-
-@description('Object ID of the Admin Portal Managed Identity')
-param adminPortalPrincipalId string = ''
+// No principal IDs needed here as they will be used in keyvault-access-policies.bicep
+// The following commented out parameters are kept for reference
+// @description('Object ID of the Function App Managed Identity')
+// param functionAppPrincipalId string
+//
+// @description('Object ID of the Admin Portal Managed Identity')
+// param adminPortalPrincipalId string = ''
 
 // Deploy Key Vault
 resource keyVault 'Microsoft.KeyVault/vaults@2022-07-01' = {

@@ -94,8 +94,7 @@ module keyVaultModule 'keyvault.bicep' = {
     keyVaultName: keyVaultName
     location: location
     tags: deploymentTags
-    functionAppPrincipalId: '' // Empty string means no access policies added yet
-    adminPortalPrincipalId: '' // Empty string means no access policies added yet
+    // Principal IDs will be added in a separate step via keyvault-access-policies.bicep
   }
 }
 

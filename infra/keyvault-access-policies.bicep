@@ -13,60 +13,36 @@ resource keyVault 'Microsoft.KeyVault/vaults@2022-07-01' existing = {
   name: keyVaultName
 }
 
-// Add access policies using the dedicated endpoint rather than updating the vault directly
-resource functionAppAccessPolicy 'Microsoft.KeyVault/vaults/accessPolicies@2022-07-01' = if (!empty(functionAppPrincipalId)) {
-  name: '${keyVaultName}/add'
+// Using a simpler approach by adding all policies at once
+resource keyVaultPolicies 'Microsoft.KeyVault/vaults/accessPolicies@2022-07-01' = {
+  parent: keyVault
+  name: 'add'
   properties: {
-    accessPolicies: [
-      {
-        tenantId: subscription().tenantId
-        objectId: functionAppPrincipalId
-        permissions: {
-          secrets: [
-            'get'
-            'list'
-          ]
-          keys: [
-            'get'
-            'list'
-          ]
-          certificates: [
-            'get'
-            'list'
-          ]
+    accessPolicies: concat(
+      !empty(functionAppPrincipalId) ? [
+        {
+          tenantId: subscription().tenantId
+          objectId: functionAppPrincipalId
+          permissions: {
+            secrets: ['get', 'list']
+            keys: ['get', 'list']
+            certificates: ['get', 'list']
+          }
         }
-      }
-    ]
-  }
-}
-
-resource adminPortalAccessPolicy 'Microsoft.KeyVault/vaults/accessPolicies@2022-07-01' = if (!empty(adminPortalPrincipalId)) {
-  name: '${keyVaultName}/add'
-  properties: {
-    accessPolicies: [
-      {
-        tenantId: subscription().tenantId
-        objectId: adminPortalPrincipalId
-        permissions: {
-          secrets: [
-            'get'
-            'list'
-          ]
-          keys: [
-            'get'
-            'list'
-          ]
-          certificates: [
-            'get'
-            'list'
-          ]
+      ] : [],
+      !empty(adminPortalPrincipalId) ? [
+        {
+          tenantId: subscription().tenantId
+          objectId: adminPortalPrincipalId
+          permissions: {
+            secrets: ['get', 'list']
+            keys: ['get', 'list']
+            certificates: ['get', 'list']
+          }
         }
-      }
-    ]
+      ] : []
+    )
   }
-  dependsOn: [
-    functionAppAccessPolicy
-  ]
 }
 
 // Outputs
