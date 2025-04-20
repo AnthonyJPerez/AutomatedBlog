@@ -70,8 +70,11 @@ var adminPortalName = '${namePrefix}-admin'
 var deploymentRegion = location == 'eastus' && environment == 'prod' ? 'westus' : location
 
 // Key Vault settings
-// Add a timestamp-like suffix using uniqueString to avoid conflicts with soft-deleted vaults
-var keyVaultName = '${namePrefix}-vault-${take(uniqueString(resourceGroup().id, deployment().name), 6)}'
+// Generate a unique, compliant Key Vault name (3-24 chars, alphanumeric, no consecutive hyphens)
+// Convert dashes to letters to avoid consecutive hyphens
+var dashlessPrefix = replace(namePrefix, '-', 'x')
+// Ensure the name is unique but still under 24 characters 
+var keyVaultName = take('${dashlessPrefix}v${uniqueString(resourceGroup().id)}', 24)
 
 // WordPress settings
 var wordPressSiteName = !empty(wordPressSiteNameSuffix) ? 'wp-${wordPressSiteNameSuffix}' : 'wp-${uniqueString(resourceGroup().id)}'
