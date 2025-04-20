@@ -9,10 +9,11 @@ Usage:
 
 Options:
   --resource-group, -g  (Required) Name of the Azure resource group
-  --location, -l        Azure region location (default: eastus)
+  --location, -l        Azure region location (default: eastus, recommend westus for prod)
   --environment, -e     Environment name for resources (default: dev)
   --project-name, -p    Project name for resource naming (default: blogauto)
   --use-azure-sdk       Use Azure SDK instead of CLI (useful for CI/CD)
+  --verbose, -v         Enable verbose logging
 """
 
 import os
@@ -141,7 +142,7 @@ def deploy_with_sdk(resource_group_name, location="eastus", env_name="dev", proj
         logger.error(f"Deployment error: {e}")
         return False
 
-def deploy_with_cli(resource_group_name, location="eastus", env_name="dev", project_name="blogauto"):
+def deploy_with_cli(resource_group_name, location="eastus", env_name="dev", project_name="blogauto", verbose=False):
     """
     Deploy Azure resources using az CLI and Bicep templates.
     
@@ -202,6 +203,11 @@ def deploy_with_cli(resource_group_name, location="eastus", env_name="dev", proj
             "--parameters", f"location={location}"
         ]
         
+        # Add debug flag for verbose mode
+        if verbose:
+            cmd.append("--debug")
+            logger.debug(f"Running command with debug output: {' '.join(cmd)}")
+        
         subprocess.run(cmd, check=True)
         logger.info("Deployment completed successfully")
         return True
@@ -222,8 +228,15 @@ def main():
                         help='Project name (default: blogauto)')
     parser.add_argument('--use-azure-sdk', action='store_true',
                         help='Use Azure SDK instead of CLI (useful for CI/CD)')
+    parser.add_argument('--verbose', '-v', action='store_true',
+                        help='Enable verbose output for debugging')
     
     args = parser.parse_args()
+    
+    # Set logging level based on verbose flag
+    if args.verbose:
+        logger.setLevel(logging.DEBUG)
+        logger.debug("Verbose logging enabled")
     
     if args.use_azure_sdk:
         if not SDK_AVAILABLE:
@@ -241,7 +254,8 @@ def main():
             resource_group_name=args.resource_group,
             location=args.location,
             env_name=args.environment,
-            project_name=args.project_name
+            project_name=args.project_name,
+            verbose=args.verbose
         )
     
     sys.exit(0 if success else 1)

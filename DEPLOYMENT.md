@@ -93,7 +93,7 @@ This indicates your Azure subscription has reached its quota limit for the speci
 
 1. Use a different region by changing the `location` parameter
    ```bash
-   python deploy-consolidated.py --resource-group "blogauto-dev-rg" --location "westus2"
+   python deploy-consolidated.py --resource-group "blogauto-dev-rg" --location "westus"
    ```
 
 2. Use a different SKU tier by modifying the Bicep templates
@@ -103,7 +103,7 @@ This indicates your Azure subscription has reached its quota limit for the speci
 3. Update GitHub Actions workflow with a supported region:
    ```yaml
    env:
-     LOCATION: westus2
+     LOCATION: westus
    ```
 
 For persistent issues, run deployment with verbose logging:

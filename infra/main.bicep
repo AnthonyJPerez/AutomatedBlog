@@ -54,8 +54,8 @@ var appInsightsName = '${namePrefix}-insights'
 var appServicePlanSku = 'B1'
 
 // Use a region with available quota
-// westus2 and eastus2 often have better availability than eastus
-var deploymentRegion = location == 'eastus' && environment == 'prod' ? 'westus2' : location
+// westus often has better availability than eastus
+var deploymentRegion = location == 'eastus' && environment == 'prod' ? 'westus' : location
 
 // Key Vault settings
 var keyVaultName = '${namePrefix}-vault'
