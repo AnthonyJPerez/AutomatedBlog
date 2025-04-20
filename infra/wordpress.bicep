@@ -105,6 +105,9 @@ resource mysqlFirewallRule 'Microsoft.DBforMySQL/flexibleServers/firewallRules@2
 resource wordpressApp 'Microsoft.Web/sites@2022-03-01' = {
   name: siteName
   location: location
+  identity: {
+    type: 'SystemAssigned'
+  }
   properties: {
     serverFarmId: appServicePlan.id
     siteConfig: {
@@ -162,26 +165,8 @@ resource wordpressApp 'Microsoft.Web/sites@2022-03-01' = {
   }
 }
 
-// Setup Managed Identity for WordPress App 
-resource wordpressIdentity 'Microsoft.Web/sites/config@2022-03-01' = {
-  parent: wordpressApp
-  name: 'web'
-  properties: {
-    managedServiceIdentityId: wordpressApp.identity.principalId
-  }
-  dependsOn: [
-    wordpressAppIdentity
-  ]
-}
-
-// Add Managed Identity to the WordPress App
-resource wordpressAppIdentity 'Microsoft.Web/sites/config@2022-03-01' = {
-  parent: wordpressApp
-  name: 'ManagedServiceIdentity'
-  properties: {
-    enabled: true
-  }
-}
+// No need for additional identity setup since we're using SystemAssigned identity
+// which is already configured on the wordpressApp resource
 
 // Setup WordPress plugins deployment script (runs once after WordPress is deployed)
 resource deploymentScript 'Microsoft.Resources/deploymentScripts@2020-10-01' = {

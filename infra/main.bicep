@@ -100,10 +100,7 @@ module functionApp 'functions.bicep' = {
     appInsightsInstrumentationKey: monitoringModule.outputs.instrumentationKey
     keyVaultName: keyVaultName
   }
-  dependsOn: [
-    storageModule
-    monitoringModule
-  ]
+  // No explicit dependsOn needed, implicit through parameter references
 }
 
 // Deploy WordPress if enabled
@@ -121,9 +118,7 @@ module wordpressModule 'wordpress.bicep' = if (deployWordPress) {
     wpAdminPassword: wpAdminPassword
     keyVaultName: keyVaultName
   }
-  dependsOn: [
-    keyVaultModule
-  ]
+  // No explicit dependsOn needed, implicit through parameter references
 }
 
 // Outputs
