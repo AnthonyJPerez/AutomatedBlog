@@ -1,0 +1,10 @@
+Deployment trigger file
+Date: April 20, 2025
+
+This file was created to trigger a redeployment of the application.
+Fixed issues:
+- GitHub Actions ResourceGroup error
+- Bicep validation errors with identity types
+- Test failures
+
+All systems should now deploy properly.
