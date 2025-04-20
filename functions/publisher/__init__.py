@@ -1,133 +1,227 @@
 """
-Publisher function for the blog automation pipeline.
-This function is triggered by a queue message and handles publishing content to WordPress.
+Publisher Function Module
+This module contains Azure Functions for publishing content to WordPress and other platforms.
+
+The main functions in this module include:
+- ContentPublisher: Queue-triggered function that publishes content to WordPress
+- ImageUploader: Queue-triggered function that uploads images to WordPress
 """
-import logging
-import json
-import azure.functions as func
-from datetime import datetime
-import sys
 import os
-from typing import Dict, Any, Optional
+import json
+import logging
+import datetime
+from typing import List, Dict, Any, Optional
 
-# Add the src directory to the Python path to allow imports from shared modules
-sys.path.append(os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'src'))
+import azure.functions as func
 
-# Import shared modules
-from src.shared.storage_service import StorageService
-from src.shared.blog_service import BlogService
-from src.shared.wordpress_service import WordPressService
-from src.shared.social_media_service import SocialMediaService
-
-# Initialize logging
-logger = logging.getLogger('publisher')
-
-# Create a blueprint for the v2 programming model
+# Create a blueprint for Azure Functions v2 programming model
 bp = func.Blueprint()
 
-@bp.queue_trigger(arg_name="msg", 
-                queue_name="publish-queue", 
-                connection="AzureWebJobsStorage")
-@bp.blob_input(arg_name="contentBlob",
-               path="generated/{blog_id}/{run_id}/content.json",
-               connection="AzureWebJobsStorage")
-def publish_content(msg: func.QueueMessage, contentBlob: str) -> None:
+# Set up logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger('publisher_functions')
+
+# Import shared services
+from src.shared.blog_service import BlogService
+from src.shared.storage_service import StorageService
+from src.shared.wordpress_service import WordPressService
+from src.shared.image_generator import ImageGenerator
+
+# Initialize services
+storage_service = StorageService()
+blog_service = BlogService(storage_service)
+wordpress_service = WordPressService()
+image_generator = ImageGenerator()
+
+
+@bp.queue_trigger(arg_name="msg", queue_name="publish-queue",
+                 connection="AzureWebJobsStorage")
+def publish_content(msg: func.QueueMessage) -> None:
     """
-    Queue trigger function to publish content to WordPress.
+    Queue-triggered function that publishes content to WordPress.
+    
+    This function is triggered by messages in the publish-queue,
+    taking generated content and publishing it to the configured WordPress site.
     
     Args:
-        msg: The queue message trigger input binding.
-        contentBlob: The blob input binding containing the generated content.
+        msg (func.QueueMessage): The queue message containing job information
     """
+    logger.info('Content publisher triggered')
+    
     try:
-        logger.info(f"Publishing content at: {datetime.utcnow().isoformat()}")
+        # Parse message
+        message_body = msg.get_body().decode('utf-8')
+        message_json = json.loads(message_body)
         
-        # Parse the message
-        message_text = msg.get_body().decode('utf-8')
-        message = json.loads(message_text)
-        blog_id = message.get('blog_id')
-        run_id = message.get('run_id')
+        blog_id = message_json.get('blog_id')
+        run_id = message_json.get('run_id')
         
-        if not blog_id or not run_id:
-            raise ValueError("Missing required fields in message: blog_id or run_id")
-            
-        logger.info(f"Publishing content for blog: {blog_id}, run: {run_id}")
-        
-        # Load content from blob
-        if not contentBlob:
-            raise ValueError(f"Content not found for blog: {blog_id}, run: {run_id}")
-            
-        content_data = json.loads(contentBlob)
-        
-        # Initialize services
-        storage_service = StorageService()
-        blog_service = BlogService(storage_service)
+        logger.info(f"Publishing content for blog {blog_id}, run {run_id}")
         
         # Get blog configuration
-        blog = blog_service.get_blog_by_id(blog_id)
+        blog = blog_service.get_blog(blog_id)
         if not blog:
-            raise ValueError(f"Blog not found: {blog_id}")
+            logger.error(f"Blog with ID {blog_id} not found")
+            return
             
-        # Initialize WordPress service
-        wordpress_service = WordPressService(blog.get('wordpress', {}))
+        # Get content from run folder
+        content = storage_service.get_json(blog_id, run_id, 'content.json')
+        if not content:
+            logger.error(f"Content not found for blog {blog_id}, run {run_id}")
+            return
+            
+        # Generate featured image
+        image_prompt = content.get('featured_image_prompt', f"Featured image for article about {content['title']}")
+        featured_image_path = image_generator.generate_image(image_prompt, blog_id, run_id)
         
-        # Publish to WordPress
-        logger.info(f"Publishing to WordPress: {blog.get('title')}")
+        # Prepare WordPress credentials
+        wp_credentials = blog_service.get_wordpress_credentials(blog_id)
+        
+        # Upload featured image
+        featured_image_url = wordpress_service.upload_media(
+            featured_image_path,
+            wordpress_url=wp_credentials.get('url'),
+            username=wp_credentials.get('username'),
+            application_password=wp_credentials.get('password')
+        )
+        
+        # Publish content to WordPress
         post_id = wordpress_service.publish_post(
-            title=content_data['content']['title'],
-            content=content_data['content']['html'],
-            excerpt=content_data['content']['excerpt'],
-            featured_image_url=content_data['content'].get('featured_image_url'),
-            categories=content_data['content'].get('categories', []),
-            tags=content_data['content'].get('tags', [])
+            title=content['title'],
+            content=content['html_content'],
+            excerpt=content.get('excerpt', ''),
+            featured_image_url=featured_image_url,
+            categories=content.get('categories', []),
+            tags=content.get('tags', []),
+            seo_metadata=content.get('seo_metadata', {})
         )
         
-        if not post_id:
-            raise ValueError("Failed to publish post to WordPress")
+        if post_id:
+            logger.info(f"Content published successfully for blog {blog_id}, run {run_id}, post ID: {post_id}")
             
-        logger.info(f"Successfully published post to WordPress with ID: {post_id}")
-        
-        # Save post information
-        publish_result = {
-            'blog_id': blog_id,
-            'run_id': run_id,
-            'post_id': post_id,
-            'url': wordpress_service.get_post_url(post_id),
-            'timestamp': datetime.utcnow().isoformat()
-        }
-        
-        # Save the publish result
-        storage_service.save_json(
-            f"generated/{blog_id}/{run_id}/publish_result.json", 
-            publish_result
-        )
-        
-        # Queue social media promotion
-        if blog.get('social_media', {}).get('enabled', False):
-            promote_message = {
-                'blog_id': blog_id,
-                'run_id': run_id,
-                'post_id': post_id,
-                'url': publish_result['url'],
-                'timestamp': datetime.utcnow().isoformat()
+            # Get the public URL of the post
+            post_url = wordpress_service.get_post_url(post_id, wp_credentials.get('url'))
+            
+            # Save publishing results
+            results = {
+                "published": True,
+                "post_id": post_id,
+                "post_url": post_url,
+                "timestamp": datetime.datetime.utcnow().isoformat()
             }
+            storage_service.save_json(blog_id, run_id, 'publish_results.json', results)
             
-            # In a real implementation, you'd queue this message for the promoter function
-            # This is a placeholder for now
-            logger.info(f"Content published, queuing for social media promotion: {json.dumps(promote_message)}")
+            # Queue for social media promotion
+            promotion_message = {
+                "blog_id": blog_id,
+                "run_id": run_id,
+                "post_id": post_id,
+                "post_url": post_url,
+                "timestamp": datetime.datetime.utcnow().isoformat()
+            }
+            promotion_queue_message = func.QueueMessage(
+                body=json.dumps(promotion_message).encode('utf-8')
+            )
+            func.Queue("social-media-queue").set(promotion_queue_message)
+        else:
+            logger.error(f"Failed to publish content for blog {blog_id}, run {run_id}")
+            # Save error results
+            results = {
+                "published": False,
+                "error": "Failed to publish to WordPress",
+                "timestamp": datetime.datetime.utcnow().isoformat()
+            }
+            storage_service.save_json(blog_id, run_id, 'publish_results.json', results)
+            
+    except Exception as e:
+        logger.error(f"Error in content publisher: {str(e)}", exc_info=True)
+        # Output to error queue for notification
+        try:
+            error_message = {
+                "blog_id": blog_id,
+                "run_id": run_id,
+                "error": str(e),
+                "stage": "publishing",
+                "timestamp": datetime.datetime.utcnow().isoformat()
+            }
+            error_queue_message = func.QueueMessage(
+                body=json.dumps(error_message).encode('utf-8')
+            )
+            func.Queue("error-notification-queue").set(error_queue_message)
+        except Exception as ex:
+            logger.error(f"Failed to send error notification: {str(ex)}")
+
+
+@bp.queue_trigger(arg_name="msg", queue_name="image-upload-queue",
+                 connection="AzureWebJobsStorage")
+def upload_image(msg: func.QueueMessage) -> None:
+    """
+    Queue-triggered function that uploads images to WordPress.
+    
+    This function is used for uploading additional images to WordPress media library,
+    outside of the main content publishing flow.
+    
+    Args:
+        msg (func.QueueMessage): The queue message containing job information
+    """
+    logger.info('Image uploader triggered')
+    
+    try:
+        # Parse message
+        message_body = msg.get_body().decode('utf-8')
+        message_json = json.loads(message_body)
         
-        # Update run status
-        blog_service.update_run_status(
-            blog_id, 
-            run_id, 
-            "published", 
-            f"Published to WordPress with ID: {post_id}"
+        blog_id = message_json.get('blog_id')
+        image_path = message_json.get('image_path')
+        
+        logger.info(f"Uploading image for blog {blog_id}, path: {image_path}")
+        
+        # Get blog configuration
+        blog = blog_service.get_blog(blog_id)
+        if not blog:
+            logger.error(f"Blog with ID {blog_id} not found")
+            return
+            
+        # Prepare WordPress credentials
+        wp_credentials = blog_service.get_wordpress_credentials(blog_id)
+        
+        # Upload image
+        image_url = wordpress_service.upload_media(
+            image_path,
+            wordpress_url=wp_credentials.get('url'),
+            username=wp_credentials.get('username'),
+            application_password=wp_credentials.get('password')
         )
         
+        if image_url:
+            logger.info(f"Image uploaded successfully for blog {blog_id}, URL: {image_url}")
+            
+            # Return the image URL in the response
+            response_message = {
+                "blog_id": blog_id,
+                "image_path": image_path,
+                "image_url": image_url,
+                "success": True,
+                "timestamp": datetime.datetime.utcnow().isoformat()
+            }
+            response_queue_message = func.QueueMessage(
+                body=json.dumps(response_message).encode('utf-8')
+            )
+            func.Queue("image-upload-response-queue").set(response_queue_message)
+        else:
+            logger.error(f"Failed to upload image for blog {blog_id}")
+            # Return error in response
+            response_message = {
+                "blog_id": blog_id,
+                "image_path": image_path,
+                "success": False,
+                "error": "Failed to upload image",
+                "timestamp": datetime.datetime.utcnow().isoformat()
+            }
+            response_queue_message = func.QueueMessage(
+                body=json.dumps(response_message).encode('utf-8')
+            )
+            func.Queue("image-upload-response-queue").set(response_queue_message)
+            
     except Exception as e:
-        logger.error(f"Error in publisher function: {str(e)}", exc_info=True)
-        # Update run status with error
-        if blog_id and run_id:
-            blog_service = BlogService(StorageService())
-            blog_service.update_run_status(blog_id, run_id, "error", f"Publishing error: {str(e)}")
-        raise
+        logger.error(f"Error in image uploader: {str(e)}", exc_info=True)

@@ -9,10 +9,10 @@
       "connection": "AzureWebJobsStorage"
     },
     {
-      "name": "contentBlob",
-      "type": "blob",
+      "name": "msg",
+      "type": "queueTrigger",
       "direction": "in",
-      "path": "generated/{blog_id}/{run_id}/content.json",
+      "queueName": "image-upload-queue",
       "connection": "AzureWebJobsStorage"
     }
   ]

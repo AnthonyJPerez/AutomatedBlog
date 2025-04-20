@@ -6,6 +6,19 @@
       "type": "timerTrigger",
       "direction": "in",
       "schedule": "0 */6 * * *"
+    },
+    {
+      "name": "req",
+      "type": "httpTrigger",
+      "direction": "in",
+      "route": "trigger-blog-content/{blog_id}",
+      "authLevel": "function",
+      "methods": ["post", "get"]
+    },
+    {
+      "type": "http",
+      "direction": "out",
+      "name": "$return"
     }
   ]
 }

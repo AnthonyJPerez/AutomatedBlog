@@ -5,15 +5,14 @@
       "name": "msg",
       "type": "queueTrigger",
       "direction": "in",
-      "queueName": "social-queue",
+      "queueName": "social-media-queue",
       "connection": "AzureWebJobsStorage"
     },
     {
-      "name": "contentBlob",
-      "type": "blob",
+      "name": "timer",
+      "type": "timerTrigger",
       "direction": "in",
-      "path": "generated/{blog_id}/{run_id}/content.json",
-      "connection": "AzureWebJobsStorage"
+      "schedule": "0 10 * * *"
     }
   ]
 }
