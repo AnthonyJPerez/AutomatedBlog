@@ -152,6 +152,10 @@ jobs:
         cp -r templates static deploy-package/
         # Copy main application file
         cp main.py deploy-package/
+        # Copy web.config and startup.sh for Azure App Service
+        cp web.config deploy-package/
+        chmod +x startup.sh
+        cp startup.sh deploy-package/
         # Copy requirements file if it exists
         if [ -f requirements.txt ]; then
           cp requirements.txt deploy-package/
@@ -160,6 +164,11 @@ jobs:
         if [ ! -f deploy-package/wsgi.py ]; then
           echo "from main import app as application" > deploy-package/wsgi.py
         fi
+        # Create 'host.json' file to indicate this is also a function app
+        echo '{"version":"2.0","extensionBundle":{"id":"Microsoft.Azure.Functions.ExtensionBundle","version":"[2.*, 3.0.0)"}}' > deploy-package/host.json
+        # Create a '.deployment' file to control deployment behavior
+        echo '[config]' > deploy-package/.deployment
+        echo 'SCM_DO_BUILD_DURING_DEPLOYMENT=true' >> deploy-package/.deployment
         # List the contents of the deploy package
         ls -la deploy-package
 
@@ -175,3 +184,9 @@ jobs:
       env:
         AZURE_FUNCTIONAPP_PACKAGE_PATH: deploy-package
         PYTHON_VERSION: ${{ env.PYTHON_VERSION }}
+
+    - name: Configure Admin Portal
+      run: |
+        echo "Running post-deployment configuration to properly set up admin portal..."
+        chmod +x ./configure-admin-portal.sh
+        ./configure-admin-portal.sh "${{ env.RESOURCE_GROUP }}" "${{ env.AZURE_FUNCTIONAPP_NAME }}"
