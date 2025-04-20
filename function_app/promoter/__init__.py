@@ -23,9 +23,9 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger('promoter_functions')
 
 # Import shared services
-from src.shared.blog_service import BlogService
-from src.shared.storage_service import StorageService
-from src.shared.social_media_service import SocialMediaService
+from shared.blog_service import BlogService
+from shared.storage_service import StorageService
+from shared.social_media_service import SocialMediaService
 
 # Initialize services
 storage_service = StorageService()

@@ -22,10 +22,10 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger('publisher_functions')
 
 # Import shared services
-from src.shared.blog_service import BlogService
-from src.shared.storage_service import StorageService
-from src.shared.wordpress_service import WordPressService
-from src.shared.image_generator import ImageGenerator
+from shared.blog_service import BlogService
+from shared.storage_service import StorageService
+from shared.wordpress_service import WordPressService
+from shared.image_generator import ImageGenerator
 
 # Initialize services
 storage_service = StorageService()

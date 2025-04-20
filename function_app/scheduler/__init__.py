@@ -24,8 +24,8 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger('scheduler_functions')
 
 # Import shared services
-from src.shared.blog_service import BlogService
-from src.shared.storage_service import StorageService
+from shared.blog_service import BlogService
+from shared.storage_service import StorageService
 
 # Initialize services
 storage_service = StorageService()
