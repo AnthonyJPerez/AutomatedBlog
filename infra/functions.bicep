@@ -136,14 +136,8 @@ resource functionApp 'Microsoft.Web/sites@2022-03-01' = {
       http20Enabled: true
       // Add handlers for Flask application
       appCommandLine: 'gunicorn --bind=0.0.0.0:5000 --timeout 600 main:app'
-      // Ensure the root handler is set
-      defaultDocuments: [
-        'index.html',
-        'index.htm',
-        'default.html',
-        'default.htm',
-        'hostingstart.html'
-      ]
+      // Ensure the root handler is set - array must be on a single line for bicep
+      defaultDocuments: ['index.html', 'index.htm', 'default.html', 'default.htm', 'hostingstart.html']
     }
     httpsOnly: true
   }

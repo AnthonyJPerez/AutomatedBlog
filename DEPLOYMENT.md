@@ -261,6 +261,43 @@ If you see errors related to duplicate commands or improper formatting:
 - Ensure parameters are properly formatted with one per line
 - Verify that deployment parameters are correctly specified
 
+#### 3.1 Bicep Syntax Errors
+
+If you encounter Bicep syntax errors such as:
+```
+Error BCP238: Unexpected new line character after a comma.
+```
+
+This typically occurs in array definitions with multiple lines. Bicep has strict formatting requirements:
+
+- For arrays with simple values, keep them on a single line:
+  ```bicep
+  // Correct - single line array
+  defaultDocuments: ['index.html', 'index.htm', 'default.html', 'default.htm']
+  
+  // Incorrect - multi-line array with commas at end of lines
+  defaultDocuments: [
+    'index.html',  // Error: comma followed by newline
+    'index.htm',   // Error: comma followed by newline
+    'default.html'
+  ]
+  ```
+
+- For complex arrays, ensure each item is properly formatted:
+  ```bicep
+  // Correct format for complex arrays
+  appSettings: [
+    {
+      name: 'SETTING1'
+      value: 'value1'
+    }
+    {
+      name: 'SETTING2'
+      value: 'value2'
+    }
+  ]
+  ```
+
 #### 4. WordPress Deployment Issues
 
 If WordPress deployment fails or doesn't appear:
@@ -294,3 +331,4 @@ python deploy-consolidated.py --resource-group "blogauto-dev-rg" --deploy-wordpr
 - Configured Function App to properly serve admin portal web interface
 - Added deployment scripts for updating existing Function Apps
 - Fixed issue with Function App configuration to support both functions and web app
+- Fixed Bicep syntax error in array definitions (Error BCP238: Unexpected new line character)
