@@ -6,14 +6,14 @@ import shutil
 import glob
 import traceback
 from flask import Flask, render_template, request, redirect, url_for, jsonify, flash, send_from_directory, g, session
-from src.shared.translation_service import TranslationService, SUPPORTED_LANGUAGES
-from src.shared.storage_service import StorageService
-from src.shared.research_service import ResearchService
-from src.shared.openai_service import OpenAIService
-from src.shared.openai_service_optimizer import OptimizedOpenAIService
-from src.shared.billing_service import BillingService
-from src.shared.competitor_analysis_service import CompetitorAnalysisService
-from src.shared.ai_optimization_controller import ai_optimization_bp, init_controller
+from shared.translation_service import TranslationService, SUPPORTED_LANGUAGES
+from shared.storage_service import StorageService
+from shared.research_service import ResearchService
+from shared.openai_service import OpenAIService
+from shared.openai_service_optimizer import OptimizedOpenAIService
+from shared.billing_service import BillingService
+from shared.competitor_analysis_service import CompetitorAnalysisService
+from shared.ai_optimization_controller import ai_optimization_bp, init_controller
 
 # Set up logging
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -52,7 +52,7 @@ app.register_blueprint(ai_optimization_bp, url_prefix='/api/ai-optimization')
 
 # Initialize analytics service
 try:
-    from src.shared.analytics_service import AnalyticsService
+    from shared.analytics_service import AnalyticsService
     analytics_service = AnalyticsService(storage_service=storage_service)
     logger.info("Analytics service initialized")
 except Exception as e:
@@ -61,7 +61,7 @@ except Exception as e:
 
 # Initialize social media service
 try:
-    from src.shared.social_media_service import SocialMediaService
+    from shared.social_media_service import SocialMediaService
     social_media_service = SocialMediaService()
     logger.info("Social Media service initialized")
 except Exception as e:
@@ -70,8 +70,8 @@ except Exception as e:
 
 # Initialize web scraper services
 try:
-    from src.shared.web_scraper_service import web_scraper_service
-    from src.shared.web_scraper import WebScraper
+    from shared.web_scraper_service import web_scraper_service
+    from shared.web_scraper import WebScraper
     logger.info("Web Scraper services initialized")
 except Exception as e:
     logger.warning(f"Failed to initialize Web Scraper services: {str(e)}")
@@ -87,8 +87,8 @@ except Exception as e:
     
 # Initialize backlink monitoring service
 try:
-    from src.shared.backlink_service import BacklinkService
-    from src.shared.backlink_controller import BacklinkController
+    from shared.backlink_service import BacklinkService
+    from shared.backlink_controller import BacklinkController
     
     backlink_service = BacklinkService(
         storage_service=storage_service,
@@ -107,8 +107,8 @@ except Exception as e:
 
 # Initialize affiliate marketing service
 try:
-    from src.shared.affiliate_service import AffiliateService
-    from src.shared.affiliate_controller import AffiliateController
+    from shared.affiliate_service import AffiliateService
+    from shared.affiliate_controller import AffiliateController
     
     affiliate_service = AffiliateService(
         storage_service=storage_service,
@@ -127,7 +127,7 @@ except Exception as e:
 
 # Initialize notification service
 try:
-    from src.shared.notification_service import NotificationService
+    from shared.notification_service import NotificationService
     
     notification_service = NotificationService(
         storage_service=storage_service
