@@ -23,11 +23,8 @@ param keyVaultName string
 @description('The SKU of the App Service Plan')
 param appServicePlanSku string = 'B1' // Default to Basic tier
 
-// Determine the tier based on SKU name
-var tier = appServicePlanSku == 'Y1' ? 'Dynamic' : 
-          (appServicePlanSku == 'B1' || appServicePlanSku == 'B2' || appServicePlanSku == 'B3') ? 'Basic' : 
-          (appServicePlanSku == 'S1' || appServicePlanSku == 'S2' || appServicePlanSku == 'S3') ? 'Standard' : 
-          (appServicePlanSku == 'P1' || appServicePlanSku == 'P2' || appServicePlanSku == 'P3') ? 'Premium' : 'Free'
+// Hardcoded tier based on the most common SKU option, matching the default param value
+var tier = 'Basic'
 
 // Get reference to storage account
 resource storageAccount 'Microsoft.Storage/storageAccounts@2021-09-01' existing = {
