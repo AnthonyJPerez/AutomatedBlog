@@ -45,7 +45,7 @@ class TranslationService:
         Args:
             openai_service: An instance of OpenAIService for translations
         """
-        from src.shared.openai_service import OpenAIService
+        from shared.openai_service import OpenAIService
         
         try:
             self.openai_service = openai_service or OpenAIService()

@@ -15,8 +15,8 @@ import hashlib
 import datetime
 from typing import Dict, Any, Optional, List, Tuple, Union
 
-from src.shared.openai_service import OpenAIService
-from src.shared.prompt_optimization import AIOptimizationService
+from shared.openai_service import OpenAIService
+from shared.prompt_optimization import AIOptimizationService
 
 class OptimizedOpenAIService:
     """

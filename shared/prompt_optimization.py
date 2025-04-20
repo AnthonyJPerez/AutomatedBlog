@@ -9,7 +9,7 @@ This module provides services for:
 5. Response batching - to combine multiple requests
 
 Usage:
-    from src.shared.prompt_optimization import AIOptimizationService
+    from shared.prompt_optimization import AIOptimizationService
     optimization_service = AIOptimizationService()
     
     # Get cached or fresh response
