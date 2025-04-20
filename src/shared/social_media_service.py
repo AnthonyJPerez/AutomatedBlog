@@ -615,44 +615,124 @@ class SocialMediaService:
         
         try:
             # In a production app, we would use the atproto Python library
-            # For this demo, we'll simulate the posting
             logger.info(f"Posting to Bluesky: {text[:30]}...")
             
-            # Example of how this would be implemented with the atproto library:
-            # from atproto import Client
-            # client = Client()
-            # client.login(self.platforms["bluesky"]["identifier"], self.platforms["bluesky"]["app_password"])
-            #
-            # # Create the post content
-            # post_content = {
-            #     "text": text
-            # }
-            #
-            # # Add image if provided
-            # if image_url:
-            #     # Note: This is simplified - in reality we'd need to download 
-            #     # the image and upload it through the Bluesky API
-            #     image_data = download_image(image_url)
-            #     upload_response = client.upload_blob(image_data)
-            #     post_content["embed"] = {
-            #         "$type": "app.bsky.embed.images",
-            #         "images": [
-            #             {
-            #                 "image": upload_response["blob"],
-            #                 "alt": alt_text or ""
-            #             }
-            #         ]
-            #     }
-            #
-            # # Add external link if provided 
-            # if external_url:
-            #     # Would need to be added using the appropriate Bluesky facet format
-            #     # This is simplified
-            #     post_content["facets"] = [...]
-            #
-            # # Create the post
-            # response = client.send_post(post_content)
+            bluesky_config = self.platforms["bluesky"]
             
+            # Authentication with AT Protocol works by:
+            # 1. Create a session with identifier (handle) and app password
+            # 2. Get access JWT and refresh JWT tokens
+            # 3. Use the access JWT for subsequent API calls
+            # 4. Refresh the token when expired with the refresh JWT
+            
+            # Example implementation with the atproto library:
+            # from atproto import Client
+            # import datetime
+            # import json
+            # import requests
+            # 
+            # # Check if we need to authenticate or refresh tokens
+            # current_time = datetime.datetime.now()
+            # needs_auth = (
+            #     not bluesky_config.get("access_jwt") or 
+            #     not bluesky_config.get("jwt_expiration") or 
+            #     current_time >= bluesky_config.get("jwt_expiration")
+            # )
+            #
+            # if needs_auth:
+            #     # AT Protocol authentication
+            #     pds_url = bluesky_config.get("pds_url", "https://bsky.social")
+            #     auth_url = f"{pds_url}/xrpc/com.atproto.server.createSession"
+            #     
+            #     auth_data = {
+            #         "identifier": bluesky_config["identifier"],
+            #         "password": bluesky_config["app_password"]
+            #     }
+            #     
+            #     response = requests.post(auth_url, json=auth_data)
+            #     if response.status_code != 200:
+            #         raise Exception(f"Authentication failed: {response.text}")
+            #         
+            #     session_data = response.json()
+            #     bluesky_config["access_jwt"] = session_data["accessJwt"]
+            #     bluesky_config["refresh_jwt"] = session_data["refreshJwt"]
+            #     bluesky_config["did"] = session_data["did"]
+            #     
+            #     # Set expiration (typically 2 hours from now)
+            #     bluesky_config["jwt_expiration"] = current_time + datetime.timedelta(hours=2)
+            #
+            # # Now create the post using the authenticated session
+            # create_post_url = f"{bluesky_config.get('pds_url', 'https://bsky.social')}/xrpc/com.atproto.repo.createRecord"
+            # 
+            # headers = {
+            #     "Authorization": f"Bearer {bluesky_config['access_jwt']}",
+            #     "Content-Type": "application/json"
+            # }
+            # 
+            # # Prepare post data
+            # post_data = {
+            #     "repo": bluesky_config["did"],
+            #     "collection": "app.bsky.feed.post",
+            #     "record": {
+            #         "$type": "app.bsky.feed.post",
+            #         "text": text,
+            #         "createdAt": datetime.datetime.now().isoformat(),
+            #         "langs": ["en"]
+            #     }
+            # }
+            # 
+            # # If we have an external URL, add it as a facet
+            # if external_url and external_url in text:
+            #     start = text.find(external_url)
+            #     if start != -1:
+            #         end = start + len(external_url)
+            #         post_data["record"]["facets"] = [{
+            #             "index": {
+            #                 "byteStart": start,
+            #                 "byteEnd": end
+            #             },
+            #             "features": [{
+            #                 "$type": "app.bsky.richtext.facet#link",
+            #                 "uri": external_url
+            #             }]
+            #         }]
+            # 
+            # # If we have an image, upload it first
+            # if image_url:
+            #     # Download image
+            #     img_response = requests.get(image_url)
+            #     if img_response.status_code == 200:
+            #         # Upload blob to Bluesky
+            #         upload_url = f"{bluesky_config.get('pds_url', 'https://bsky.social')}/xrpc/com.atproto.repo.uploadBlob"
+            #         files = {"file": img_response.content}
+            #         upload_response = requests.post(upload_url, headers=headers, files=files)
+            #         
+            #         if upload_response.status_code == 200:
+            #             blob_data = upload_response.json()["blob"]
+            #             post_data["record"]["embed"] = {
+            #                 "$type": "app.bsky.embed.images",
+            #                 "images": [{
+            #                     "alt": alt_text or "",
+            #                     "image": blob_data
+            #                 }]
+            #             }
+            # 
+            # # Send the post request
+            # response = requests.post(create_post_url, headers=headers, json=post_data)
+            # if response.status_code != 200:
+            #     raise Exception(f"Failed to create post: {response.text}")
+            # 
+            # result = response.json()
+            # return {
+            #     "success": True,
+            #     "platform": "bluesky",
+            #     "post_id": result.get("cid", "unknown"),
+            #     "post_uri": result.get("uri", "unknown"),
+            #     "timestamp": datetime.datetime.now().isoformat()
+            # }
+            
+            # For now, we'll simulate the posting
+            logger.info("Simulating Bluesky post (AT Protocol implementation not activated)")
             return {
                 "success": True,
                 "platform": "bluesky",
@@ -680,28 +760,131 @@ class SocialMediaService:
             return {"success": False, "error": "Truth Social is not configured"}
         
         try:
-            # In a production app, we would use Truth Social's API
-            # For this demo, we'll simulate the posting
+            # Truth Social uses Mastodon API with OAuth 2.0
             logger.info(f"Posting to Truth Social: {message[:30]}...")
             
-            # Truth Social is built on Mastodon's open source platform
-            # So we would use a Mastodon API client like this:
-            #
-            # from mastodon import Mastodon
-            # mastodon = Mastodon(
-            #     access_token = self.platforms["truth_social"]["api_token"],
-            #     api_base_url = "https://truthsocial.com"
-            # )
-            #
-            # # Create the post (or "truth")
-            # if media_url:
-            #     # Download media and upload via API
-            #     media_response = mastodon.media_post(download_media(media_url))
-            #     media_id = media_response["id"]
-            #     response = mastodon.status_post(message, media_ids=[media_id])
-            # else:
-            #     response = mastodon.status_post(message)
+            truth_config = self.platforms["truth_social"]
             
+            # Authentication flow for Truth Social:
+            # 1. If we already have an access token, use it directly
+            # 2. Otherwise, use client credentials (client_id, client_secret) to obtain an access token
+            # 3. Then use the access token for API calls
+            
+            # Example implementation with requests:
+            # import requests
+            # import json
+            # import base64
+            # import datetime
+            # 
+            # # Check if we need to get an access token
+            # needs_token = not truth_config.get("access_token") or not truth_config.get("token_expiration") or datetime.datetime.now() >= truth_config.get("token_expiration")
+            # 
+            # if needs_token and truth_config.get("client_id") and truth_config.get("client_secret"):
+            #     # Get access token using OAuth 2.0 client credentials flow
+            #     token_url = "https://truthsocial.com/oauth/token"
+            #     
+            #     # Prepare credentials
+            #     auth_header = base64.b64encode(
+            #         f"{truth_config['client_id']}:{truth_config['client_secret']}".encode()
+            #     ).decode()
+            #     
+            #     headers = {
+            #         "Authorization": f"Basic {auth_header}",
+            #         "Content-Type": "application/x-www-form-urlencoded"
+            #     }
+            #     
+            #     data = {
+            #         "grant_type": "client_credentials",
+            #         "scope": "read write"
+            #     }
+            #     
+            #     # Add username if available for user-specific access
+            #     if truth_config.get("username"):
+            #         data["username"] = truth_config["username"]
+            #     
+            #     response = requests.post(token_url, headers=headers, data=data)
+            #     
+            #     if response.status_code != 200:
+            #         raise Exception(f"Failed to get Truth Social access token: {response.text}")
+            #     
+            #     token_data = response.json()
+            #     truth_config["access_token"] = token_data["access_token"]
+            #     
+            #     # Set expiration based on expires_in (usually in seconds)
+            #     if "expires_in" in token_data:
+            #         expiry_seconds = int(token_data["expires_in"])
+            #         truth_config["token_expiration"] = datetime.datetime.now() + datetime.timedelta(seconds=expiry_seconds)
+            # 
+            # # Now use the access token to post
+            # if not truth_config.get("access_token"):
+            #     raise Exception("No access token available for Truth Social")
+            # 
+            # api_base = truth_config.get("api_base", "https://truthsocial.com/api/v1/")
+            # headers = {
+            #     "Authorization": f"Bearer {truth_config['access_token']}",
+            #     "Content-Type": "application/json"
+            # }
+            # 
+            # # If we have media to upload, do that first
+            # media_ids = []
+            # if media_url:
+            #     # Download the media file
+            #     media_response = requests.get(media_url)
+            #     if media_response.status_code == 200:
+            #         # Upload to Truth Social
+            #         upload_url = f"{api_base}media"
+            #         
+            #         # Determine content type from URL
+            #         content_type = "image/jpeg"  # Default
+            #         if media_url.lower().endswith(".png"):
+            #             content_type = "image/png"
+            #         elif media_url.lower().endswith(".gif"):
+            #             content_type = "image/gif"
+            #         
+            #         files = {
+            #             "file": (
+            #                 "media_file", 
+            #                 media_response.content, 
+            #                 content_type
+            #             )
+            #         }
+            #         
+            #         upload_response = requests.post(
+            #             upload_url, 
+            #             headers={"Authorization": f"Bearer {truth_config['access_token']}"},
+            #             files=files
+            #         )
+            #         
+            #         if upload_response.status_code == 200:
+            #             media_data = upload_response.json()
+            #             media_ids.append(media_data["id"])
+            # 
+            # # Create the post (or "truth")
+            # status_url = f"{api_base}statuses"
+            # post_data = {
+            #     "status": message,
+            #     "visibility": "public"
+            # }
+            # 
+            # if media_ids:
+            #     post_data["media_ids"] = media_ids
+            # 
+            # post_response = requests.post(status_url, headers=headers, json=post_data)
+            # 
+            # if post_response.status_code != 200:
+            #     raise Exception(f"Failed to post to Truth Social: {post_response.text}")
+            # 
+            # result = post_response.json()
+            # return {
+            #     "success": True,
+            #     "platform": "truth_social",
+            #     "post_id": result.get("id", "unknown"),
+            #     "post_url": result.get("url", "unknown"),
+            #     "timestamp": datetime.datetime.now().isoformat()
+            # }
+            
+            # For now, we'll simulate the posting
+            logger.info("Simulating Truth Social post (OAuth implementation not activated)")
             return {
                 "success": True,
                 "platform": "truth_social",
@@ -760,12 +943,14 @@ class SocialMediaService:
                         os.environ["BLUESKY-PDS-URL"] = credentials["bluesky_pds_url"]
                     
                     # Update Truth Social credentials if available
-                    if "truth_social_api_token" in credentials:
-                        os.environ["TRUTH-SOCIAL-API-TOKEN"] = credentials["truth_social_api_token"]
+                    if "truth_social_client_id" in credentials:
+                        os.environ["TRUTH-SOCIAL-CLIENT-ID"] = credentials["truth_social_client_id"]
+                    if "truth_social_client_secret" in credentials:
+                        os.environ["TRUTH-SOCIAL-CLIENT-SECRET"] = credentials["truth_social_client_secret"]
                     if "truth_social_username" in credentials:
                         os.environ["TRUTH-SOCIAL-USERNAME"] = credentials["truth_social_username"]
-                    if "truth_social_password" in credentials:
-                        os.environ["TRUTH-SOCIAL-PASSWORD"] = credentials["truth_social_password"]
+                    if "truth_social_access_token" in credentials:
+                        os.environ["TRUTH-SOCIAL-ACCESS-TOKEN"] = credentials["truth_social_access_token"]
             
             # Reinitialize platforms with new credentials
             self._init_twitter()
