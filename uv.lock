@@ -124,6 +124,21 @@ wheels = [
 ]
 
 [[package]]
+name = "azure-mgmt-keyvault"
+version = "11.0.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "azure-common" },
+    { name = "azure-mgmt-core" },
+    { name = "isodate" },
+    { name = "typing-extensions" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/9f/d3/9e8d31aaedfb37efd20c8a9ac420b07cdb5c3d2f19c3452c9cdcb082dad6/azure_mgmt_keyvault-11.0.0.tar.gz", hash = "sha256:fcfb1366852926f2a311e1bc6e6a786eb8a8a1fd46e6025d4c114ede2cb4642e", size = 187547 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/9b/24/87c592517bbf97daf1897a271c8713ad1afd888b05db1fb48d7428cc8ee7/azure_mgmt_keyvault-11.0.0-py3-none-any.whl", hash = "sha256:abff0023a1c1b8033f3d4800cac996bf2b5470bd9c5ab71470c3184d7e8f0654", size = 308775 },
+]
+
+[[package]]
 name = "azure-mgmt-resource"
 version = "23.3.0"
 source = { registry = "https://pypi.org/simple" }
@@ -1906,6 +1921,7 @@ dependencies = [
     { name = "azure-functions" },
     { name = "azure-identity" },
     { name = "azure-keyvault-secrets" },
+    { name = "azure-mgmt-keyvault" },
     { name = "azure-mgmt-resource" },
     { name = "azure-storage-blob" },
     { name = "email-validator" },
@@ -1947,6 +1963,7 @@ requires-dist = [
     { name = "azure-functions", specifier = ">=1.23.0" },
     { name = "azure-identity", specifier = ">=1.21.0" },
     { name = "azure-keyvault-secrets", specifier = ">=4.9.0" },
+    { name = "azure-mgmt-keyvault", specifier = ">=11.0.0" },
     { name = "azure-mgmt-resource", specifier = ">=23.3.0" },
     { name = "azure-storage-blob", specifier = ">=12.25.1" },
     { name = "email-validator", specifier = ">=2.2.0" },

@@ -70,7 +70,8 @@ var adminPortalName = '${namePrefix}-admin'
 var deploymentRegion = location == 'eastus' && environment == 'prod' ? 'westus' : location
 
 // Key Vault settings
-var keyVaultName = '${namePrefix}-vault'
+// Add a timestamp-like suffix using uniqueString to avoid conflicts with soft-deleted vaults
+var keyVaultName = '${namePrefix}-vault-${take(uniqueString(resourceGroup().id, deployment().name), 6)}'
 
 // WordPress settings
 var wordPressSiteName = !empty(wordPressSiteNameSuffix) ? 'wp-${wordPressSiteNameSuffix}' : 'wp-${uniqueString(resourceGroup().id)}'

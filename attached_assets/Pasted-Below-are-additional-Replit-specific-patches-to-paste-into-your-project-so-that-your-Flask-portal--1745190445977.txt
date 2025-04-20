@@ -1,0 +1,102 @@
+Below are additional Replit‑specific patches to paste into your project, so that your Flask portal (and optional local Functions code) runs smoothly with all required dependencies and environment settings:
+
+
+---
+
+1) Update requirements.txt (at repo root)
+
+--- requirements.txt
++++ requirements.txt
+@@
+-flask>=2.0,<3
+-gunicorn>=20.1,<21
+-azure-functions>=1.15
++# Web framework & server
++flask>=2.0,<3
++gunicorn>=20.1,<21
++
++# Azure Functions runtime (for local testing, if you keep function_app/)
++azure-functions>=1.15
++
++# OpenAI SDK
++openai>=0.27.0
++
++# Azure SDKs used in main.py services
++azure-identity>=1.12.0
++azure-keyvault-secrets>=4.6.0
++azure-storage-blob>=12.16.0
++
++# HTTP & helpers
++requests>=2.29.0
++
++# Environment loader (optional)
++python-dotenv>=0.21.1
+
+
+---
+
+2) Replace your existing .replit with this
+
+[language]
+language = "python"
+
+[install]
+# Replit auto‑installs from requirements.txt; nothing to add here
+
+[run]
+# Install/upgrade pip, install deps, then launch your Flask app
+run = ["bash", "-lc", "pip install --upgrade pip && pip install -r requirements.txt && gunicorn --bind 0.0.0.0:5000 main:app"]
+
+[env]
+# Flask secret key (for sessions & flashes)
+SESSION_SECRET="dev-secret-key"
+
+# OpenAI caching settings (used by OptimizedOpenAIService)
+OPENAI_CACHE_TTL_SECONDS="3600"
+OPENAI_ENABLE_CACHING="True"
+
+# Your OpenAI API key (for real content generation)
+OPENAI_API_KEY="<your-openai-key>"
+
+# (Optional) Azure credentials for local Functions testing
+# AZURE_CLIENT_ID="..."
+# AZURE_TENANT_ID="..."
+# AZURE_CLIENT_SECRET="..."
+
+[workflows]
+runButton = "Run"
+
+
+---
+
+3) (Optional) Add a .env file
+
+If you’d rather not check secrets into Git, create a .env in the root:
+
+SESSION_SECRET=dev-secret-key
+OPENAI_CACHE_TTL_SECONDS=3600
+OPENAI_ENABLE_CACHING=True
+OPENAI_API_KEY=sk-...
+
+And at the top of main.py, add:
+
+from dotenv import load_dotenv
+load_dotenv()
+
+Then remove the OPENAI_* and SESSION_SECRET values from the [env] block above.
+
+
+---
+
+With these changes, Run in Replit will:
+
+1. Install exactly the packages your code imports.
+
+
+2. Set the necessary environment variables for your Flask app.
+
+
+3. Launch Gunicorn serving main:app on port 5000 immediately—no Nix, no delays, and no missing dependencies.
+
+
+
