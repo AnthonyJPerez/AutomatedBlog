@@ -251,16 +251,40 @@
                                             <label for="bluesky-handle" class="form-label">Bluesky Handle</label>
                                             <input type="text" class="form-control" id="bluesky-handle" 
                                                    value="{{ blog.social_media.bluesky_handle if blog.social_media and blog.social_media.bluesky_handle else '' }}" 
-                                                   placeholder="e.g., @username.bsky.social">
-                                            <div class="form-text">Your Bluesky handle/username</div>
+                                                   placeholder="e.g., username.bsky.social">
+                                            <div class="form-text">Your Bluesky handle (without @)</div>
                                         </div>
                                         
                                         <div class="mb-3">
-                                            <label for="truthsocial-handle" class="form-label">Truth Social Handle</label>
+                                            <label for="bluesky-password" class="form-label">Bluesky App Password</label>
+                                            <input type="password" class="form-control" id="bluesky-password" 
+                                                   value="{{ blog.social_media.bluesky_password if blog.social_media and blog.social_media.bluesky_password else '' }}" 
+                                                   placeholder="App password for authentication">
+                                            <div class="form-text">Create an app-specific password in your Bluesky account settings (never use your main account password)</div>
+                                        </div>
+                                        
+                                        <div class="mb-3">
+                                            <label for="truthsocial-client-id" class="form-label">Truth Social Client ID</label>
+                                            <input type="text" class="form-control" id="truthsocial-client-id" 
+                                                   value="{{ blog.social_media.truthsocial_client_id if blog.social_media and blog.social_media.truthsocial_client_id else '' }}" 
+                                                   placeholder="OAuth client ID">
+                                            <div class="form-text">Client ID from your registered OAuth app</div>
+                                        </div>
+                                        
+                                        <div class="mb-3">
+                                            <label for="truthsocial-client-secret" class="form-label">Truth Social Client Secret</label>
+                                            <input type="password" class="form-control" id="truthsocial-client-secret" 
+                                                   value="{{ blog.social_media.truthsocial_client_secret if blog.social_media and blog.social_media.truthsocial_client_secret else '' }}" 
+                                                   placeholder="OAuth client secret">
+                                            <div class="form-text">Client secret from your registered OAuth app</div>
+                                        </div>
+                                        
+                                        <div class="mb-3">
+                                            <label for="truthsocial-handle" class="form-label">Truth Social Username</label>
                                             <input type="text" class="form-control" id="truthsocial-handle" 
                                                    value="{{ blog.social_media.truthsocial_handle if blog.social_media and blog.social_media.truthsocial_handle else '' }}" 
-                                                   placeholder="e.g., @username">
-                                            <div class="form-text">Your Truth Social handle/username</div>
+                                                   placeholder="e.g., username">
+                                            <div class="form-text">Your Truth Social username (without @)</div>
                                         </div>
                                     </div>
                                 </div>
@@ -391,8 +415,15 @@
                 // Get platform-specific settings
                 const redditSubreddit = document.getElementById('reddit-subreddit').value;
                 const mediumPublication = document.getElementById('medium-publication').value;
+                
+                // Bluesky credentials
                 const blueskyHandle = document.getElementById('bluesky-handle').value;
+                const blueskyPassword = document.getElementById('bluesky-password').value;
+                
+                // Truth Social credentials
                 const truthsocialHandle = document.getElementById('truthsocial-handle').value;
+                const truthsocialClientId = document.getElementById('truthsocial-client-id').value;
+                const truthsocialClientSecret = document.getElementById('truthsocial-client-secret').value;
                 
                 // Prepare data for API call
                 const blogId = '{{ blog.id }}';
@@ -402,8 +433,15 @@
                         platforms: platforms,
                         reddit_subreddit: redditSubreddit,
                         medium_publication: mediumPublication,
+                        
+                        // Bluesky credentials
                         bluesky_handle: blueskyHandle,
-                        truthsocial_handle: truthsocialHandle
+                        bluesky_password: blueskyPassword,
+                        
+                        // Truth Social credentials
+                        truthsocial_handle: truthsocialHandle,
+                        truthsocial_client_id: truthsocialClientId,
+                        truthsocial_client_secret: truthsocialClientSecret
                     }
                 };
                 

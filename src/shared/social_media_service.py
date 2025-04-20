@@ -166,12 +166,19 @@ class SocialMediaService:
             app_password = self._get_secret("BLUESKY-APP-PASSWORD")
             pds_url = self._get_secret("BLUESKY-PDS-URL") or "https://bsky.social"
             
+            # Store for session tokens from authentication
+            access_jwt = None
+            refresh_jwt = None
+            
             if identifier and app_password:
                 self.platforms["bluesky"] = {
                     "enabled": True,
                     "identifier": identifier,
                     "app_password": app_password,
-                    "pds_url": pds_url
+                    "pds_url": pds_url,
+                    "access_jwt": access_jwt,
+                    "refresh_jwt": refresh_jwt,
+                    "jwt_expiration": None
                 }
                 logger.info("Bluesky configuration loaded.")
             else:
@@ -184,17 +191,22 @@ class SocialMediaService:
     def _init_truth_social(self):
         """Initialize Truth Social configuration"""
         try:
-            # Try to get Truth Social credentials
+            # Truth Social uses OAuth 2.0 (Mastodon API)
+            client_id = self._get_secret("TRUTH-SOCIAL-CLIENT-ID")
+            client_secret = self._get_secret("TRUTH-SOCIAL-CLIENT-SECRET")
             username = self._get_secret("TRUTH-SOCIAL-USERNAME")
-            password = self._get_secret("TRUTH-SOCIAL-PASSWORD")
-            api_token = self._get_secret("TRUTH-SOCIAL-API-TOKEN")
+            access_token = self._get_secret("TRUTH-SOCIAL-ACCESS-TOKEN")
             
-            if (username and password) or api_token:
+            # Either need client credentials + username for OAuth flow
+            # or a pre-obtained access token
+            if (client_id and client_secret and username) or access_token:
                 self.platforms["truth_social"] = {
                     "enabled": True,
+                    "client_id": client_id,
+                    "client_secret": client_secret,
                     "username": username,
-                    "password": password,
-                    "api_token": api_token
+                    "access_token": access_token,
+                    "api_base": "https://truthsocial.com/api/v1/"
                 }
                 logger.info("Truth Social configuration loaded.")
             else:
