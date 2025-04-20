@@ -53,6 +53,9 @@ var appInsightsName = '${namePrefix}-insights'
 // Use B1 SKU for all environments to avoid quota issues
 var appServicePlanSku = 'B1'
 
+// Admin Portal settings
+var adminPortalName = '${namePrefix}-admin'
+
 // Use a region with available quota
 // westus often has better availability than eastus
 var deploymentRegion = location == 'eastus' && environment == 'prod' ? 'westus' : location
@@ -71,17 +74,6 @@ module storageModule 'storage.bicep' = {
     location: location
     tags: deploymentTags
     sku: storageSku
-  }
-}
-
-// Deploy Key Vault
-module keyVaultModule 'keyvault.bicep' = {
-  name: 'keyVaultDeployment'
-  params: {
-    keyVaultName: keyVaultName
-    location: location
-    tags: deploymentTags
-    functionAppPrincipalId: functionApp.outputs.functionAppPrincipalId
   }
 }
 
@@ -108,7 +100,43 @@ module functionApp 'functions.bicep' = {
     keyVaultName: keyVaultName
     appServicePlanSku: appServicePlanSku
   }
-  // No explicit dependsOn needed, implicit through parameter references
+  dependsOn: [
+    monitoringModule
+    storageModule
+  ]
+}
+
+// Deploy Admin Portal Web App
+module adminPortalModule 'admin-portal.bicep' = {
+  name: 'adminPortalDeployment'
+  params: {
+    adminPortalName: adminPortalName
+    appServicePlanName: appServicePlanName // Reuse the Function App's app service plan
+    location: deploymentRegion
+    tags: deploymentTags
+    appInsightsInstrumentationKey: monitoringModule.outputs.instrumentationKey
+    keyVaultName: keyVaultName
+  }
+  dependsOn: [
+    functionApp // Make sure Function App is deployed first since we're reusing its app service plan
+    monitoringModule
+  ]
+}
+
+// Deploy Key Vault and assign identities after both apps are created
+module keyVaultModule 'keyvault.bicep' = {
+  name: 'keyVaultDeployment'
+  params: {
+    keyVaultName: keyVaultName
+    location: location
+    tags: deploymentTags
+    functionAppPrincipalId: functionApp.outputs.functionAppPrincipalId
+    adminPortalPrincipalId: adminPortalModule.outputs.adminPortalPrincipalId
+  }
+  dependsOn: [
+    functionApp
+    adminPortalModule
+  ]
 }
 
 // Deploy WordPress if enabled
@@ -134,4 +162,6 @@ output functionAppName string = functionApp.outputs.functionAppName
 output storageAccountName string = storageModule.outputs.storageAccountName
 output keyVaultName string = keyVaultName
 output functionAppHostName string = functionApp.outputs.functionAppHostName
+output adminPortalName string = adminPortalModule.outputs.adminPortalName
+output adminPortalHostName string = adminPortalModule.outputs.adminPortalHostName
 output wordpressUrl string = deployWordPress ? wordpressModule.outputs.wordpressUrl : ''

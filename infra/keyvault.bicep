@@ -11,6 +11,9 @@ param tags object
 @description('Object ID of the Function App Managed Identity')
 param functionAppPrincipalId string
 
+@description('Object ID of the Admin Portal Managed Identity')
+param adminPortalPrincipalId string = ''
+
 // Deploy Key Vault
 resource keyVault 'Microsoft.KeyVault/vaults@2022-07-01' = {
   name: keyVaultName
@@ -25,7 +28,7 @@ resource keyVault 'Microsoft.KeyVault/vaults@2022-07-01' = {
     enableRbacAuthorization: false
     enableSoftDelete: true
     softDeleteRetentionInDays: 90
-    accessPolicies: [
+    accessPolicies: concat([
       {
         tenantId: subscription().tenantId
         objectId: functionAppPrincipalId
@@ -44,7 +47,26 @@ resource keyVault 'Microsoft.KeyVault/vaults@2022-07-01' = {
           ]
         }
       }
-    ]
+    ], !empty(adminPortalPrincipalId) ? [
+      {
+        tenantId: subscription().tenantId
+        objectId: adminPortalPrincipalId
+        permissions: {
+          secrets: [
+            'get'
+            'list'
+          ]
+          keys: [
+            'get'
+            'list'
+          ]
+          certificates: [
+            'get'
+            'list'
+          ]
+        }
+      }
+    ] : [])
     networkAcls: {
       defaultAction: 'Allow'
       bypass: 'AzureServices'
