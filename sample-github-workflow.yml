@@ -1,0 +1,40 @@
+name: Deploy Azure Resources
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+env:
+  AZURE_FUNCTIONAPP_NAME: "blogauto-dev-function"
+  PYTHON_VERSION: '3.11'
+  RESOURCE_GROUP: "blogauto-dev-rg"
+  LOCATION: 'eastus'
+  ENVIRONMENT: 'dev'
+  PROJECT_NAME: "blogauto"
+
+jobs:
+  deploy-infra:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+      
+    - name: Azure login
+      uses: azure/login@v1
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS }}
+        
+    - name: Create resource group if not exists
+      run: |
+        az group create --name ${{ env.RESOURCE_GROUP }} --location ${{ env.LOCATION }}
+        
+    - name: Deploy Bicep
+      uses: azure/arm-deploy@v1
+      with:
+        resourceGroupName: ${{ env.RESOURCE_GROUP }}
+        template: ./infra/main.bicep
+        parameters: projectName=${{ env.PROJECT_NAME }} environment=${{ env.ENVIRONMENT }} location=${{ env.LOCATION }}
+        deploymentName: 'github-${{ github.run_number }}'
+        failOnStdErr: false
