@@ -42,7 +42,8 @@ var deploymentTags = {
 }
 
 // Storage account settings
-var storageName = replace('${namePrefix}storage', '-', '')
+// Convert to lowercase to ensure valid storage account name (Azure storage requires lowercase)
+var storageName = toLower(replace('${namePrefix}storage', '-', ''))
 var storageSku = environment == 'prod' ? 'Standard_GRS' : 'Standard_LRS'
 
 // Function app settings
