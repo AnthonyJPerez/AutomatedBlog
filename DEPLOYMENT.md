@@ -148,32 +148,37 @@ The admin portal is part of the Function App. To access it:
 
 ### Admin Portal Configuration
 
-If the admin portal is not accessible (you see the default Azure Functions page instead), you need to configure the Function App to serve the web application:
+The admin portal is now **configured automatically** during deployment. The GitHub workflow includes a dedicated post-deployment step that ensures the Function App is properly configured to serve the admin portal at the root URL.
 
-1. **Using the update scripts (Recommended)**:
-   ```bash
-   # First update the app configuration
-   ./update-app-config.sh blogauto-prod-rg blogauto-prod-function
-   
-   # Then deploy the admin portal files
-   ./deploy-admin-portal.sh blogauto-prod-rg blogauto-prod-function
+Configuration now happens without any manual intervention through:
+
+1. **Built-in deployment workflow step**:
+   ```yaml
+   - name: Configure Admin Portal
+     run: |
+       chmod +x ./configure-admin-portal.sh
+       ./configure-admin-portal.sh "${{ env.RESOURCE_GROUP }}" "${{ env.AZURE_FUNCTIONAPP_NAME }}"
    ```
 
-2. **Using Azure Portal**:
-   - Navigate to your Function App in the Azure Portal
-   - Go to Configuration → General settings
-   - Set "Stack" to "Python"
-   - Set "Startup Command" to: `gunicorn --bind=0.0.0.0:5000 --timeout 600 main:app`
-   - Save the changes
-   - Go to Configuration → Application settings
-   - Add the following settings:
-     - `FLASK_APP`: `main.py`
-     - `WEBSITES_PORT`: `5000`
-     - `ADMIN_PORTAL_ENABLED`: `true`
-   - Save the changes
-   - Restart the Function App
+2. **Comprehensive configuration script**:
+   - The `configure-admin-portal.sh` script handles all necessary configuration
+   - Updates app kind to "app,linux" for web app functionality
+   - Sets Python runtime and startup command
+   - Configures default documents for root URL
+   - Enables proper HTTP handlers and logging
 
-3. **Using Azure CLI**:
+#### Manual Configuration (If Needed)
+
+If you need to manually configure an existing deployment:
+
+```bash
+# Run the comprehensive configuration script
+./configure-admin-portal.sh blogauto-prod-rg blogauto-prod-function
+```
+
+This script completely replaces the previous `update-app-config.sh` and `deploy-admin-portal.sh` scripts with a more robust solution.
+
+3. **Using Azure CLI (Legacy Method)**:
    ```bash
    # Update app settings
    az webapp config appsettings set --resource-group blogauto-prod-rg --name blogauto-prod-function --settings FLASK_APP=main.py WEBSITES_PORT=5000 ADMIN_PORTAL_ENABLED=true
@@ -219,22 +224,29 @@ If you encounter issues during deployment:
 
 If you see the default Azure Functions landing page instead of the admin portal:
 
-- **Problem**: The Function App is not configured to serve the web application files
-- **Solution**: Use the provided scripts to update the app configuration:
+- **Problem**: The Function App might not be properly configured to serve the web application
+- **Solution**: Run the comprehensive configuration script:
   ```bash
-  ./update-app-config.sh blogauto-prod-rg blogauto-prod-function
-  ./deploy-admin-portal.sh blogauto-prod-rg blogauto-prod-function
+  ./configure-admin-portal.sh blogauto-prod-rg blogauto-prod-function
   ```
 
-- **Alternative Solution**: Manually check the Function App configuration in Azure Portal:
-  1. Ensure the `WEBSITES_PORT` is set to `5000`
-  2. Verify the startup command is set to `gunicorn --bind=0.0.0.0:5000 --timeout 600 main:app`
-  3. Check if all necessary files (main.py, templates folder, static folder) are deployed to the Function App
+- **Check App Configuration**: Ensure the following settings are properly configured:
+  1. App kind is set to `app,linux` (not just `functionapp,linux`)
+  2. The `WEBSITES_PORT` environment variable is set to `5000`
+  3. The startup command points to the correct entrypoint
+  4. The web.config file is properly deployed
+  5. Default documents include 'index.html'
 
-- **Verification**: Check the Function App logs in Azure Portal for any startup errors:
+- **Verify Files**: Check if these critical files are present in the Function App:
+  1. `startup.sh` - Controls app startup process
+  2. `web.config` - Configures IIS behavior
+  3. `main.py` - Flask application entry point
+  4. `/templates` and `/static` directories
+
+- **Logs and Diagnostics**: 
   1. Go to the Function App in Azure Portal
-  2. Select "Logs" from the left menu
-  3. Check for any Python or Gunicorn startup errors
+  2. Select "Log stream" from the left menu to see real-time logs
+  3. Check for startup errors related to Gunicorn or Python
 
 #### 2. Azure Quota Limitations
 
