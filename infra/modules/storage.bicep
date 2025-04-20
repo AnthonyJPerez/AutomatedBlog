@@ -76,6 +76,15 @@ resource generatedContainer 'Microsoft.Storage/storageAccounts/blobServices/cont
   }
 }
 
+// Container for deployment packages
+resource deploymentPackagesContainer 'Microsoft.Storage/storageAccounts/blobServices/containers@2021-09-01' = {
+  name: 'deployment-packages'
+  parent: blobService
+  properties: {
+    publicAccess: 'None'
+  }
+}
+
 // Create lifecycle management policy for old content
 resource lifecycleManagementPolicy 'Microsoft.Storage/storageAccounts/managementPolicies@2021-09-01' = {
   name: 'default'
