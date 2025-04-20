@@ -174,10 +174,7 @@ resource deploymentScript 'Microsoft.Resources/deploymentScripts@2020-10-01' = {
   location: location
   kind: 'AzureCLI'
   identity: {
-    type: 'UserAssigned'
-    userAssignedIdentities: {
-      '${wordpressApp.identity.principalId}': {}
-    }
+    type: 'SystemAssigned'
   }
   properties: {
     azCliVersion: '2.30.0'
@@ -252,10 +249,7 @@ resource updateKeyVaultWithWordPressCredentials 'Microsoft.Resources/deploymentS
   location: location
   kind: 'AzureCLI'
   identity: {
-    type: 'UserAssigned'
-    userAssignedIdentities: {
-      '${wordpressApp.identity.principalId}': {}
-    }
+    type: 'SystemAssigned'
   }
   properties: {
     azCliVersion: '2.30.0'
