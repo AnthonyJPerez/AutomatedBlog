@@ -227,6 +227,13 @@
                                                 Truth Social
                                             </label>
                                         </div>
+                                        <div class="form-check">
+                                            <input class="form-check-input platform-check" type="checkbox" value="devto" id="platform-devto"
+                                                {% if blog.social_media and blog.social_media.platforms and 'devto' in blog.social_media.platforms %}checked{% endif %}>
+                                            <label class="form-check-label" for="platform-devto">
+                                                DEV.to
+                                            </label>
+                                        </div>
                                     </div>
                                     
                                     <div class="col-md-6">
@@ -285,6 +292,22 @@
                                                    value="{{ blog.social_media.truthsocial_handle if blog.social_media and blog.social_media.truthsocial_handle else '' }}" 
                                                    placeholder="e.g., username">
                                             <div class="form-text">Your Truth Social username (without @)</div>
+                                        </div>
+                                        
+                                        <div class="mb-3">
+                                            <label for="devto-api-key" class="form-label">DEV.to API Key</label>
+                                            <input type="password" class="form-control" id="devto-api-key" 
+                                                   value="{{ blog.social_media.devto_api_key if blog.social_media and blog.social_media.devto_api_key else '' }}" 
+                                                   placeholder="API key from your DEV.to settings">
+                                            <div class="form-text">Generate an API key from your DEV.to account settings</div>
+                                        </div>
+                                        
+                                        <div class="mb-3">
+                                            <label for="devto-organization" class="form-label">DEV.to Organization ID</label>
+                                            <input type="text" class="form-control" id="devto-organization" 
+                                                   value="{{ blog.social_media.devto_organization if blog.social_media and blog.social_media.devto_organization else '' }}" 
+                                                   placeholder="Optional - organization ID">
+                                            <div class="form-text">Optional: Organization ID for publishing under an organization (leave blank for personal account)</div>
                                         </div>
                                     </div>
                                 </div>
@@ -425,6 +448,10 @@
                 const truthsocialClientId = document.getElementById('truthsocial-client-id').value;
                 const truthsocialClientSecret = document.getElementById('truthsocial-client-secret').value;
                 
+                // DEV.to credentials
+                const devtoApiKey = document.getElementById('devto-api-key').value;
+                const devtoOrganization = document.getElementById('devto-organization').value;
+                
                 // Prepare data for API call
                 const blogId = '{{ blog.id }}';
                 const data = {
@@ -441,7 +468,11 @@
                         // Truth Social credentials
                         truthsocial_handle: truthsocialHandle,
                         truthsocial_client_id: truthsocialClientId,
-                        truthsocial_client_secret: truthsocialClientSecret
+                        truthsocial_client_secret: truthsocialClientSecret,
+                        
+                        // DEV.to credentials
+                        devto_api_key: devtoApiKey,
+                        devto_organization: devtoOrganization
                     }
                 };
                 
