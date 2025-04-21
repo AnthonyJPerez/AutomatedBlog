@@ -1074,6 +1074,12 @@ class SocialMediaService:
                         os.environ["TRUTH-SOCIAL-USERNAME"] = credentials["truth_social_username"]
                     if "truth_social_access_token" in credentials:
                         os.environ["TRUTH-SOCIAL-ACCESS-TOKEN"] = credentials["truth_social_access_token"]
+                        
+                    # Update DEV.to credentials if available
+                    if "devto_api_key" in credentials:
+                        os.environ["DEVTO-API-KEY"] = credentials["devto_api_key"]
+                    if "devto_organization" in credentials:
+                        os.environ["DEVTO-ORGANIZATION"] = credentials["devto_organization"]
             
             # Reinitialize platforms with new credentials
             self._init_twitter()
@@ -1083,6 +1089,7 @@ class SocialMediaService:
             self._init_medium()
             self._init_bluesky()
             self._init_truth_social()
+            self._init_devto()
             
             logger.info("Social media credentials reloaded successfully")
             return True
