@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ title }}</title>
+    <link href="https://cdn.replit.com/agent/bootstrap-agent-dark-theme.min.css" rel="stylesheet">
+    <style>
+        body {
+            padding-top: 2rem;
+        }
+        .jumbotron {
+            padding: 2rem;
+            margin-bottom: 2rem;
+            background-color: var(--bs-dark);
+            border-radius: 0.3rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="jumbotron">
+            <h1 class="display-4">Blog Automation Admin Portal</h1>
+            <p class="lead">Welcome to the Blog Automation Admin Portal. This instance was deployed using WEBSITE_RUN_FROM_PACKAGE with Azure Blob Storage.</p>
+            <hr class="my-4">
+            <p>Version 2.1 - Last updated: April 21, 2025</p>
+        </div>
+        
+        <div class="row">
+            <div class="col-md-6">
+                <div class="card mb-4">
+                    <div class="card-header">Deployment Information</div>
+                    <div class="card-body">
+                        <p>This application was deployed with WEBSITE_RUN_FROM_PACKAGE using Azure Blob Storage and SAS token access.</p>
+                        <p>Deployment method: GitHub Actions workflow with RBAC authentication</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card mb-4">
+                    <div class="card-header">Status</div>
+                    <div class="card-body">
+                        <p class="text-success">✓ Application is running</p>
+                        <p class="text-success">✓ Templates are working</p>
+                        <p>Check <a href="/health">health endpoint</a> for more information.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

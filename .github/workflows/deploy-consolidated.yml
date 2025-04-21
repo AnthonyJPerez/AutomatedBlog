@@ -426,142 +426,39 @@ jobs:
         mkdir -p admin-portal-app
         
         # Copy or create main files for the deployment package
-        if [ -f main.py ]; then
-          cp main.py admin-portal-app/
-        else
-          echo "Creating minimal main.py file"
-          cat > admin-portal-app/main.py << 'EOL'
-import os
-from flask import Flask, render_template, jsonify
-
-app = Flask(__name__)
-app.secret_key = os.environ.get("FLASK_SECRET_KEY", "dev-key-replace-in-production")
-
-@app.route('/')
-def index():
-    return render_template('index.html', title="Blog Automation Admin Portal")
-
-@app.route('/health')
-def health():
-    return jsonify({
-        "status": "healthy",
-        "version": "1.0.0",
-        "environment": os.environ.get("ENVIRONMENT", "production")
-    })
-
-if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
-EOL
-        fi
-
-        if [ -f wsgi.py ]; then
-          cp wsgi.py admin-portal-app/
-        else
-          echo "Creating minimal wsgi.py file"
-          cat > admin-portal-app/wsgi.py << 'EOL'
-"""
-wsgi.py - WSGI entry point for the Admin Portal application
-This file is the entry point for Gunicorn and other WSGI servers.
-"""
-from main import app as application
-
-if __name__ == "__main__":
-    application.run()
-EOL
-        fi
-        
-        # Create requirements.txt if it doesn't exist
-        if [ -f requirements.txt ]; then
-          cp requirements.txt admin-portal-app/
-        else
-          echo "Creating default requirements.txt file"
-          cat > admin-portal-app/requirements.txt << 'EOL'
-flask==2.0.3
-gunicorn==20.1.0
-python-dotenv==0.21.1
-werkzeug==2.0.3
-azure-functions==1.15.0
-azure-identity==1.12.0
-azure-keyvault-secrets==4.6.0
-azure-storage-blob==12.16.0
-requests==2.29.0
-markdown==3.4.3
-pygments==2.15.1
-langdetect==1.0.9
-trafilatura==1.6.1
-azure-mgmt-storage==21.0.0
-azure-mgmt-resource==22.0.0
-flask-sqlalchemy==3.0.3
-sqlalchemy==2.0.12
-psycopg2-binary==2.9.6
-EOL
-        fi
-        
-        # Copy templates and static directories
         mkdir -p admin-portal-app/templates
         mkdir -p admin-portal-app/static
         
+        # Copy main.py (either from project root or from template)
+        if [ -f main.py ]; then
+          cp main.py admin-portal-app/
+        else
+          echo "Creating main.py file from template"
+          cp deployment-templates/main.py admin-portal-app/
+        fi
+
+        # Copy wsgi.py (either from project root or from template)
+        if [ -f wsgi.py ]; then
+          cp wsgi.py admin-portal-app/
+        else
+          echo "Creating wsgi.py file from template"
+          cp deployment-templates/wsgi.py admin-portal-app/
+        fi
+        
+        # Copy requirements.txt (either from project root or from template)
+        if [ -f requirements.txt ]; then
+          cp requirements.txt admin-portal-app/
+        else
+          echo "Creating requirements.txt file from template"
+          cp deployment-templates/requirements.txt admin-portal-app/
+        fi
+        
+        # Copy templates directory
         if [ -d templates ]; then
           cp -r templates/* admin-portal-app/templates/ 2>/dev/null || true
         else
-          # Create a default index.html template
-          echo "Creating default index.html template"
-          cat > admin-portal-app/templates/index.html << 'EOL'
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ title }}</title>
-    <link href="https://cdn.replit.com/agent/bootstrap-agent-dark-theme.min.css" rel="stylesheet">
-    <style>
-        body {
-            padding-top: 2rem;
-        }
-        .jumbotron {
-            padding: 2rem;
-            margin-bottom: 2rem;
-            background-color: var(--bs-dark);
-            border-radius: 0.3rem;
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <div class="jumbotron">
-            <h1 class="display-4">Blog Automation Admin Portal</h1>
-            <p class="lead">Welcome to the Blog Automation Admin Portal. This instance was deployed using WEBSITE_RUN_FROM_PACKAGE with Azure Blob Storage.</p>
-            <hr class="my-4">
-            <p>Version 2.1 - Last updated: April 21, 2025</p>
-        </div>
-        
-        <div class="row">
-            <div class="col-md-6">
-                <div class="card mb-4">
-                    <div class="card-header">Deployment Information</div>
-                    <div class="card-body">
-                        <p>This application was deployed with WEBSITE_RUN_FROM_PACKAGE using Azure Blob Storage and SAS token access.</p>
-                        <p>Deployment method: GitHub Actions workflow with RBAC authentication</p>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-6">
-                <div class="card mb-4">
-                    <div class="card-header">Status</div>
-                    <div class="card-body">
-                        <p class="text-success">✓ Application is running</p>
-                        <p class="text-success">✓ Templates are working</p>
-                        <p>Check <a href="/health">health endpoint</a> for more information.</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-    
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
-</body>
-</html>
-EOL
+          echo "Copying template files from deployment-templates"
+          cp -r deployment-templates/templates/* admin-portal-app/templates/ 2>/dev/null || true
         fi
         
         # Copy static files if they exist
