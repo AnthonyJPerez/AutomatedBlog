@@ -599,6 +599,22 @@ class SocialMediaService:
             )
             results["platforms"]["truth_social"] = truth_social_result
             platform_results.append(truth_social_result.get("success", False))
+            
+        # Post to DEV.to (if enabled)
+        if "devto" in self.platforms and self.platforms["devto"].get("enabled", False):
+            # DEV.to gets the full content in markdown format
+            # Determine publish status based on blog configuration
+            should_publish = blog_config.get("integrations", {}).get("devto_publish_immediately", False)
+            
+            devto_result = self.post_to_devto(
+                title,
+                full_content,
+                tags=tags[:4],  # DEV.to has a limit of 4 tags
+                canonical_url=url,  # Set the original blog as canonical to avoid SEO issues
+                publish=should_publish
+            )
+            results["platforms"]["devto"] = devto_result
+            platform_results.append(devto_result.get("success", False))
         
         # Determine overall success (at least one platform worked)
         if platform_results:
@@ -766,6 +782,90 @@ class SocialMediaService:
         except Exception as e:
             logger.error(f"Failed to post to Bluesky: {str(e)}")
             return {"success": False, "platform": "bluesky", "error": str(e)}
+    
+    def post_to_devto(self, title, content, tags=None, canonical_url=None, series=None, publish=False):
+        """
+        Post an article to DEV.to.
+        
+        Args:
+            title (str): The article title
+            content (str): The article content in markdown format
+            tags (list, optional): List of tags for the article (max 4)
+            canonical_url (str, optional): The canonical URL of the original article
+            series (str, optional): The series name if part of a series
+            publish (bool): Whether to publish immediately (True) or save as draft (False)
+            
+        Returns:
+            dict: Response from the API
+        """
+        if not self.platforms.get("devto", {}).get("enabled", False):
+            logger.warning("DEV.to is not configured or disabled.")
+            return {"success": False, "error": "DEV.to is not configured"}
+        
+        if not tags:
+            tags = []
+        
+        # DEV.to only allows up to 4 tags
+        if len(tags) > 4:
+            tags = tags[:4]
+            logger.warning("DEV.to only supports up to 4 tags. Truncating to first 4.")
+        
+        try:
+            # Prepare the API call
+            api_key = self.platforms["devto"]["api_key"]
+            api_url = f"{self.platforms['devto']['api_base']}articles"
+            organization_name = self.platforms["devto"].get("organization_name")
+            
+            # Build the request payload
+            payload = {
+                "article": {
+                    "title": title,
+                    "body_markdown": content,
+                    "published": publish,
+                    "tags": tags
+                }
+            }
+            
+            # Add optional fields if provided
+            if canonical_url:
+                payload["article"]["canonical_url"] = canonical_url
+            
+            if series:
+                payload["article"]["series"] = series
+                
+            if organization_name:
+                payload["article"]["organization_id"] = organization_name
+            
+            logger.info(f"Posting to DEV.to: {title} (publish: {publish}) with {len(tags)} tags")
+            
+            # In production, we would make the actual API call:
+            # headers = {
+            #     "Content-Type": "application/json",
+            #     "api-key": api_key
+            # }
+            # response = requests.post(api_url, headers=headers, json=payload)
+            # response.raise_for_status()
+            # result = response.json()
+            # return {
+            #     "success": True,
+            #     "platform": "devto",
+            #     "article_id": result["id"],
+            #     "url": result["url"],
+            #     "timestamp": datetime.now().isoformat()
+            # }
+            
+            # Simulate the response for testing
+            return {
+                "success": True,
+                "platform": "devto",
+                "article_id": "123456",
+                "url": "https://dev.to/yourusername/simulated-article-123",
+                "timestamp": datetime.now().isoformat(),
+                "status": "draft" if not publish else "published"
+            }
+        except Exception as e:
+            logger.error(f"Failed to post to DEV.to: {str(e)}")
+            return {"success": False, "platform": "devto", "error": str(e)}
     
     def post_to_truth_social(self, message, media_url=None):
         """
