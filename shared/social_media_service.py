@@ -838,28 +838,20 @@ class SocialMediaService:
             
             logger.info(f"Posting to DEV.to: {title} (publish: {publish}) with {len(tags)} tags")
             
-            # In production, we would make the actual API call:
-            # headers = {
-            #     "Content-Type": "application/json",
-            #     "api-key": api_key
-            # }
-            # response = requests.post(api_url, headers=headers, json=payload)
-            # response.raise_for_status()
-            # result = response.json()
-            # return {
-            #     "success": True,
-            #     "platform": "devto",
-            #     "article_id": result["id"],
-            #     "url": result["url"],
-            #     "timestamp": datetime.now().isoformat()
-            # }
+            # Make the actual API call to DEV.to
+            headers = {
+                "Content-Type": "application/json",
+                "api-key": api_key
+            }
+            response = requests.post(api_url, headers=headers, json=payload)
+            response.raise_for_status()
+            result = response.json()
             
-            # Simulate the response for testing
             return {
                 "success": True,
                 "platform": "devto",
-                "article_id": "123456",
-                "url": "https://dev.to/yourusername/simulated-article-123",
+                "article_id": result["id"],
+                "url": result.get("url", f"https://dev.to/article/{result['id']}"),
                 "timestamp": datetime.now().isoformat(),
                 "status": "draft" if not publish else "published"
             }
