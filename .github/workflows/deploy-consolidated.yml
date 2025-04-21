@@ -386,11 +386,17 @@ jobs:
         zip -r ../admin-portal.zip .
         cd ..
         
+        # Get the storage account key
+        STORAGE_KEY=$(az storage account keys list \
+          --account-name "${{ env.STORAGE_ACCOUNT_NAME }}" \
+          --query "[0].value" \
+          --output tsv)
+
         echo "Creating container if it doesn't exist"
         az storage container create \
           --name deployment-packages \
           --account-name "${{ env.STORAGE_ACCOUNT_NAME }}" \
-          --auth-mode login
+          --account-key "$STORAGE_KEY"
         
         # Upload the deployment package to blob storage
         TIMESTAMP=$(date +%Y%m%d%H%M%S)
@@ -402,14 +408,13 @@ jobs:
           --container-name "deployment-packages" \
           --name "$BLOB_NAME" \
           --file "admin-portal.zip" \
-          --auth-mode login
+          --account-key "$STORAGE_KEY"
         
         # Get the URL of the uploaded blob
         PACKAGE_URL=$(az storage blob url \
           --account-name "${{ env.STORAGE_ACCOUNT_NAME }}" \
           --container-name "deployment-packages" \
           --name "$BLOB_NAME" \
-          --auth-mode login \
           --output tsv)
         
         # Generate a SAS token for the blob with read permissions (valid for 24 hours)
@@ -419,7 +424,7 @@ jobs:
           --name "$BLOB_NAME" \
           --permissions r \
           --expiry $(date -u -d "1 day" '+%Y-%m-%dT%H:%MZ') \
-          --auth-mode login \
+          --account-key "$STORAGE_KEY" \
           --output tsv)
         
         # Create the full URL with SAS token
