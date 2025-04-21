@@ -430,7 +430,7 @@ jobs:
           cp main.py admin-portal-app/
         else
           echo "Creating minimal main.py file"
-          cat > admin-portal-app/main.py << EOF
+          cat > admin-portal-app/main.py << 'EOL'
 import os
 from flask import Flask, render_template, jsonify
 
@@ -451,14 +451,14 @@ def health():
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
-EOF
+EOL
         fi
 
         if [ -f wsgi.py ]; then
           cp wsgi.py admin-portal-app/
         else
           echo "Creating minimal wsgi.py file"
-          cat > admin-portal-app/wsgi.py << EOF
+          cat > admin-portal-app/wsgi.py << 'EOL'
 """
 wsgi.py - WSGI entry point for the Admin Portal application
 This file is the entry point for Gunicorn and other WSGI servers.
@@ -467,7 +467,7 @@ from main import app as application
 
 if __name__ == "__main__":
     application.run()
-EOF
+EOL
         fi
         
         # Create requirements.txt if it doesn't exist
@@ -475,7 +475,7 @@ EOF
           cp requirements.txt admin-portal-app/
         else
           echo "Creating default requirements.txt file"
-          cat > admin-portal-app/requirements.txt << EOF
+          cat > admin-portal-app/requirements.txt << 'EOL'
 flask==2.0.3
 gunicorn==20.1.0
 python-dotenv==0.21.1
@@ -494,7 +494,7 @@ azure-mgmt-resource==22.0.0
 flask-sqlalchemy==3.0.3
 sqlalchemy==2.0.12
 psycopg2-binary==2.9.6
-EOF
+EOL
         fi
         
         # Copy templates and static directories
@@ -506,7 +506,7 @@ EOF
         else
           # Create a default index.html template
           echo "Creating default index.html template"
-          cat > admin-portal-app/templates/index.html << EOF
+          cat > admin-portal-app/templates/index.html << 'EOL'
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -561,7 +561,7 @@ EOF
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
-EOF
+EOL
         fi
         
         # Copy static files if they exist
