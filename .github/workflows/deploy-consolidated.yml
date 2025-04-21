@@ -590,20 +590,43 @@ jobs:
           WEBSITES_ENABLE_APP_SERVICE_STORAGE=true \
           FLASK_APP=main.py
         
-        echo "Waiting for admin portal to start..."
-        sleep 30
+        echo "Waiting for admin portal to start (this may take a minute)..."
         
-        # Check if admin portal is accessible
-        HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" "https://${{ env.ADMIN_PORTAL_NAME }}.azurewebsites.net/")
-        echo "Admin portal responded with HTTP code: $HTTP_CODE"
+        # Wait for up to 2 minutes with progressive checks
+        MAX_ATTEMPTS=12
+        ATTEMPT=1
+        HTTP_CODE=0
+        
+        while [ $ATTEMPT -le $MAX_ATTEMPTS ] && [ "$HTTP_CODE" != "200" ]; do
+          echo "Health check attempt $ATTEMPT of $MAX_ATTEMPTS (waiting 10 seconds between attempts)..."
+          sleep 10
+          
+          # Check if admin portal health endpoint is accessible
+          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" "https://${{ env.ADMIN_PORTAL_NAME }}.azurewebsites.net/health" || echo "0")
+          echo "Admin portal health endpoint responded with HTTP code: $HTTP_CODE"
+          
+          # If health endpoint fails, try the root path as a fallback
+          if [ "$HTTP_CODE" != "200" ]; then
+            ROOT_HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" "https://${{ env.ADMIN_PORTAL_NAME }}.azurewebsites.net/" || echo "0")
+            echo "Admin portal root path responded with HTTP code: $ROOT_HTTP_CODE"
+            
+            # If root path returns 200, consider it a success
+            if [ "$ROOT_HTTP_CODE" = "200" ]; then
+              HTTP_CODE="200"
+            fi
+          fi
+          
+          ATTEMPT=$((ATTEMPT + 1))
+        done
         
         if [ "$HTTP_CODE" = "200" ]; then
           echo "Admin portal deployed and accessible at: https://${{ env.ADMIN_PORTAL_NAME }}.azurewebsites.net/"
         else
-          echo "Admin portal deployment may have issues. Check logs in Azure Portal."
+          echo "Admin portal deployment may have issues after $((ATTEMPT - 1)) attempts. Check logs in Azure Portal."
           echo "URL: https://${{ env.ADMIN_PORTAL_NAME }}.azurewebsites.net/"
           
-          # View logs stream
+          # View logs stream (limit with timeout command)
           echo "---------- SHOWING LOGS STREAM ----------"
-          az webapp log tail --resource-group "${{ env.RESOURCE_GROUP }}" --name "${{ env.ADMIN_PORTAL_NAME }}" --timeout 30
+          # Use timeout command to limit how long we stream logs
+          timeout 30s az webapp log tail --resource-group "${{ env.RESOURCE_GROUP }}" --name "${{ env.ADMIN_PORTAL_NAME }}" || true
         fi
