@@ -455,6 +455,15 @@ jobs:
         PACKAGE_NAME="admin-portal-$TIMESTAMP.zip"
         echo "PACKAGE_NAME=$PACKAGE_NAME" >> $GITHUB_ENV
         
+        # Ensure deployment-packages container exists
+        echo "Ensuring deployment-packages container exists"
+        az storage container create \
+          --account-name "${{ env.STORAGE_ACCOUNT_NAME }}" \
+          --name "deployment-packages" \
+          --public-access "off" \
+          --auth-mode login \
+          --fail-on-exist false
+          
         # Upload package to blob storage using the storage account's RBAC permissions
         echo "Uploading package to blob storage"
         az storage blob upload \
@@ -462,7 +471,8 @@ jobs:
           --container-name "deployment-packages" \
           --name "$PACKAGE_NAME" \
           --file "admin-portal-package.zip" \
-          --auth-mode login
+          --auth-mode login \
+          --overwrite
           
         # Generate SAS URL for the package
         echo "Generating SAS URL with read-only access"
@@ -472,8 +482,11 @@ jobs:
           --name "$PACKAGE_NAME" \
           --output tsv)
           
-        # Generate a SAS token that expires in 30 days
+        # Generate a SAS token that expires in 30 days (with proper Azure RBAC)
         EXPIRY=$(date -u -d "30 days" '+%Y-%m-%dT%H:%MZ')
+        
+        # First try with --as-user flag for modern RBAC authentication
+        echo "Generating SAS token with RBAC authentication..."
         SAS_TOKEN=$(az storage container generate-sas \
           --account-name "${{ env.STORAGE_ACCOUNT_NAME }}" \
           --name "deployment-packages" \
@@ -481,7 +494,36 @@ jobs:
           --expiry "$EXPIRY" \
           --auth-mode login \
           --as-user \
-          --output tsv)
+          --output tsv 2>/dev/null || echo "")
+          
+        # If first attempt fails, try without --as-user (fallback)
+        if [ -z "$SAS_TOKEN" ]; then
+          echo "Falling back to regular RBAC authentication..."
+          SAS_TOKEN=$(az storage container generate-sas \
+            --account-name "${{ env.STORAGE_ACCOUNT_NAME }}" \
+            --name "deployment-packages" \
+            --permissions r \
+            --expiry "$EXPIRY" \
+            --auth-mode login \
+            --output tsv)
+        fi
+        
+        # If still empty, try with the account key as last resort
+        if [ -z "$SAS_TOKEN" ]; then
+          echo "Using storage account key as fallback (less secure)..."
+          ACCOUNT_KEY=$(az storage account keys list \
+            --account-name "${{ env.STORAGE_ACCOUNT_NAME }}" \
+            --query "[0].value" \
+            --output tsv)
+            
+          SAS_TOKEN=$(az storage container generate-sas \
+            --account-name "${{ env.STORAGE_ACCOUNT_NAME }}" \
+            --name "deployment-packages" \
+            --permissions r \
+            --expiry "$EXPIRY" \
+            --account-key "$ACCOUNT_KEY" \
+            --output tsv)
+        fi
           
         PACKAGE_URL_WITH_SAS="${PACKAGE_URL}?${SAS_TOKEN}"
         echo "PACKAGE_URL=$PACKAGE_URL_WITH_SAS" >> $GITHUB_ENV

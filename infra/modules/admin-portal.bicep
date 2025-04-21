@@ -67,10 +67,8 @@ resource adminPortal 'Microsoft.Web/sites@2021-02-01' = {
           name: 'ENABLE_ORYX_BUILD'
           value: 'true'
         }
-        {
-          name: 'WEBSITE_RUN_FROM_PACKAGE'
-          value: '1'
-        }
+        // WEBSITE_RUN_FROM_PACKAGE will be set by GitHub workflow
+        // with actual blob storage URL during deployment
         {
           name: 'PYTHONPATH'
           value: '/home/site/wwwroot'
