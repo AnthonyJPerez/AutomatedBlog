@@ -40,6 +40,9 @@ param wpAdminUsername string = 'admin'
 @secure()
 param wpAdminPassword string
 
+@description('Optional: Principal ID of the deployment service principal for RBAC')
+param deploymentPrincipalId string = ''
+
 // Name prefix for resources
 var namePrefix = '${projectName}-${environment}'
 
@@ -88,6 +91,7 @@ module storageModule 'modules/storage.bicep' = {
     location: location
     tags: deploymentTags
     sku: storageSku
+    deploymentPrincipalId: deploymentPrincipalId
   }
 }
 

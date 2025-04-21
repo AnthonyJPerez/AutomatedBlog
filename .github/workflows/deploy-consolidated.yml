@@ -97,6 +97,30 @@ jobs:
       run: |
         az group create --name "${{ env.RESOURCE_GROUP }}" --location "${{ env.LOCATION }}"
         
+    - name: Get GitHub service principal ID
+      id: get-sp-id
+      run: |
+        # Extract the object ID of the GitHub service principal from the credentials
+        CREDENTIAL_JSON='${{ secrets.AZURE_CREDENTIALS }}'
+        OBJECT_ID=$(echo $CREDENTIAL_JSON | grep -o '"object_id":\s*"[^"]*"' | cut -d'"' -f4 || echo "")
+        
+        if [ -z "$OBJECT_ID" ]; then
+          # Try to find it from client_id
+          CLIENT_ID=$(echo $CREDENTIAL_JSON | grep -o '"clientId":\s*"[^"]*"' | cut -d'"' -f4)
+          if [ -n "$CLIENT_ID" ]; then
+            echo "Retrieving object ID from client ID..."
+            OBJECT_ID=$(az ad sp show --id $CLIENT_ID --query "id" --output tsv 2>/dev/null || echo "")
+          fi
+        fi
+        
+        if [ -n "$OBJECT_ID" ]; then
+          echo "Found service principal object ID: $OBJECT_ID"
+          echo "DEPLOYMENT_PRINCIPAL_ID=$OBJECT_ID" >> $GITHUB_ENV
+        else
+          echo "⚠️ Could not determine service principal object ID. RBAC permissions for storage account may not be applied."
+          echo "DEPLOYMENT_PRINCIPAL_ID=" >> $GITHUB_ENV
+        fi
+        
     - name: Deploy Azure infrastructure
       run: |
         # Deploy Azure infrastructure using Bicep template
@@ -111,6 +135,7 @@ jobs:
           --parameters wpAdminEmail="${{ env.WP_ADMIN_EMAIL }}" \
           --parameters dbAdminPassword="${{ secrets.DB_ADMIN_PASSWORD || 'Wp@ssw0rd12345!' }}" \
           --parameters wpAdminPassword="${{ secrets.WP_ADMIN_PASSWORD || 'Wp@ssw0rd54321!' }}" \
+          --parameters deploymentPrincipalId="${{ env.DEPLOYMENT_PRINCIPAL_ID }}" \
           --name "github-${{ github.run_number }}"
 
   deploy-function:
@@ -366,20 +391,38 @@ jobs:
         echo "Admin portal package contents:"
         ls -la admin-package
         
-    # Deploy admin portal using the official Azure WebApps deploy action
+    # Get storage account info for blob deployment
+    - name: Get storage account info
+      run: |
+        # Get storage account information from deployment
+        STORAGE_ACCOUNT_NAME=$(az deployment group show \
+          --resource-group "${{ env.RESOURCE_GROUP }}" \
+          --name "github-${{ github.run_number }}" \
+          --query "properties.outputs.storageAccountName.value" \
+          --output tsv)
+          
+        # Get blob endpoint
+        BLOB_ENDPOINT=$(az deployment group show \
+          --resource-group "${{ env.RESOURCE_GROUP }}" \
+          --name "github-${{ github.run_number }}" \
+          --query "properties.outputs.blobEndpoint.value" \
+          --output tsv)
+          
+        echo "Storage Account: $STORAGE_ACCOUNT_NAME"
+        echo "STORAGE_ACCOUNT_NAME=$STORAGE_ACCOUNT_NAME" >> $GITHUB_ENV
+        
+        if [ -n "$BLOB_ENDPOINT" ]; then
+          echo "Blob Endpoint: $BLOB_ENDPOINT"
+          echo "BLOB_ENDPOINT=$BLOB_ENDPOINT" >> $GITHUB_ENV
+        fi
+        
+    # Deploy admin portal using WEBSITE_RUN_FROM_PACKAGE with blob storage
     - name: Prepare admin portal for deployment
       run: |
-        echo "Preparing admin portal for deployment using official Azure WebApps action"
+        echo "Preparing admin portal deployment package for blob storage"
         
-        # Create a publish profile for the admin portal
-        echo "Getting publish profile..."
-        az webapp deployment list-publishing-profiles \
-          --resource-group "${{ env.RESOURCE_GROUP }}" \
-          --name "${{ env.ADMIN_PORTAL_NAME }}" \
-          --xml > admin-portal-publish-profile.xml
-        
-        # Prepare the clean deployment package at the root level
-        echo "Preparing deployment package..."
+        # Prepare the deployment package
+        echo "Creating deployment package ZIP file"
         mkdir -p admin-portal-app
         
         # Copy main files to the deployment package
@@ -397,25 +440,69 @@ jobs:
           cp -r data/* admin-portal-app/data/ 2>/dev/null || true
         fi
         
-        # Copy src directory if it exists
-        if [ -d src ]; then
-          cp -r src admin-portal-app/src
+        # Copy shared directory if it exists
+        if [ -d shared ]; then
+          cp -r shared admin-portal-app/shared
         fi
         
-        # Create .deployment file for Azure App Service
-        cat > admin-portal-app/.deployment << EOF
-        [config]
-        SCM_DO_BUILD_DURING_DEPLOYMENT=true
-        EOF
-      
-    # Deploy the admin portal using the official WebApps action
+        # Create deployment ZIP file
+        cd admin-portal-app
+        zip -r ../admin-portal-package.zip .
+        cd ..
+        
+        # Get timestamp for unique package name
+        TIMESTAMP=$(date +%Y%m%d%H%M%S)
+        PACKAGE_NAME="admin-portal-$TIMESTAMP.zip"
+        echo "PACKAGE_NAME=$PACKAGE_NAME" >> $GITHUB_ENV
+        
+        # Upload package to blob storage using the storage account's RBAC permissions
+        echo "Uploading package to blob storage"
+        az storage blob upload \
+          --account-name "${{ env.STORAGE_ACCOUNT_NAME }}" \
+          --container-name "deployment-packages" \
+          --name "$PACKAGE_NAME" \
+          --file "admin-portal-package.zip" \
+          --auth-mode login
+          
+        # Generate SAS URL for the package
+        echo "Generating SAS URL with read-only access"
+        PACKAGE_URL=$(az storage blob url \
+          --account-name "${{ env.STORAGE_ACCOUNT_NAME }}" \
+          --container-name "deployment-packages" \
+          --name "$PACKAGE_NAME" \
+          --output tsv)
+          
+        # Generate a SAS token that expires in 30 days
+        EXPIRY=$(date -u -d "30 days" '+%Y-%m-%dT%H:%MZ')
+        SAS_TOKEN=$(az storage container generate-sas \
+          --account-name "${{ env.STORAGE_ACCOUNT_NAME }}" \
+          --name "deployment-packages" \
+          --permissions r \
+          --expiry "$EXPIRY" \
+          --auth-mode login \
+          --as-user \
+          --output tsv)
+          
+        PACKAGE_URL_WITH_SAS="${PACKAGE_URL}?${SAS_TOKEN}"
+        echo "PACKAGE_URL=$PACKAGE_URL_WITH_SAS" >> $GITHUB_ENV
+        
+    # Deploy the admin portal using WEBSITE_RUN_FROM_PACKAGE
     - name: Deploy to Azure Web App
-      uses: azure/webapps-deploy@v2
-      with:
-        app-name: ${{ env.ADMIN_PORTAL_NAME }}
-        publish-profile: ${{ secrets.AZURE_PUBLISH_PROFILE }}
-        package: ./admin-portal-app
-        startup-command: "gunicorn --bind=0.0.0.0:8000 --timeout 600 wsgi:application"
+      run: |
+        echo "Configuring the web app to use the package from blob storage"
+        az webapp config appsettings set \
+          --resource-group "${{ env.RESOURCE_GROUP }}" \
+          --name "${{ env.ADMIN_PORTAL_NAME }}" \
+          --settings \
+          WEBSITE_RUN_FROM_PACKAGE="${{ env.PACKAGE_URL }}" \
+          SCM_DO_BUILD_DURING_DEPLOYMENT=true \
+          ENABLE_ORYX_BUILD=true
+          
+        # Restart the web app to apply the new settings
+        echo "Restarting the web app"
+        az webapp restart \
+          --resource-group "${{ env.RESOURCE_GROUP }}" \
+          --name "${{ env.ADMIN_PORTAL_NAME }}"
         
     # Configure admin portal startup command and settings
     - name: Configure admin portal environment

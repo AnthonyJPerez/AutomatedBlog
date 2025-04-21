@@ -114,9 +114,25 @@ resource lifecycleManagementPolicy 'Microsoft.Storage/storageAccounts/management
   }
 }
 
+// Role assignment parameters
+@description('Principal ID to assign Storage Blob Data Contributor role')
+param deploymentPrincipalId string = '' // Will be assigned from GitHub workflow
+
+// Add role assignment for GitHub Actions service principal
+resource blobDataContributorRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = if(!empty(deploymentPrincipalId)) {
+  name: guid(storageAccount.id, deploymentPrincipalId, 'ba92f5b4-2d11-453d-a403-e96b0029c9fe') // Storage Blob Data Contributor role ID
+  scope: storageAccount
+  properties: {
+    roleDefinitionId: resourceId('Microsoft.Authorization/roleDefinitions', 'ba92f5b4-2d11-453d-a403-e96b0029c9fe') // Storage Blob Data Contributor
+    principalId: deploymentPrincipalId
+    principalType: 'ServicePrincipal'
+  }
+}
+
 // Outputs
 output storageAccountName string = storageAccount.name
 output storageAccountId string = storageAccount.id
+output blobEndpoint string = storageAccount.properties.primaryEndpoints.blob
 
 // Note: We're no longer outputting storage keys directly
 // Connection strings are constructed in the function app using references
