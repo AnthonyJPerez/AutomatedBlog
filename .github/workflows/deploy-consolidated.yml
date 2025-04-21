@@ -493,8 +493,7 @@ jobs:
           --account-name "${{ env.STORAGE_ACCOUNT_NAME }}" \
           --name "deployment-packages" \
           --public-access "off" \
-          --auth-mode login \
-          --fail-on-exist false
+          --auth-mode login
           
         # Upload package to blob storage using the storage account's RBAC permissions
         echo "Uploading package to blob storage"
