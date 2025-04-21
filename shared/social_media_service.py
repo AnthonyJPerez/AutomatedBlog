@@ -34,6 +34,7 @@ class SocialMediaService:
         self._init_medium()
         self._init_bluesky()
         self._init_truth_social()
+        self._init_devto()
         
         logger.info("Social Media service initialized.")
     
@@ -215,6 +216,28 @@ class SocialMediaService:
         except Exception as e:
             self.platforms["truth_social"] = {"enabled": False}
             logger.warning(f"Failed to initialize Truth Social: {str(e)}")
+            
+    def _init_devto(self):
+        """Initialize DEV.to configuration"""
+        try:
+            # DEV.to uses API Key authentication
+            api_key = self._get_secret("DEVTO-API-KEY")
+            organization_name = self._get_secret("DEVTO-ORGANIZATION") # Optional, for publishing to organization
+            
+            if api_key:
+                self.platforms["devto"] = {
+                    "enabled": True,
+                    "api_key": api_key,
+                    "organization_name": organization_name,
+                    "api_base": "https://dev.to/api/"
+                }
+                logger.info("DEV.to configuration loaded.")
+            else:
+                self.platforms["devto"] = {"enabled": False}
+                logger.warning("DEV.to credentials incomplete, platform disabled.")
+        except Exception as e:
+            self.platforms["devto"] = {"enabled": False}
+            logger.warning(f"Failed to initialize DEV.to: {str(e)}")
     
     def _get_secret(self, secret_name):
         """
