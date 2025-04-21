@@ -239,16 +239,6 @@ jobs:
         cp main.py admin-package/
         cp wsgi.py admin-package/
         
-        # Get storage account details for deployment packaging
-        STORAGE_ACCOUNT_NAME=$(az deployment group show \
-          --resource-group "${{ env.RESOURCE_GROUP }}" \
-          --name "github-${{ github.run_number }}" \
-          --query "properties.outputs.storageAccountName.value" \
-          --output tsv)
-        
-        echo "Using Storage Account: $STORAGE_ACCOUNT_NAME"
-        echo "STORAGE_ACCOUNT_NAME=$STORAGE_ACCOUNT_NAME" >> $GITHUB_ENV
-        
         # Create web.config file
         cat > admin-package/web.config << EOF
         <?xml version="1.0" encoding="utf-8"?>
@@ -376,62 +366,56 @@ jobs:
         echo "Admin portal package contents:"
         ls -la admin-package
         
-    # Deploy admin portal using blob storage for more declarative deployment
-    - name: Create and upload deployment package to blob storage
+    # Deploy admin portal using the official Azure WebApps deploy action
+    - name: Prepare admin portal for deployment
       run: |
-        echo "Creating admin portal deployment package for blob storage"
+        echo "Preparing admin portal for deployment using official Azure WebApps action"
         
-        # Create deployment package zip file
-        cd admin-package
-        zip -r ../admin-portal.zip .
-        cd ..
+        # Create a publish profile for the admin portal
+        echo "Getting publish profile..."
+        az webapp deployment list-publishing-profiles \
+          --resource-group "${{ env.RESOURCE_GROUP }}" \
+          --name "${{ env.ADMIN_PORTAL_NAME }}" \
+          --xml > admin-portal-publish-profile.xml
         
-        # Get the storage account key
-        STORAGE_KEY=$(az storage account keys list \
-          --account-name "${{ env.STORAGE_ACCOUNT_NAME }}" \
-          --query "[0].value" \
-          --output tsv)
-
-        echo "Creating container if it doesn't exist"
-        az storage container create \
-          --name deployment-packages \
-          --account-name "${{ env.STORAGE_ACCOUNT_NAME }}" \
-          --account-key "$STORAGE_KEY"
+        # Prepare the clean deployment package at the root level
+        echo "Preparing deployment package..."
+        mkdir -p admin-portal-app
         
-        # Upload the deployment package to blob storage
-        TIMESTAMP=$(date +%Y%m%d%H%M%S)
-        BLOB_NAME="admin-portal-${TIMESTAMP}.zip"
+        # Copy main files to the deployment package
+        cp main.py admin-portal-app/
+        cp wsgi.py admin-portal-app/
+        cp requirements.txt admin-portal-app/
         
-        echo "Uploading deployment package to blob storage: $BLOB_NAME"
-        az storage blob upload \
-          --account-name "${{ env.STORAGE_ACCOUNT_NAME }}" \
-          --container-name "deployment-packages" \
-          --name "$BLOB_NAME" \
-          --file "admin-portal.zip" \
-          --account-key "$STORAGE_KEY"
+        # Copy templates and static directories
+        cp -r templates admin-portal-app/ 2>/dev/null || mkdir -p admin-portal-app/templates
+        cp -r static admin-portal-app/ 2>/dev/null || mkdir -p admin-portal-app/static
         
-        # Get the URL of the uploaded blob
-        PACKAGE_URL=$(az storage blob url \
-          --account-name "${{ env.STORAGE_ACCOUNT_NAME }}" \
-          --container-name "deployment-packages" \
-          --name "$BLOB_NAME" \
-          --output tsv)
+        # Ensure data directory exists
+        mkdir -p admin-portal-app/data
+        if [ -d data ]; then
+          cp -r data/* admin-portal-app/data/ 2>/dev/null || true
+        fi
         
-        # Generate a SAS token for the blob with read permissions (valid for 24 hours)
-        SAS_TOKEN=$(az storage blob generate-sas \
-          --account-name "${{ env.STORAGE_ACCOUNT_NAME }}" \
-          --container-name "deployment-packages" \
-          --name "$BLOB_NAME" \
-          --permissions r \
-          --expiry $(date -u -d "1 day" '+%Y-%m-%dT%H:%MZ') \
-          --account-key "$STORAGE_KEY" \
-          --output tsv)
+        # Copy src directory if it exists
+        if [ -d src ]; then
+          cp -r src admin-portal-app/src
+        fi
         
-        # Create the full URL with SAS token
-        PACKAGE_URL_WITH_SAS="${PACKAGE_URL}?${SAS_TOKEN}"
-        
-        echo "Deployment package URL created (SAS token hidden)"
-        echo "PACKAGE_URL_WITH_SAS=$PACKAGE_URL_WITH_SAS" >> $GITHUB_ENV
+        # Create .deployment file for Azure App Service
+        cat > admin-portal-app/.deployment << EOF
+        [config]
+        SCM_DO_BUILD_DURING_DEPLOYMENT=true
+        EOF
+      
+    # Deploy the admin portal using the official WebApps action
+    - name: Deploy to Azure Web App
+      uses: azure/webapps-deploy@v2
+      with:
+        app-name: ${{ env.ADMIN_PORTAL_NAME }}
+        publish-profile: ${{ secrets.AZURE_PUBLISH_PROFILE }}
+        package: ./admin-portal-app
+        startup-command: "gunicorn --bind=0.0.0.0:8000 --timeout 600 wsgi:application"
         
     # Configure admin portal startup command and settings
     - name: Configure admin portal environment
@@ -444,15 +428,14 @@ jobs:
           --always-on true \
           --ftps-state Disabled
         
-        # Set essential app settings with WEBSITE_RUN_FROM_PACKAGE URL
+        # Set essential app settings
         az webapp config appsettings set \
           --resource-group "${{ env.RESOURCE_GROUP }}" \
           --name "${{ env.ADMIN_PORTAL_NAME }}" \
           --settings \
           SCM_DO_BUILD_DURING_DEPLOYMENT=true \
           WEBSITES_ENABLE_APP_SERVICE_STORAGE=true \
-          FLASK_APP=main.py \
-          WEBSITE_RUN_FROM_PACKAGE="${{ env.PACKAGE_URL_WITH_SAS }}"
+          FLASK_APP=main.py
         
         echo "Waiting for admin portal to start..."
         sleep 30
