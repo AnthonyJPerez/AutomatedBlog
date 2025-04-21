@@ -1,5 +1,5 @@
 DEPLOYMENT NOTES
-April 20, 2025 - v2.0
+April 21, 2025 - v2.1
 
 OVERVIEW
 This document provides detailed information about the deployment of the blog automation infrastructure to Azure. The deployment process has been streamlined and consolidated from multiple scripts into a single script that handles all resources.
@@ -188,26 +188,31 @@ Deployment Sequence:
 7. WordPress plugin installation and configuration (5-7 minutes)
 
 ===================================================================================
-RECENT CHANGES (April 20, 2025)
+RECENT CHANGES (April 21, 2025)
 ===================================================================================
 
-BICEP TEMPLATE IMPROVEMENTS
-- Fixed GitHub Actions workflow to avoid duplicate command execution
-- Simplified SKU tier determination in Bicep templates by using a hardcoded tier
-- Removed complex nested ternary expressions that were causing syntax errors
-- Enhanced security by removing storage key exposure from output properties
+WEBSITE_RUN_FROM_PACKAGE IMPLEMENTATION
+- Implemented WEBSITE_RUN_FROM_PACKAGE for admin portal using Azure Blob Storage
+- Added RBAC role assignments for GitHub service principal to access storage
+- Created deployment-packages container for storing application packages
+- Modified admin-portal.bicep to let GitHub workflow set WEBSITE_RUN_FROM_PACKAGE
+- Added modern authentication with Azure RBAC for storage access
 
 DEPLOYMENT PROCESS IMPROVEMENTS
-- Reformatted parameters in deployment commands for better readability
-- Updated region configuration to use westus instead of eastus to address quota limitations
+- Added support for blob storage-based deployments with SAS URLs
+- Implemented fallback mechanisms for SAS token generation
+- Added automatic container creation in the GitHub workflow
+- Updated GitHub workflow to extract service principal ID from credentials
+- Improved error handling in blob storage operations
+
+PREVIOUS IMPROVEMENTS (April 20, 2025)
+- Fixed GitHub Actions workflow to avoid duplicate command execution
+- Simplified SKU tier determination in Bicep templates
+- Removed complex nested ternary expressions that were causing syntax errors
+- Enhanced security by removing storage key exposure from output properties
+- Updated region configuration to use westus instead of eastus for quota limitations
 - Added better error handling in deployment scripts
 - Improved parameter validation in consolidated deployment script
-
-DOCUMENTATION IMPROVEMENTS
-- Added comprehensive error troubleshooting guide
-- Enhanced deployment examples and instructions
-- Added detailed description of GitHub workflow structure
-- Included command-line examples for common deployment scenarios
 
 ===================================================================================
 TESTING DEPLOYED RESOURCES
@@ -231,3 +236,9 @@ After deployment completes, verify the following:
    - Test URL: https://{wordPressSiteName}.azurewebsites.net
    - Verify admin login works with provided credentials
    - Test multisite functionality by creating a new site
+
+5. Admin portal deployment with WEBSITE_RUN_FROM_PACKAGE
+   - Verify deployment-packages container exists in the storage account
+   - Check admin portal app settings for WEBSITE_RUN_FROM_PACKAGE with valid SAS URL
+   - Confirm package exists in the blob storage with matching name from URL
+   - Verify admin portal is accessible at https://{adminPortalName}.azurewebsites.net
