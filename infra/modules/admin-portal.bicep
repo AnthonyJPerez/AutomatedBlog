@@ -23,6 +23,12 @@ param keyVaultName string
 @allowed(['3.10', '3.11', '3.12'])
 param pythonVersion string = '3.11'
 
+@description('Git repository URL for the admin portal')
+param repoUrl string = 'https://github.com/AnthonyJPerez/AutomatedBlog'
+
+@description('Git branch to deploy')
+param repoBranch string = 'main'
+
 // Use existing App Service Plan
 resource appServicePlan 'Microsoft.Web/serverfarms@2021-02-01' existing = {
   name: appServicePlanName
@@ -45,11 +51,11 @@ resource adminPortal 'Microsoft.Web/sites@2021-02-01' = {
       appSettings: [
         {
           name: 'WEBSITES_PORT'
-          value: '5000'
+          value: '8000'
         }
         {
           name: 'PORT'
-          value: '5000'
+          value: '8000'
         }
         {
           name: 'FLASK_APP'
@@ -67,8 +73,6 @@ resource adminPortal 'Microsoft.Web/sites@2021-02-01' = {
           name: 'ENABLE_ORYX_BUILD'
           value: 'true'
         }
-        // WEBSITE_RUN_FROM_PACKAGE will be set by GitHub workflow
-        // with actual blob storage URL during deployment
         {
           name: 'PYTHONPATH'
           value: '/home/site/wwwroot'
@@ -87,12 +91,43 @@ resource adminPortal 'Microsoft.Web/sites@2021-02-01' = {
         }
       ]
       alwaysOn: true
-      appCommandLine: 'gunicorn --bind=0.0.0.0:5000 --timeout 600 wsgi:application'
+      appCommandLine: 'gunicorn --bind=0.0.0.0:$PORT main:app'
       ftpsState: 'Disabled'
       minTlsVersion: '1.2'
       http20Enabled: true
     }
   }
+}
+
+// Configure Git source control for the admin portal
+resource portalGit 'Microsoft.Web/sites/sourcecontrols@2021-02-01' = {
+  parent: adminPortal
+  name: 'web'
+  properties: {
+    repoUrl: repoUrl
+    branch: repoBranch
+    isManualIntegration: true
+  }
+  dependsOn: [
+    adminPortal
+  ]
+}
+
+// Configure the Web App settings
+resource adminPortalConfig 'Microsoft.Web/sites/config@2021-02-01' = {
+  parent: adminPortal
+  name: 'web'
+  properties: {
+    linuxFxVersion: 'PYTHON|${pythonVersion}'
+    appCommandLine: 'gunicorn --bind=0.0.0.0:$PORT main:app'
+    alwaysOn: true
+    ftpsState: 'Disabled'
+    minTlsVersion: '1.2'
+    http20Enabled: true
+  }
+  dependsOn: [
+    portalGit
+  ]
 }
 
 // Add logs configuration
