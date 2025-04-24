@@ -1,0 +1,10 @@
+    - name: Deploy Function App
+      uses: Azure/functions-action@v1
+      with:
+        app-name: "$FUNCTION_APP_NAME"
+        package: function-package
+        scm-do-build-during-deployment: true
+        enable-oryx-build: true
+      env:
+        AZURE_FUNCTIONAPP_PACKAGE_PATH: function-package
+        PYTHON_VERSION: '3.11'
