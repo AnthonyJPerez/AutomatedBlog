@@ -201,11 +201,6 @@ jobs:
   deploy-admin-portal:
     runs-on: ubuntu-latest
     needs: deploy-infra
-    env:
-      RESOURCE_GROUP: ${{ env.RESOURCE_GROUP }}
-      ADMIN_PORTAL_NAME: ${{ env.ADMIN_PORTAL_NAME }}
-      PYTHON_VERSION: ${{ env.PYTHON_VERSION }}
-      
     steps:
     - name: Checkout code
       uses: actions/checkout@v3
@@ -260,7 +255,7 @@ jobs:
         az webapp config set \
           --resource-group "${{ env.RESOURCE_GROUP }}" \
           --name "${{ env.ADMIN_PORTAL_NAME }}" \
-          --linux-fx-version "PYTHON|${{ env.PYTHON_VERSION }}" \
+          --linux-fx-version "PYTHON|3.11" \
           --always-on true \
           --ftps-state Disabled \
           --startup-file "gunicorn --bind=0.0.0.0:8000 main:app"
