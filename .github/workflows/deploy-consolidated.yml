@@ -202,8 +202,8 @@ jobs:
     runs-on: ubuntu-latest
     needs: deploy-infra
     env:
-      RESOURCE_GROUP: ${{ needs.deploy-infra.outputs.resourceGroup || env.RESOURCE_GROUP }}
-      ADMIN_PORTAL_NAME: ${{ needs.deploy-infra.outputs.adminPortalName || env.ADMIN_PORTAL_NAME }}
+      RESOURCE_GROUP: ${{ env.RESOURCE_GROUP }}
+      ADMIN_PORTAL_NAME: ${{ env.ADMIN_PORTAL_NAME }}
       PYTHON_VERSION: ${{ env.PYTHON_VERSION }}
       
     steps:
