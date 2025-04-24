@@ -99,7 +99,9 @@ resource adminPortal 'Microsoft.Web/sites@2021-02-01' = {
   }
 }
 
-// Configure Git source control for the admin portal
+/* 
+// Removing Git source control configuration to avoid conflicts with CLI-based deployment
+// This will be handled by the GitHub Actions workflow instead
 resource portalGit 'Microsoft.Web/sites/sourcecontrols@2021-02-01' = {
   parent: adminPortal
   name: 'web'
@@ -112,6 +114,7 @@ resource portalGit 'Microsoft.Web/sites/sourcecontrols@2021-02-01' = {
     adminPortal
   ]
 }
+*/
 
 // Configure the Web App settings
 resource adminPortalConfig 'Microsoft.Web/sites/config@2021-02-01' = {
@@ -126,7 +129,7 @@ resource adminPortalConfig 'Microsoft.Web/sites/config@2021-02-01' = {
     http20Enabled: true
   }
   dependsOn: [
-    portalGit
+    adminPortal
   ]
 }
 
