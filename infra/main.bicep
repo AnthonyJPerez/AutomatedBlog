@@ -43,6 +43,12 @@ param wpAdminPassword string
 @description('Optional: Principal ID of the deployment service principal for RBAC')
 param deploymentPrincipalId string = ''
 
+@description('GitHub repository URL for source code deployment')
+param repoUrl string = 'https://github.com/yourusername/blog-automation-platform.git'
+
+@description('GitHub repository branch for deployment')
+param repoBranch string = 'main'
+
 // Name prefix for resources
 var namePrefix = '${projectName}-${environment}'
 
@@ -128,6 +134,8 @@ module functionApp 'modules/functions.bicep' = {
     appInsightsInstrumentationKey: monitoringModule.outputs.instrumentationKey
     keyVaultName: keyVaultName
     appServicePlanSku: appServicePlanSku
+    repoUrl: repoUrl
+    repoBranch: repoBranch
   }
 }
 
@@ -141,6 +149,8 @@ module adminPortalModule 'modules/admin-portal.bicep' = {
     tags: deploymentTags
     appInsightsInstrumentationKey: monitoringModule.outputs.instrumentationKey
     keyVaultName: keyVaultName
+    repoUrl: repoUrl
+    repoBranch: repoBranch
   }
   dependsOn: [
     functionApp // Make sure Function App is deployed first since we're reusing its app service plan
