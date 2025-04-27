@@ -175,6 +175,7 @@ jobs:
           --parameters deploymentPrincipalId="$DEPLOYMENT_PRINCIPAL_ID" \
           --parameters repoUrl="$REPO_URL" \
           --parameters repoBranch="$REPO_BRANCH" \
+          --parameters configureSourceControl=false \
           --name "github-${{ github.run_number }}"
 
   deploy-function:
@@ -211,12 +212,23 @@ jobs:
     # Trigger Git deployment sync (in case it doesn't auto-sync)
     - name: Sync Git repository deployment
       run: |
-        echo "Triggering Git-based deployment sync..."
-        az webapp deployment source sync \
+        echo "Checking function app SCM type..."
+        SCM_TYPE=$(az webapp config show \
           --resource-group "$RESOURCE_GROUP" \
-          --name "$FUNCTION_APP_NAME"
+          --name "$FUNCTION_APP_NAME" \
+          --query "scmType" \
+          --output tsv 2>/dev/null || echo "")
         
-        echo "Function app deployment triggered. Function app should be accessible at: https://$FUNCTION_APP_NAME.azurewebsites.net/"
+        if [ "$SCM_TYPE" == "ExternalGit" ]; then
+          echo "Function app is already using ExternalGit for deployment. Triggering a sync..."
+          az webapp deployment source sync \
+            --resource-group "$RESOURCE_GROUP" \
+            --name "$FUNCTION_APP_NAME"
+        else
+          echo "Function app may be using a different SCM type or none. Consider configuring Git deployment manually if needed."
+        fi
+        
+        echo "Function app deployment steps completed. Function app should be accessible at: https://$FUNCTION_APP_NAME.azurewebsites.net/"
   deploy-admin-portal:
     runs-on: ubuntu-latest
     needs: deploy-infra
@@ -251,9 +263,20 @@ jobs:
     # Trigger Git deployment sync (in case it doesn't auto-sync)
     - name: Sync Git repository deployment
       run: |
-        echo "Triggering Git-based deployment sync..."
-        az webapp deployment source sync \
+        echo "Checking admin portal SCM type..."
+        SCM_TYPE=$(az webapp config appsettings list \
           --resource-group "$RESOURCE_GROUP" \
-          --name "$ADMIN_PORTAL_NAME"
+          --name "$ADMIN_PORTAL_NAME" \
+          --query "[?name=='SCM_TYPE'].value" \
+          --output tsv 2>/dev/null || echo "")
         
-        echo "Admin portal deployment triggered. Web app should be accessible at: https://$ADMIN_PORTAL_NAME.azurewebsites.net/"
+        if [ "$SCM_TYPE" == "ExternalGit" ]; then
+          echo "Admin portal is already using ExternalGit for deployment. Triggering a sync..."
+          az webapp deployment source sync \
+            --resource-group "$RESOURCE_GROUP" \
+            --name "$ADMIN_PORTAL_NAME"
+        else
+          echo "Admin portal may be using a different SCM type or none. Consider configuring Git deployment manually if needed."
+        fi
+        
+        echo "Admin portal deployment steps completed. Web app should be accessible at: https://$ADMIN_PORTAL_NAME.azurewebsites.net/"

@@ -114,8 +114,12 @@ resource adminPortal 'Microsoft.Web/sites@2021-02-01' = {
   }
 }
 
-// Configure Git source control for the admin portal
-resource portalGit 'Microsoft.Web/sites/sourcecontrols@2021-02-01' = {
+// Check if existing Git source control exists
+@description('Flag to determine if the Git source control should be configured')
+param configureSourceControl bool = false
+
+// Configure Git source control for the admin portal (conditionally)
+resource portalGit 'Microsoft.Web/sites/sourcecontrols@2021-02-01' = if (configureSourceControl) {
   parent: adminPortal
   name: 'web'
   properties: {
@@ -138,9 +142,7 @@ resource adminPortalConfig 'Microsoft.Web/sites/config@2021-02-01' = {
     minTlsVersion: '1.2'
     http20Enabled: true
   }
-  dependsOn: [
-    portalGit
-  ]
+  // No dependsOn needed as we've already created the adminPortal resource
 }
 
 // Add logs configuration

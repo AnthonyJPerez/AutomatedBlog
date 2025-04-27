@@ -49,6 +49,9 @@ param repoUrl string = 'https://github.com/yourusername/blog-automation-platform
 @description('GitHub repository branch for deployment')
 param repoBranch string = 'main'
 
+@description('Flag to determine if Git source control should be configured')
+param configureSourceControl bool = false
+
 // Name prefix for resources
 var namePrefix = '${projectName}-${environment}'
 
@@ -136,6 +139,7 @@ module functionApp 'modules/functions.bicep' = {
     appServicePlanSku: appServicePlanSku
     repoUrl: repoUrl
     repoBranch: repoBranch
+    configureSourceControl: configureSourceControl
   }
 }
 
@@ -151,6 +155,7 @@ module adminPortalModule 'modules/admin-portal.bicep' = {
     keyVaultName: keyVaultName
     repoUrl: repoUrl
     repoBranch: repoBranch
+    configureSourceControl: configureSourceControl
   }
   dependsOn: [
     functionApp // Make sure Function App is deployed first since we're reusing its app service plan

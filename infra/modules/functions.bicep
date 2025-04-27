@@ -153,8 +153,12 @@ param repoUrl string = 'https://github.com/yourusername/blog-automation-platform
 @description('GitHub repository branch for deployment')
 param repoBranch string = 'main'
 
-// Configure Git source control for the Function App
-resource functionAppGit 'Microsoft.Web/sites/sourcecontrols@2021-02-01' = {
+// Flag to determine if the Git source control should be configured
+@description('Flag to determine if the Git source control should be configured')
+param configureSourceControl bool = false
+
+// Configure Git source control for the Function App (conditionally)
+resource functionAppGit 'Microsoft.Web/sites/sourcecontrols@2021-02-01' = if (configureSourceControl) {
   parent: functionApp
   name: 'web'
   properties: {
