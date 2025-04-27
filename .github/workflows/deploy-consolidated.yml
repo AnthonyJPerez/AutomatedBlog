@@ -102,16 +102,33 @@ jobs:
         LOCATION=${{ vars.LOCATION || 'eastus' }}
         WP_ADMIN_EMAIL=${{ vars.WP_ADMIN_EMAIL || 'admin@example.com' }}
         
+        # Setup repository info
+        REPO_URL="https://github.com/${{ github.repository }}.git"
+        if [ -z "$REPO_URL" ] || [ "$REPO_URL" = "https://github.com/.git" ]; then
+          echo "GitHub repository context unavailable, using fallback repository URL"
+          REPO_URL="https://github.com/yourusername/blog-automation-platform.git"
+        fi
+        
+        REPO_BRANCH="${{ github.ref_name }}"
+        if [ -z "$REPO_BRANCH" ]; then
+          echo "GitHub branch context unavailable, using fallback branch"
+          REPO_BRANCH="main"
+        fi
+        
         echo "Environment: $ENVIRONMENT"
         echo "Resource Group: $RESOURCE_GROUP"
         echo "Location: $LOCATION"
         echo "Project Name: $PROJECT_NAME"
+        echo "Repository URL: $REPO_URL"
+        echo "Repository Branch: $REPO_BRANCH"
         
         echo "ENVIRONMENT=$ENVIRONMENT" >> $GITHUB_ENV
         echo "RESOURCE_GROUP=$RESOURCE_GROUP" >> $GITHUB_ENV
         echo "PROJECT_NAME=$PROJECT_NAME" >> $GITHUB_ENV
         echo "LOCATION=$LOCATION" >> $GITHUB_ENV
         echo "WP_ADMIN_EMAIL=$WP_ADMIN_EMAIL" >> $GITHUB_ENV
+        echo "REPO_URL=$REPO_URL" >> $GITHUB_ENV
+        echo "REPO_BRANCH=$REPO_BRANCH" >> $GITHUB_ENV
         
     - name: Create resource group if not exists
       run: |
@@ -156,8 +173,8 @@ jobs:
           --parameters dbAdminPassword="${{ secrets.DB_ADMIN_PASSWORD || 'Wp@ssw0rd12345!' }}" \
           --parameters wpAdminPassword="${{ secrets.WP_ADMIN_PASSWORD || 'Wp@ssw0rd54321!' }}" \
           --parameters deploymentPrincipalId="$DEPLOYMENT_PRINCIPAL_ID" \
-          --parameters repoUrl="${{ github.repository_url }}" \
-          --parameters repoBranch="${{ github.ref_name }}" \
+          --parameters repoUrl="$REPO_URL" \
+          --parameters repoBranch="$REPO_BRANCH" \
           --name "github-${{ github.run_number }}"
 
   deploy-function:

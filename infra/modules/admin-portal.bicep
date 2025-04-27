@@ -24,9 +24,11 @@ param keyVaultName string
 param pythonVersion string = '3.11'
 
 @description('Git repository URL for the admin portal')
-param repoUrl string = 'https://github.com/AnthonyJPerez/AutomatedBlog'
+@minLength(5)
+param repoUrl string = 'https://github.com/yourusername/blog-automation-platform.git'
 
 @description('Git branch to deploy')
+@minLength(1)
 param repoBranch string = 'main'
 
 // Use existing App Service Plan

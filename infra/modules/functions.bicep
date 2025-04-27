@@ -145,9 +145,11 @@ resource functionApp 'Microsoft.Web/sites@2022-03-01' = {
 }
 
 // Add Git deployment configuration
+@minLength(5)
 @description('GitHub repository URL for source code deployment')
 param repoUrl string = 'https://github.com/yourusername/blog-automation-platform.git'
 
+@minLength(1)
 @description('GitHub repository branch for deployment')
 param repoBranch string = 'main'
 
