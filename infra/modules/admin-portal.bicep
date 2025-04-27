@@ -49,6 +49,7 @@ resource adminPortal 'Microsoft.Web/sites@2021-02-01' = {
     siteConfig: {
       linuxFxVersion: 'PYTHON|${pythonVersion}'
       appSettings: [
+        // Basic configuration for Python/Flask app
         {
           name: 'WEBSITES_PORT'
           value: '8000'
@@ -61,6 +62,7 @@ resource adminPortal 'Microsoft.Web/sites@2021-02-01' = {
           name: 'FLASK_APP'
           value: 'main.py'
         }
+        // Git and deployment settings
         {
           name: 'SCM_DO_BUILD_DURING_DEPLOYMENT'
           value: 'true'
@@ -73,21 +75,32 @@ resource adminPortal 'Microsoft.Web/sites@2021-02-01' = {
           name: 'ENABLE_ORYX_BUILD'
           value: 'true'
         }
+        // Python configuration
         {
           name: 'PYTHONPATH'
           value: '/home/site/wwwroot'
         }
+        // Monitoring and logging settings
         {
           name: 'APPINSIGHTS_INSTRUMENTATIONKEY'
           value: appInsightsInstrumentationKey
         }
         {
-          name: 'KEY_VAULT_NAME'
-          value: keyVaultName
-        }
-        {
           name: 'WEBSITE_HTTPLOGGING_RETENTION_DAYS'
           value: '3'
+        }
+        {
+          name: 'WEBSITE_SCM_ALWAYS_ON_ENABLED'
+          value: 'true'
+        }
+        {
+          name: 'WEBSITE_LOG_LEVEL'
+          value: 'verbose'
+        }
+        // Key Vault integration
+        {
+          name: 'KEY_VAULT_NAME'
+          value: keyVaultName
         }
       ]
       alwaysOn: true
@@ -99,9 +112,7 @@ resource adminPortal 'Microsoft.Web/sites@2021-02-01' = {
   }
 }
 
-/* 
-// Removing Git source control configuration to avoid conflicts with CLI-based deployment
-// This will be handled by the GitHub Actions workflow instead
+// Configure Git source control for the admin portal
 resource portalGit 'Microsoft.Web/sites/sourcecontrols@2021-02-01' = {
   parent: adminPortal
   name: 'web'
@@ -110,11 +121,8 @@ resource portalGit 'Microsoft.Web/sites/sourcecontrols@2021-02-01' = {
     branch: repoBranch
     isManualIntegration: true
   }
-  dependsOn: [
-    adminPortal
-  ]
+  // No need for explicit dependsOn since we're using parent property
 }
-*/
 
 // Configure the Web App settings
 resource adminPortalConfig 'Microsoft.Web/sites/config@2021-02-01' = {
@@ -129,7 +137,7 @@ resource adminPortalConfig 'Microsoft.Web/sites/config@2021-02-01' = {
     http20Enabled: true
   }
   dependsOn: [
-    adminPortal
+    portalGit
   ]
 }
 

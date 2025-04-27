@@ -239,113 +239,27 @@ jobs:
     - name: Get admin portal information
       run: |
         # Define resource group from workflow environment
-        DEFAULT_RESOURCE_GROUP="blogauto-${{ github.ref_name == 'main' && 'prod' || 'dev' }}-rg"
-        RESOURCE_GROUP="$DEFAULT_RESOURCE_GROUP"
+        ENVIRONMENT=${{ github.ref_name == 'main' && 'prod' || 'dev' }}
+        RESOURCE_GROUP="blogauto-${ENVIRONMENT}-rg"
         echo "Using Resource Group: $RESOURCE_GROUP" 
         echo "RESOURCE_GROUP=$RESOURCE_GROUP" >> $GITHUB_ENV
-        
-        # Define default admin portal name
-        DEFAULT_ADMIN_PORTAL="blogauto-${{ github.ref_name == 'main' && 'prod' || 'dev' }}-admin"
         
         # Get admin portal web app name from outputs
         ADMIN_PORTAL_NAME=$(az deployment group show \
           --resource-group "$RESOURCE_GROUP" \
           --name "github-${{ github.run_number }}" \
           --query "properties.outputs.adminPortalName.value" \
-          --output tsv || echo "$DEFAULT_ADMIN_PORTAL")
+          --output tsv || echo "blogauto-${ENVIRONMENT}-admin")
         
         echo "Using Admin Portal: $ADMIN_PORTAL_NAME"
         echo "ADMIN_PORTAL_NAME=$ADMIN_PORTAL_NAME" >> $GITHUB_ENV
         
-        # Get admin portal hostname
-        ADMIN_PORTAL_HOSTNAME=$(az deployment group show \
-          --resource-group "$RESOURCE_GROUP" \
-          --name "github-${{ github.run_number }}" \
-          --query "properties.outputs.adminPortalHostName.value" \
-          --output tsv || echo "")
-          
-        if [ -n "$ADMIN_PORTAL_HOSTNAME" ]; then
-          echo "Admin Portal Hostname: $ADMIN_PORTAL_HOSTNAME"
-          echo "ADMIN_PORTAL_HOSTNAME=$ADMIN_PORTAL_HOSTNAME" >> $GITHUB_ENV
-        fi
-        
-    # Configure admin portal settings and environment
-    - name: Configure admin portal for Git-based deployment
+    # Trigger Git deployment sync (in case it doesn't auto-sync)
+    - name: Sync Git repository deployment
       run: |
-        # Set essential app settings
-        echo "Configuring admin portal app settings..."
-        az webapp config appsettings set \
-          --resource-group "$RESOURCE_GROUP" \
-          --name "$ADMIN_PORTAL_NAME" \
-          --settings \
-          SCM_DO_BUILD_DURING_DEPLOYMENT=true \
-          WEBSITES_ENABLE_APP_SERVICE_STORAGE=true \
-          FLASK_APP=main.py \
-          WEBSITES_PORT=8000 \
-          PORT=8000
-        
-        # Set environment configuration
-        echo "Setting Linux environment configuration..."
-        az webapp config set \
-          --resource-group "$RESOURCE_GROUP" \
-          --name "$ADMIN_PORTAL_NAME" \
-          --linux-fx-version "PYTHON|3.11" \
-          --always-on true \
-          --ftps-state Disabled \
-          --startup-file "gunicorn --bind=0.0.0.0:8000 main:app"
-        
-        # Add additional settings for improved logging
-        echo "Configuring logging settings..."
-        az webapp config appsettings set \
-          --resource-group "$RESOURCE_GROUP" \
-          --name "$ADMIN_PORTAL_NAME" \
-          --settings \
-          WEBSITE_SCM_ALWAYS_ON_ENABLED=true \
-          WEBSITE_LOG_LEVEL=verbose
-        
-        # Sync the Git repository to trigger deployment
-        echo "Triggering Git-based deployment..."
+        echo "Triggering Git-based deployment sync..."
         az webapp deployment source sync \
           --resource-group "$RESOURCE_GROUP" \
           --name "$ADMIN_PORTAL_NAME"
         
-        echo "Waiting for admin portal to start (this may take a minute)..."
-        
-        # Wait for up to 5 minutes with progressive checks
-        MAX_ATTEMPTS=30
-        ATTEMPT=1
-        HTTP_CODE=0
-        
-        while [ $ATTEMPT -le $MAX_ATTEMPTS ] && [ "$HTTP_CODE" != "200" ]; do
-          echo "Health check attempt $ATTEMPT of $MAX_ATTEMPTS (waiting 10 seconds between attempts)..."
-          sleep 10
-          
-          # Check if admin portal health endpoint is accessible
-          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" "https://$ADMIN_PORTAL_NAME.azurewebsites.net/health" || echo "0")
-          echo "Admin portal health endpoint responded with HTTP code: $HTTP_CODE"
-          
-          # If health endpoint fails, try the root path as a fallback
-          if [ "$HTTP_CODE" != "200" ]; then
-            ROOT_HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" "https://$ADMIN_PORTAL_NAME.azurewebsites.net/" || echo "0")
-            echo "Admin portal root path responded with HTTP code: $ROOT_HTTP_CODE"
-            
-            # If root path returns 200, consider it a success
-            if [ "$ROOT_HTTP_CODE" = "200" ]; then
-              HTTP_CODE="200"
-            fi
-          fi
-          
-          ATTEMPT=$((ATTEMPT + 1))
-        done
-        
-        if [ "$HTTP_CODE" = "200" ]; then
-          echo "Admin portal deployed and accessible at: https://$ADMIN_PORTAL_NAME.azurewebsites.net/"
-        else
-          echo "Admin portal deployment may have issues after $((ATTEMPT - 1)) attempts. Check logs in Azure Portal."
-          echo "URL: https://$ADMIN_PORTAL_NAME.azurewebsites.net/"
-          
-          # View logs stream (limit with timeout command)
-          echo "---------- SHOWING LOGS STREAM ----------"
-          # Use timeout command to limit how long we stream logs
-          timeout 30s az webapp log tail --resource-group "$RESOURCE_GROUP" --name "$ADMIN_PORTAL_NAME" || true
-        fi
+        echo "Admin portal deployment triggered. Web app should be accessible at: https://$ADMIN_PORTAL_NAME.azurewebsites.net/"

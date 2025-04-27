@@ -144,6 +144,50 @@ resource functionApp 'Microsoft.Web/sites@2022-03-01' = {
   }
 }
 
+// Add Git deployment configuration
+@description('GitHub repository URL for source code deployment')
+param repoUrl string = 'https://github.com/yourusername/blog-automation-platform.git'
+
+@description('GitHub repository branch for deployment')
+param repoBranch string = 'main'
+
+// Configure Git source control for the Function App
+resource functionAppGit 'Microsoft.Web/sites/sourcecontrols@2021-02-01' = {
+  parent: functionApp
+  name: 'web'
+  properties: {
+    repoUrl: repoUrl
+    branch: repoBranch
+    isManualIntegration: true
+  }
+}
+
+// Configure the logs for the Function App
+resource functionAppLogsConfig 'Microsoft.Web/sites/config@2021-02-01' = {
+  parent: functionApp
+  name: 'logs'
+  properties: {
+    applicationLogs: {
+      fileSystem: {
+        level: 'Information'
+      }
+    }
+    httpLogs: {
+      fileSystem: {
+        enabled: true
+        retentionInDays: 3
+        retentionInMb: 35
+      }
+    }
+    detailedErrorMessages: {
+      enabled: true
+    }
+    failedRequestsTracing: {
+      enabled: true
+    }
+  }
+}
+
 // Outputs
 output functionAppId string = functionApp.id
 output functionAppName string = functionApp.name
