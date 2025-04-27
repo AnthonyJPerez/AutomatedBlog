@@ -264,10 +264,10 @@ jobs:
     - name: Sync Git repository deployment
       run: |
         echo "Checking admin portal SCM type..."
-        SCM_TYPE=$(az webapp config appsettings list \
+        SCM_TYPE=$(az webapp config show \
           --resource-group "$RESOURCE_GROUP" \
           --name "$ADMIN_PORTAL_NAME" \
-          --query "[?name=='SCM_TYPE'].value" \
+          --query "scmType" \
           --output tsv 2>/dev/null || echo "")
         
         if [ "$SCM_TYPE" == "ExternalGit" ]; then
